@@ -11,20 +11,16 @@ from config_manager import ConfigManager
 import numpy as np
 import spacy
 from spacy.matcher import PhraseMatcher
-from spacy.tokens import Span
-from collections import Counter
 from openpyxl import Workbook
-from openpyxl.styles import Font, PatternFill, Alignment, Border, Side
+from openpyxl.styles import Font, PatternFill
 from openpyxl.utils.dataframe import dataframe_to_rows
-from openpyxl.utils.cell import get_column_letter
-from openpyxl.chart import BarChart, Reference
 
 # Import enhanced detection modules
-from enhanced_who import enhanced_who_detection_v2, classify_entity_type
+from enhanced_who import enhanced_who_detection_v2
 from enhanced_what import enhance_what_detection, mark_possible_standalone_controls
 from enhanced_when import enhance_when_detection
 from enhanced_why import enhance_why_detection
-from enhanced_escalation import enhance_escalation_detection
+from enhanced_escalation_final import enhance_escalation_detection
 
 
 class ControlElement:
@@ -39,6 +35,7 @@ class ControlElement:
         self.phrases = []  # For spaCy PhraseMatcher
         self.context_relevance = 0.0  # Measure of how relevant the matches are in context
         self.enhanced_results = {}  # Store results from enhanced detection
+        self.matcher = None
 
     def setup_matchers(self, nlp):
         """Set up phrase matchers for this element's keywords"""
@@ -47,7 +44,7 @@ class ControlElement:
         # Add single-word and multi-word phrases
         self.phrases = [nlp(keyword) for keyword in self.keywords]
         if self.phrases:
-            self.matcher.add(f"{self.name}_patterns", None, *self.phrases)
+            self.matcher.add(f"{self.name}_patterns", self.phrases)
 
     def analyze(self, text, nlp, enhanced_mode=True, **context):
         """
@@ -302,41 +299,53 @@ def boost_term_by_context(term, doc):
 
 
 def disambiguate_control_term(term, context, nlp):
-    """Perform basic word sense disambiguation for control terms"""
-    # Process the context
+    """Disambiguate whether a term like 'check' or 'record' is being used in a control-relevant sense"""
     doc = nlp(context)
+    term = term.lower()
 
-    # Define control-specific senses with common collocations
-    term_senses = {
-        "check": {
-            "control_sense": ["check accuracy", "check completeness", "check compliance"],
-            "non_control_sense": ["check payment", "check mark", "blank check"]
-        },
-        "record": {
-            "control_sense": ["record evidence", "record results", "record findings"],
-            "non_control_sense": ["record time", "previous record", "record number"]
-        }
+    # Only support known ambiguous terms
+    if term not in {"check", "record"}:
+        return True
+
+    # Define disallowed objects that suggest non-control use
+    non_control_objects = {
+        "check": {"payment", "mark", "number"},
+        "record": {"time", "number", "volume"}
     }
 
-    if term.lower() not in term_senses:
-        return True  # Default to assuming it's control-relevant
+    # Define allowed control-related objects (optional, for boosting)
+    control_objects = {
+        "check": {"accuracy", "completeness", "compliance", "validity"},
+        "record": {"results", "evidence", "findings", "control"}
+    }
 
-    # Check for collocations in the context
-    for control_collocation in term_senses[term.lower()]["control_sense"]:
-        if control_collocation in context.lower():
+    for token in doc:
+        if token.lemma_ == term and token.pos_ in {"VERB", "NOUN"}:
+            for child in token.children:
+                if child.dep_ in {"dobj", "pobj"}:
+                    obj = child.lemma_.lower()
+
+                    if obj in non_control_objects.get(term, set()):
+                        return False  # Likely non-control usage
+                    if obj in control_objects.get(term, set()):
+                        return True  # Strong control-related usage
+
+    # Fall back to string-based disambiguation if needed
+    context_lower = context.lower()
+    for phrase in control_objects.get(term, []):
+        if phrase in context_lower:
             return True
-
-    for non_control_collocation in term_senses[term.lower()]["non_control_sense"]:
-        if non_control_collocation in context.lower():
+    for phrase in non_control_objects.get(term, []):
+        if phrase in context_lower:
             return False
 
-    # Default behavior if no clear indicators
-    return True
+    return True  # Default to assuming control-relevance
+
 
 class EnhancedControlAnalyzer:
     """Enhanced analyzer with specialized detection modules for each element"""
 
-    def __init__(self):
+    def __init__(self, config_file=None):
                 # Load config manager
         self.config_manager = ConfigManager(config_file)
         self.config = self.config_manager.config if self.config_manager else {}
@@ -376,7 +385,7 @@ class EnhancedControlAnalyzer:
         self.vague_matcher = PhraseMatcher(self.nlp.vocab, attr="LOWER")
         vague_phrases = [self.nlp(term) for term in self.vague_terms]
         if vague_phrases:
-            self.vague_matcher.add("vague_patterns", None, *vague_phrases)
+            self.vague_matcher.add("vague_patterns", vague_phrases)
 
         # Configure enhanced detection
         self.use_enhanced_detection = True
@@ -922,19 +931,23 @@ class EnhancedControlAnalyzer:
 
             print(f"Analyzing {total_controls} controls...")
 
-            for idx, row in df.iterrows():
+            for i, (idx, row) in enumerate(df.iterrows()):
+                # Show progress
+                if i % 100 == 0 or i == total_controls - 1:
+                    progress = (i + 1) / total_controls * 100
+                    print(f"Progress: {progress:.1f}% ({i + 1}/{total_controls})")
+
                 control_id = row[id_column]
                 description = row[desc_column]
 
-                # Get optional metadata if available
+                # Optional metadata
                 frequency = row[freq_column] if freq_column and freq_column in row else None
                 control_type = row[type_column] if type_column and type_column in row else None
                 risk_description = row[risk_column] if risk_column and risk_column in row else None
 
-                # Show progress
-                if idx % 100 == 0 or idx == total_controls - 1:
-                    progress = (idx + 1) / total_controls * 100
-                    print(f"Progress: {progress:.1f}% ({idx + 1}/{total_controls})")
+                # Analyze control
+                result = self.analyze_control(control_id, description, frequency, control_type, risk_description)
+                results.append(result)
 
                 # Analyze the control with enhanced detection
                 result = self.analyze_control(control_id, description, frequency, control_type, risk_description)
@@ -1035,7 +1048,7 @@ class EnhancedControlAnalyzer:
 
                 if isinstance(feedback, list) and feedback:
                     result_dict[f"{element} Feedback"] = "; ".join(feedback)
-                elif feedback:
+                elif isinstance(feedback, str) and feedback:
                     result_dict[f"{element} Feedback"] = feedback
                 else:
                     result_dict[f"{element} Feedback"] = "None"
@@ -1343,7 +1356,7 @@ class EnhancedControlAnalyzer:
                         try:
                             if len(str(cell.value)) > max_length:
                                 max_length = len(str(cell.value))
-                        except:
+                        except (TypeError, ValueError):
                             pass
 
                 adjusted_width = (max_length + 2) * 1.1

@@ -222,10 +222,12 @@ def enhance_why_detection(text: str, nlp, risk_description: str = None, existing
         feedback = "Control has a clear risk mitigation purpose."
     elif explicit_why_candidates:
         feedback = f"Control has a WHY statement focused on {why_category}."
+    else:
+        feedback = ""  # default in case none of the above hit
 
-    # Add risk alignment feedback if available
+    # Append risk alignment feedback if available
     if risk_alignment_feedback:
-        feedback = f"{feedback} {risk_alignment_feedback}"
+        feedback = f"{feedback} {risk_alignment_feedback}".strip()
 
     return {
         "explicit_why": explicit_why_candidates,

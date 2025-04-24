@@ -3,7 +3,7 @@ import spacy
 from typing import Dict, List, Any, Optional
 
 
-def enhance_escalation_detection(text, nlp, existing_keywords=None):
+def enhance_escalation_detection(text, nlp):
     """Enhanced ESCALATION detection with improved context handling and process awareness"""
     if not text or text.strip() == '':
         return {

@@ -6,8 +6,8 @@ import os
 import sys
 import yaml
 from spacy.matcher import PhraseMatcher
-from control_analyzer2 import EnhancedControlAnalyzer
-from enhanced_visualization_with_leaders import generate_core_visualizations
+from control_analyzer import EnhancedControlAnalyzer
+from visualization import generate_core_visualizations
 
 
 def load_config(config_file):
@@ -53,7 +53,7 @@ def apply_config_to_analyzer(analyzer, config):
         analyzer.vague_matcher = PhraseMatcher(analyzer.nlp.vocab, attr="LOWER")
         vague_phrases = [analyzer.nlp(term) for term in analyzer.vague_terms]
         if vague_phrases:
-            analyzer.vague_matcher.add("vague_patterns", *vague_phrases)
+            analyzer.vague_matcher.add("vague_patterns", vague_phrases)
 
     # Toggle enhanced detection
     if 'use_enhanced_detection' in config:
@@ -101,21 +101,14 @@ def main():
         analyzer.use_enhanced_detection = False
         print("Enhanced detection modules disabled. Using base analysis only.")
 
-    # Get column values from config if CLI args are not set
-    if not args.id_column or args.id_column == "A":
-        args.id_column = get_column_from_config(config, "id", "Control_ID")
+    # Get column names from config if CLI args were not set
+    column_config = config.get("columns", {})
 
-    if not args.desc_column or args.desc_column == "B":
-        args.desc_column = get_column_from_config(config, "description", "Control_Description")
-
-    if not args.freq_column:
-        args.freq_column = get_column_from_config(config, "frequency", None)
-
-    if not args.type_column:
-        args.type_column = get_column_from_config(config, "type", None)
-
-    if not args.risk_column:
-        args.risk_column = get_column_from_config(config, "risk", None)
+    args.id_column = args.id_column or column_config.get("id", "Control_ID")
+    args.desc_column = args.desc_column or column_config.get("description", "Control_Description")
+    args.freq_column = args.freq_column or column_config.get("frequency", None)
+    args.type_column = args.type_column or column_config.get("type", None)
+    args.risk_column = args.risk_column or column_config.get("risk", None)
 
     # Set default output filename if not provided
     if not args.output_file:
