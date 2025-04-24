@@ -1,0 +1,33 @@
+
+# Python bytecode and cache
+__pycache__/
+*.py[cod]
+*.pyo
+
+# Virtual environments
+.venv/
+env/
+venv/
+
+# Excel and data outputs
+*.xlsx
+*.xls
+*.xlsm
+*.xlsb
+*.csv
+
+# Visualization folders
+*_visualizations/
+
+# Local overrides or config
+*.yaml.local
+
+# Jupyter checkpoint files if used
+.ipynb_checkpoints/
+
+# VSCode settings
+.vscode/
+
+# OS-specific files
+.DS_Store
+Thumbs.db
