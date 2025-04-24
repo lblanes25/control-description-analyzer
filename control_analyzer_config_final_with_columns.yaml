@@ -1,0 +1,161 @@
+elements:
+  WHO:
+    weight: 30
+    keywords:
+    - controller
+    append: true
+  WHEN:
+    weight: 20
+    keywords:
+    - daily basis
+    - every two weeks
+    - ongoing monitoring
+    append: true
+  WHAT:
+    weight: 30
+    keywords:
+    - review
+    - verify
+    - check
+    - validate
+    - ensure
+    - confirm
+    - reconcile
+    - analyze
+    - examine
+    - evaluate
+    - assess
+    - investigate
+    - test
+    - monitor
+    - compare
+    - scrutinize
+    - audit
+    - perform
+    - document
+    - execute
+    - process
+    - approve
+    - post
+    - prepare
+    - calculate
+    - recalculate
+    - inspect
+    - record
+    - trace
+    - track
+    append: false
+  WHY:
+    weight: 10
+    keywords:
+    - to ensure
+    - in order to
+    - for the purpose of
+    - designed to
+    - intended to
+    - so that
+    - objective
+    - goal
+    - mitigate
+    - minimize
+    - prevent
+    - detect
+    - reduce
+    - safeguard
+    - comply
+    - adhere
+    - fulfill
+    - accuracy
+    - completeness
+    - compliance
+    - reliability
+    - validity
+    - assurance
+    - consistency
+    - avoid error
+    - avoid fraud
+    - reduce risk
+    - ensure controls
+    - demonstrate compliance
+    append: false
+  ESCALATION:
+    weight: 3
+    keywords:
+    - elevate to management
+    - report to supervisor
+    - notify leadership
+    append: true
+vague_terms:
+- unclear
+- not defined
+- unspecified
+- somewhat
+- more or less
+- as appropriate
+- when appropriate
+- as necessary
+- when necessary
+- as needed
+- where practical
+- when practical
+- as practical
+- where possible
+- when possible
+- as possible
+- ordinarily
+- almost always
+- at the moment
+append_vague_terms: true
+score_categories:
+  Excellent: 65
+  Good: 45
+  Needs Improvement: 0
+vague_term_penalty: 2
+max_vague_penalty: 10
+control_type_keywords:
+  automated:
+  - system
+  - automated
+  - automatic
+  - software
+  - script
+  - program
+  - job
+  - batch
+  preventive:
+  - blocks
+  - prevents
+  - prohibits
+  - denies
+  - restricts
+  - stops
+  detective:
+  - identifies
+  - discovers
+  - finds
+  - detects
+  corrective:
+  - fixes
+  - resolves
+  - corrects
+  - addresses
+append_control_type_keywords: true
+frequency_terms:
+  bimonthly:
+  - bimonthly
+  - twice a month
+  - every two weeks
+  - fortnightly
+  quarterly:
+  - once per quarter
+  - each fiscal quarter
+  - every three months
+append_frequency_terms: true
+spacy:
+  preferred_model: en_core_web_md
+  fallback_model: en_core_web_sm
+columns:
+  id: Control_ID
+  description: Control_Description
+  frequency: Frequency
+  type: Control_Type
