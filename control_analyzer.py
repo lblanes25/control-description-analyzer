@@ -256,9 +256,6 @@ def create_control_domain_clusters():
         "monthly": ["monthly", "every month", "each month", "once a month",
                     "on a monthly basis", "month-end", "monthly cycle"],
 
-        # Evidence-related terms
-        "document": ["document", "record", "log", "report", "file", "register",
-                     "note", "catalog", "archive", "track"]
     }
 
     return domain_clusters
@@ -371,8 +368,6 @@ class EnhancedControlAnalyzer:
             "WHEN": ControlElement("WHEN", 20, self._get_when_keywords()),
             "WHAT": ControlElement("WHAT", 30, self._get_what_keywords()),
             "WHY": ControlElement("WHY", 10, self._get_why_keywords()),
-            "EVIDENCE": ControlElement("EVIDENCE", 5, self._get_evidence_keywords()),
-            "STORAGE": ControlElement("STORAGE", 2, self._get_storage_keywords()),
             "ESCALATION": ControlElement("ESCALATION", 3, self._get_escalation_keywords())
         }
 
@@ -530,43 +525,6 @@ class EnhancedControlAnalyzer:
             "accuracy", "completeness", "validity", "integrity", "reliability",
             "consistency", "efficiency", "effectiveness", "quality",
             "improvement", "enhancement", "optimization", "assurance"
-        ]
-
-    def _get_evidence_keywords(self):
-        """Return keywords related to EVIDENCE generated"""
-        return [
-            # Documentation types
-            "report", "document", "documentation", "record", "evidence",
-            "worksheet", "spreadsheet", "file", "log", "checklist", "form",
-            "template", "screenshot", "printout", "confirmation", "certification",
-            "sign-off", "approval", "signature", "attestation", "verification",
-
-            # Evidence verbs
-            "documented", "recorded", "logged", "saved", "stored", "maintained",
-            "captured", "collected", "gathered", "retained", "preserved",
-            "evidenced", "demonstrated", "supported", "substantiated",
-
-            # Evidence formats
-            "email", "electronic", "digital", "paper", "hard copy", "soft copy",
-            "scanned", "pdf", "excel", "word", "system-generated", "manual"
-        ]
-
-    def _get_storage_keywords(self):
-        """Return keywords related to STORAGE of evidence"""
-        return [
-            # Storage locations
-            "stored in", "saved in", "kept in", "maintained in", "archived in",
-            "repository", "database", "system", "drive", "folder", "directory",
-            "network", "sharepoint", "cloud", "server", "location", "site",
-            "repository", "archive", "filing cabinet", "storage",
-
-            # Retention terms
-            "retained for", "kept for", "stored for", "preservation", "retention",
-            "retention policy", "retention period", "archived", "backup",
-
-            # Access terms
-            "accessible", "available", "retrievable", "secured", "protected",
-            "restricted", "limited access", "authorized access"
         ]
 
     def _get_escalation_keywords(self):
@@ -881,28 +839,7 @@ class EnhancedControlAnalyzer:
             # Read the Excel file
             df = pd.read_excel(file_path, engine='openpyxl')
 
-            # Convert column letters to column names if needed
-            if re.match(r'^[A-Z]', id_column):
-                cols = df.columns.tolist()
-                id_column = cols[ord(id_column) - ord('A')]
-
-            if re.match(r'^[A-Z]', desc_column):
-                cols = df.columns.tolist()
-                desc_column = cols[ord(desc_column) - ord('A')]
-
-            if freq_column and re.match(r'^[A-Z]', freq_column):
-                cols = df.columns.tolist()
-                freq_column = cols[ord(freq_column) - ord('A')]
-
-            if type_column and re.match(r'^[A-Z]', type_column):
-                cols = df.columns.tolist()
-                type_column = cols[ord(type_column) - ord('A')]
-
-            if risk_column and re.match(r'^[A-Z]', risk_column):
-                cols = df.columns.tolist()
-                risk_column = cols[ord(risk_column) - ord('A')]
-
-            # Ensure required columns exist
+             # Ensure required columns exist
             if id_column not in df.columns:
                 raise ValueError(f"ID column '{id_column}' not found in file")
 
@@ -949,10 +886,6 @@ class EnhancedControlAnalyzer:
                 result = self.analyze_control(control_id, description, frequency, control_type, risk_description)
                 results.append(result)
 
-                # Analyze the control with enhanced detection
-                result = self.analyze_control(control_id, description, frequency, control_type, risk_description)
-                results.append(result)
-
             # Create output file if specified
             if output_file:
                 self._generate_enhanced_report(
@@ -989,8 +922,6 @@ class EnhancedControlAnalyzer:
                 "WHEN Score": r["weighted_scores"]["WHEN"],
                 "WHAT Score": r["weighted_scores"]["WHAT"],
                 "WHY Score": r["weighted_scores"]["WHY"],
-                "EVIDENCE Score": r["weighted_scores"]["EVIDENCE"],
-                "STORAGE Score": r["weighted_scores"]["STORAGE"],
                 "ESCALATION Score": r["weighted_scores"]["ESCALATION"],
             }
 
@@ -1026,10 +957,6 @@ class EnhancedControlAnalyzer:
                 "WHEN Keywords": ", ".join(r["matched_keywords"]["WHEN"]) if r["matched_keywords"]["WHEN"] else "None",
                 "WHAT Keywords": ", ".join(r["matched_keywords"]["WHAT"]) if r["matched_keywords"]["WHAT"] else "None",
                 "WHY Keywords": ", ".join(r["matched_keywords"]["WHY"]) if r["matched_keywords"]["WHY"] else "None",
-                "EVIDENCE Keywords": ", ".join(r["matched_keywords"]["EVIDENCE"]) if r["matched_keywords"][
-                    "EVIDENCE"] else "None",
-                "STORAGE Keywords": ", ".join(r["matched_keywords"]["STORAGE"]) if r["matched_keywords"][
-                    "STORAGE"] else "None",
                 "ESCALATION Keywords": ", ".join(r["matched_keywords"]["ESCALATION"]) if r["matched_keywords"][
                     "ESCALATION"] else "None"
             }
@@ -1043,7 +970,7 @@ class EnhancedControlAnalyzer:
             result_dict = {"Control ID": r["control_id"]}
 
             # Format each element's feedback
-            for element in ["WHO", "WHEN", "WHAT", "WHY", "EVIDENCE", "STORAGE", "ESCALATION"]:
+            for element in ["WHO", "WHEN", "WHAT", "WHY", "ESCALATION"]:
                 feedback = r["enhancement_feedback"].get(element)
 
                 if isinstance(feedback, list) and feedback:
@@ -1230,9 +1157,7 @@ class EnhancedControlAnalyzer:
             ["2. WHEN the control is performed", ""],
             ["3. WHAT activities are performed", ""],
             ["4. WHY the control exists", ""],
-            ["5. EVIDENCE generated", ""],
-            ["6. STORAGE of evidence", ""],
-            ["7. ESCALATION procedures", ""],
+            ["5. ESCALATION procedures", ""],
             ["", ""],
             ["Enhanced NLP Analysis", ""],
             ["The analysis uses advanced Natural Language Processing (NLP) techniques to:", ""],
@@ -1247,12 +1172,10 @@ class EnhancedControlAnalyzer:
             ["Scoring Method", ""],
             ["Each element is weighted based on its importance:", ""],
             ["", ""],
-            ["WHO: 30%", ""],
-            ["WHEN: 20%", ""],
-            ["WHAT: 30%", ""],
-            ["WHY: 10%", ""],
-            ["EVIDENCE: 5%", ""],
-            ["STORAGE: 2%", ""],
+            ["WHO: 32%", ""],
+            ["WHEN: 22%", ""],
+            ["WHAT: 32%", ""],
+            ["WHY: 11%", ""],
             ["ESCALATION: 3%", ""],
             ["", ""],
             ["Penalties are applied for:", ""],
@@ -1322,11 +1245,9 @@ class EnhancedControlAnalyzer:
             ["2. Define WHEN the control occurs (specific timing, not just 'periodically')", ""],
             ["3. Detail WHAT actions are taken (specific verifications, not just 'reviews')", ""],
             ["4. Explain WHY the control exists (what risk it addresses)", ""],
-            ["5. Document what EVIDENCE is produced", ""],
-            ["6. Specify where evidence is STORED", ""],
-            ["7. Include ESCALATION procedures for exceptions", ""],
-            ["8. Avoid vague terms like 'appropriate', 'timely', 'periodically'", ""],
-            ["9. Separate multiple controls into individual control descriptions", ""]
+            ["5. Include ESCALATION procedures for exceptions", ""],
+            ["6. Avoid vague terms like 'appropriate', 'timely', 'periodically'", ""],
+            ["7. Separate multiple controls into individual control descriptions", ""]
         ]
 
         # Write examples data

@@ -62,17 +62,13 @@ def apply_config_to_analyzer(analyzer, config):
     return analyzer
 
 
-def get_column_from_config(config, column_name, default_value):
-    """Get column information from config or use default"""
-    return config.get("columns", {}).get(column_name, default_value)
-
 
 def main():
     """Main function integrating enhanced analyzer and visualizations"""
     parser = argparse.ArgumentParser(description='Enhanced Control Description Analyzer with advanced NLP capabilities')
     parser.add_argument('file', nargs='?', help='Excel file with control descriptions')
-    parser.add_argument('--id-column', default='A', help='Column containing control IDs (letter or name)')
-    parser.add_argument('--desc-column', default='B', help='Column containing control descriptions (letter or name)')
+    parser.add_argument('--id-column', help='Column name containing control IDs (e.g., Control_ID)')
+    parser.add_argument('--desc-column', help='Column name containing control descriptions (e.g., Control_Description)')
     parser.add_argument('--freq-column', help='Column containing frequency values for validation')
     parser.add_argument('--type-column', help='Column containing control type values for validation')
     parser.add_argument('--risk-column', help='Column containing risk descriptions for alignment')
