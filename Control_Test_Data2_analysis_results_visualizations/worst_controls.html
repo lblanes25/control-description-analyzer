@@ -1,0 +1,97 @@
+
+        <!DOCTYPE html>
+        <html>
+        <head>
+            <meta charset="UTF-8">
+            <title>Controls Missing 3+ Elements</title>
+            <style>
+                body { font-family: Arial, sans-serif; margin: 20px; }
+                h1 { color: #333; }
+                table { border-collapse: collapse; width: 100%; }
+                th, td { border: 1px solid #ddd; padding: 8px; text-align: left; }
+                th { background-color: #f2f2f2; }
+                tr:nth-child(even) { background-color: #f9f9f9; }
+                .dropdown { margin-bottom: 20px; }
+                select { padding: 5px; font-size: 16px; }
+            </style>
+        </head>
+        <body>
+            <h1>Controls Missing 3+ Elements</h1>
+            <div class="dropdown">
+                <label for="leaderFilter">Filter by Audit Leader: </label>
+                <select id="leaderFilter" onchange="filterTable()">
+                    <option value="all">All Leaders</option>
+                    <option value="Sarah Johnson">Sarah Johnson</option>
+            <option value="David Rodriguez">David Rodriguez</option>
+
+                </select>
+            </div>
+            <table id="controlsTable">
+                <thead>
+                    <tr>
+                    <th>Control ID</th>
+            <th>Total Score</th>
+            <th>Category</th>
+            <th>Missing Elements Count</th>
+            <th>WHO Score</th>
+            <th>WHEN Score</th>
+            <th>WHAT Score</th>
+            <th>WHY Score</th>
+            <th>ESCALATION Score</th>
+            <th>Missing Elements</th>
+            <th>Audit Leader</th>
+            <th>vague_terms_found</th>
+
+                    </tr>
+                </thead>
+                <tbody>
+                <tr class="row" data-leader="Sarah Johnson">
+            <td>CTRL-005</td>
+            <td>6.7248</td>
+            <td>Needs Improvement</td>
+            <td>3</td>
+            <td>0.0</td>
+            <td>1.0</td>
+            <td>7.7248</td>
+            <td>0.0</td>
+            <td>0.0</td>
+            <td>WHO, WHY, ESCALATION</td>
+            <td>Sarah Johnson</td>
+            <td>appropriate</td>
+        </tr>
+        <tr class="row" data-leader="David Rodriguez">
+            <td>CTRL-007</td>
+            <td>12.378</td>
+            <td>Needs Improvement</td>
+            <td>3</td>
+            <td>0.0</td>
+            <td>1.0</td>
+            <td>13.378</td>
+            <td>0.0</td>
+            <td>0.0</td>
+            <td>WHO, WHY, ESCALATION</td>
+            <td>David Rodriguez</td>
+            <td>may</td>
+        </tr>
+
+                </tbody>
+            </table>
+
+            <script>
+                function filterTable() {
+                    const filter = document.getElementById('leaderFilter').value;
+                    const rows = document.querySelectorAll('#controlsTable tbody tr');
+
+                    rows.forEach(row => {
+                        const leader = row.getAttribute('data-leader');
+                        if (filter === 'all' || filter === leader) {
+                            row.style.display = '';
+                        } else {
+                            row.style.display = 'none';
+                        }
+                    });
+                }
+            </script>
+        </body>
+        </html>
+        

@@ -651,11 +651,16 @@ def enhanced_who_detection_v2(text, nlp, control_type=None, frequency=None, exis
 
         # Check for consistency with control type
         if control_type and who_candidates[0]["type"] != "unknown":
-            control_type_lower = control_type.lower()
-            if "automated" in control_type_lower and who_candidates[0]["type"] == "human":
+            control_type_lower = control_type.strip().lower()
+            performer_type = who_candidates[0]["type"]
+
+            if control_type_lower == "automated" and performer_type == "human":
                 message = "Warning: Human performer detected for automated control"
-            elif "manual" in control_type_lower and who_candidates[0]["type"] == "system":
+            elif control_type_lower == "manual" and performer_type == "system":
                 message = "Warning: System performer detected for manual control"
+            # Optional: flag semi-automated mismatches differently
+            elif control_type_lower == "semi-automated":
+                message = ""  # or a soft hint, like "Mixed control: ensure roles align with automation level"
 
         # Check for vague performers
         if who_candidates[0]["text"].lower() in ["management", "staff", "team"]:

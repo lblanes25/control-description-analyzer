@@ -1,162 +1,857 @@
+# Enhanced configuration file for Control Description Analyzer
+
+# NLP Configuration
+spacy:
+  preferred_model: en_core_web_md
+  fallback_model: en_core_web_sm
+
+# Scoring Configuration
+category_thresholds:
+  excellent: 75
+  good: 50
+
+# Penalty Configuration
+vague_term_penalty: 2
+max_vague_penalty: 10
+penalties:
+  multi_control:
+    points_per_control: 5
+    max_penalty: 10
+
+# Enable/disable enhanced detection
+use_enhanced_detection: true
+
+# Element Definitions
 elements:
   WHO:
     weight: 30
     keywords:
-    - controller
-    append: true
-  WHEN:
-    weight: 20
-    keywords:
-    - daily basis
-    - every two weeks
-    - ongoing monitoring
-    append: true
-  WHAT:
-    weight: 30
-    keywords:
-    - review
-    - verify
-    - check
-    - validate
-    - ensure
-    - confirm
-    - reconcile
-    - analyze
-    - examine
-    - evaluate
-    - assess
-    - investigate
-    - test
-    - monitor
-    - compare
-    - scrutinize
-    - audit
-    - perform
-    - document
-    - execute
-    - process
-    - approve
-    - post
-    - prepare
-    - calculate
-    - recalculate
-    - inspect
-    - record
-    - trace
-    - track
+      # Roles and positions
+      - manager
+      - director
+      - supervisor
+      - analyst
+      - specialist
+      - officer
+      - coordinator
+      - lead
+      - team lead
+      - department head
+      - staff
+      - committee
+      - board
+      - executive
+      - administrator
+      - chief
+      - president
+      - vp
+      - vice president
+      - controller
+      - accountant
+      - auditor
+      - reviewer
+      - approver
+      - owner
+      - preparer
+      - personnel
+      - individual
+      - employee
+      - representative
+      - agent
+      - person
+      - party
+      - resource
+      - cfo
+      - finance director
+      - financial controller
+      - corporate controller
+      - fund accountant
+      - general ledger accountant
+      - senior accountant
+      - junior accountant
+      - staff accountant
+      - accounts payable
+      - accounts receivable
+      - revenue accountant
+      - fixed asset accountant
+      - cost accountant
+      - tax accountant
+      - payroll specialist
+      - billing specialist
+      - treasury analyst
+      - cash manager
+      - financial analyst
+      - financial planning analyst
+      - budget analyst
+      - forecasting specialist
+      - financial reporting manager
+      - accounting manager
+      - accounting supervisor
+      - bookkeeper
+      - credit analyst
+      - accounts supervisor
+      - cae
+      - audit director
+      - internal audit manager
+      - senior internal auditor
+      - internal auditor
+      - it auditor
+      - compliance officer
+      - chief compliance officer
+      - compliance manager
+      - compliance analyst
+      - regulatory compliance
+      - sox compliance
+      - controls specialist
+      - control tester
+      - risk analyst
+      - risk manager
+      - control owner
+      - process owner
+      - treasurer
+      - assistant treasurer
+      - treasury manager
+      - treasury analyst
+      - investment manager
+      - investment analyst
+      - portfolio manager
+      - cash management specialist
+      - cio
+      - cto
+      - it director
+      - it manager
+      - system administrator
+      - network administrator
+      - database administrator
+      - application owner
+      - application administrator
+      - security administrator
+      - systems analyst
+      - it security
+      - it support
+      - it governance
+      - data steward
+      - data custodian
+      - data owner
+      - coo
+      - operations director
+      - operations manager
+      - business unit head
+      - division leader
+      - business manager
+      - product manager
+      - program manager
+      - project manager
+      - process manager
+      - line manager
+      - shift supervisor
+      - team leader
+      - functional manager
+      - unit head
+      - department supervisor
+      - ceo
+      - management
+
+      # Committees and teams
+      - board of directors
+      - audit committee
+      - risk committee
+      - governance committee
+      - executive committee
+      - management committee
+      - steering committee
+      - leadership team
+      - senior leadership
+      - executive management
+      - c-suite
+      - senior management
+      - finance team
+      - accounting department
+      - treasury department
+      - audit group
+      - internal audit team
+      - external auditors
+      - compliance team
+      - risk management team
+      - it department
+      - security team
+      - operations team
+      - business unit
+      - management team
+      - executive team
+      - control team
+      - process team
+      - project team
+      - governance team
+      - reporting team
+      - financial operations
+      - accounting operations
+      - back office
+      - front office
+      - middle office
+      - shared services
+      - group
+      - unit
+      - division
+      - function
+      - office
+      - organization
+      - entity
+      - branch
+
+      # Systems and automation
+      - application
+      - system
+      - software
+      - platform
+      - program
+      - tool
+      - utility
+      - database
+      - server
+      - network
+      - interface
+      - portal
+      - dashboard
+      - module
+      - service
+      - bot
+      - workflow
+      - algorithm
+      - erp
+      - sap
+      - oracle
+      - peoplesoft
+      - servicenow
+      - sharepoint
+      - crm
+      - grc system
+      - financial system
+      - accounting system
+      - reporting system
+      - monitoring system
+      - control system
+      - ticketing system
+      - workflow system
+      - automatically
+      - automatic
+      - automated
+      - programmed
+      - scheduled
+      - scripted
+      - configured
+      - batched
+      - robotic
+      - systematic
+      - rules-based
+      - recurring
+      - job
+      - routine
+      - process
+      - system-generated
+      - system performs
+      - automated control
+      - system restricts
+      - system enforces
+      - generates
+      - calculates
+      - computes
+      - processes
+      - validates
+      - restricts
+      - limits
+      - prevents
+      - blocks
     append: false
-  WHY:
-    weight: 10
-    keywords:
-    - to ensure
-    - in order to
-    - for the purpose of
-    - designed to
-    - intended to
-    - so that
-    - objective
-    - goal
-    - mitigate
-    - minimize
-    - prevent
-    - detect
-    - reduce
-    - safeguard
-    - comply
-    - adhere
-    - fulfill
-    - accuracy
-    - completeness
-    - compliance
-    - reliability
-    - validity
-    - assurance
-    - consistency
-    - avoid error
-    - avoid fraud
-    - reduce risk
-    - ensure controls
-    - demonstrate compliance
-    append: false
-  ESCALATION:
-    weight: 3
-    keywords:
-    - elevate to management
-    - report to supervisor
-    - notify leadership
-    append: true
+
+# Vague Terms
 vague_terms:
-- unclear
-- not defined
-- unspecified
-- somewhat
-- more or less
-- as appropriate
-- when appropriate
-- as necessary
-- when necessary
-- as needed
-- where practical
-- when practical
-- as practical
-- where possible
-- when possible
-- as possible
-- ordinarily
-- almost always
-- at the moment
+  # Ambiguous terms
+  - appropriate
+  - timely
+  - periodically
+  - regularly
+  - as needed
+  - when necessary
+  - if required
+  - as applicable
+  - as appropriate
+  - may
+  - might
+  - could
+  - should
+  - would
+  - possibly
+  - potentially
+
+  # Undefined references
+  - etc
+  - and so on
+  - and so forth
+  - among others
+  - various
+  - several
+  - numerous
+  - many
+  - few
+  - some
+  - certain
+
+  # Non-specific quantities
+  - adequate
+  - sufficient
+  - enough
+  - substantial
+  - reasonable
+  - considerable
+  - significant
+  - insignificant
+  - minimal
+  - maximal
+
+  # Unclear actions
+  - handle
+  - manage
+  - deal with
+  - address
+  - take care of
+  - process
+  - facilitate
+  - coordinate
+  - arrange
+  - oversee
 append_vague_terms: true
-score_categories:
-  Excellent: 65
-  Good: 45
-  Needs Improvement: 0
-vague_term_penalty: 2
-max_vague_penalty: 10
+
+# Control Type Keywords
 control_type_keywords:
   automated:
-  - system
-  - automated
-  - automatic
-  - software
-  - script
-  - program
-  - job
-  - batch
+    - system
+    - automated
+    - automatic
+    - software
+    - program
+    - script
+    - job
+    - batch
+    - workflow
+    - algorithm
+    - systematic
   preventive:
-  - blocks
-  - prevents
-  - prohibits
-  - denies
-  - restricts
-  - stops
+    - prevent
+    - preventive
+    - preventative
+    - avoid
+    - before
+    - prior to
+    - stops
+    - blocks
+    - prohibits
+    - denies
+    - restricts
   detective:
-  - identifies
-  - discovers
-  - finds
-  - detects
+    - detect
+    - detective
+    - identify
+    - discover
+    - find
+    - after
+    - following
+    - review
+    - monitor
+    - reconcile
+    - identifies
+    - discovers
   corrective:
-  - fixes
-  - resolves
-  - corrects
-  - addresses
+    - correct
+    - corrective
+    - remediate
+    - fix
+    - resolve
+    - address
+    - adjust
+    - fixes
+    - resolves
+    - corrects
+    - addresses
 append_control_type_keywords: true
+
+# Frequency Terms
 frequency_terms:
-  bimonthly:
-  - bimonthly
-  - twice a month
-  - every two weeks
-  - fortnightly
+  daily:
+    - daily
+    - each day
+    - every day
+    - on a daily basis
+    - day
+    - daily basis
+  weekly:
+    - weekly
+    - each week
+    - every week
+    - on a weekly basis
+    - week
+    - weekly basis
+  biweekly:
+    - biweekly
+    - twice a week
+    - every two weeks
+    - fortnightly
+  monthly:
+    - monthly
+    - each month
+    - every month
+    - on a monthly basis
+    - month
+    - monthly basis
   quarterly:
-  - once per quarter
-  - each fiscal quarter
-  - every three months
+    - quarterly
+    - each quarter
+    - every quarter
+    - on a quarterly basis
+    - quarter
+    - once per quarter
+    - each fiscal quarter
+    - every three months
+  annually:
+    - annually
+    - yearly
+    - each year
+    - every year
+    - annual
+    - on an annual basis
+    - year
 append_frequency_terms: true
-spacy:
-  preferred_model: en_core_web_md
-  fallback_model: en_core_web_sm
+
+# Domain Clusters
+domain_clusters:
+  review:
+    - review
+    - examine
+    - inspect
+    - assess
+    - evaluate
+    - analyze
+    - check
+    - scrutinize
+    - study
+    - look over
+  approve:
+    - approve
+    - authorize
+    - sign off
+    - sanction
+    - endorse
+    - validate
+    - confirm
+    - certify
+    - ratify
+    - permit
+  monthly:
+    - monthly
+    - every month
+    - each month
+    - once a month
+    - on a monthly basis
+    - month-end
+    - monthly cycle
+
+# Column Mapping
 columns:
   id: Control_ID
   description: Control_Description
   frequency: Frequency
   type: Control_Type
   risk: Risk_Description
+
+  portfolio_metadata:
+    audits:
+      "AUDIT-2023-001":
+        name: "Finance Department Audit 2023"
+        leader: "Jane Smith"
+      "AUDIT-2023-002":
+        name: "IT Department Audit 2023"
+        leader: "John Doe"
+
+  WHEN:
+    weight: 20
+    keywords:
+      # Frequencies
+      - daily
+      - weekly
+      - biweekly
+      - monthly
+      - quarterly
+      - annually
+      - yearly
+      - semi-annually
+      - biannually
+      - periodically
+      - semi-monthly
+      - bi-monthly
+      - bi-annual
+      - hourly
+      - intraday
+
+      # Specific timing
+      - every
+      - each
+      - after
+      - before
+      - prior to
+      - following
+      - upon
+      - when
+      - whenever
+      - as soon as
+      - immediately
+      - subsequently
+      - once
+      - twice
+      - frequency
+      - schedule
+      - upon
+      - during
+      - within
+      - by
+      - deadline
+      - due date
+      - time frame
+      - period
+      - day
+      - week
+      - month
+      - year
+
+      # Months and quarters
+      - january
+      - february
+      - march
+      - april
+      - may
+      - june
+      - july
+      - august
+      - september
+      - october
+      - november
+      - december
+      - q1
+      - q2
+      - q3
+      - q4
+
+      # Time periods
+      - month end
+      - quarter end
+      - year end
+      - period end
+      - fiscal
+      - calendar
+      - date
+      - schedule
+      - interval
+      - regular
+      - periodic
+      - scheduled
+      - ongoing
+      - continuous
+      - real-time
+      - triggered
+      - event-driven
+      - basis
+      - times
+      - hours
+      - minutes
+      - immediately
+      - upon receipt
+      - end of
+      - beginning of
+      - start of
+      - close of
+      - completion of
+      - cycle
+      - interval
+
+      # Time sequence
+      - first
+      - second
+      - third
+      - fourth
+      - subsequent
+      - next
+      - previous
+      - initial
+      - final
+      - prior
+      - post
+      - mid
+
+      # Time of day
+      - morning
+      - afternoon
+      - evening
+      - weekend
+      - business day
+      - workday
+      - timeframe
+
+      # Other timing patterns
+      - recurring
+      - ad hoc
+      - as needed
+      - per
+      - routinely
+      - intermittent
+      - on-demand
+      - rolling
+      - cadence
+      - seasonal
+      - interim
+
+      # Time-based triggers
+      - triggered
+      - event
+      - occurrence
+      - instance
+      - transaction
+      - processing
+      - closing
+      - reconciliation
+      - review cycle
+    append: false
+
+  WHAT:
+    weight: 30
+    keywords:
+      # Action verbs
+      - review
+      - verify
+      - check
+      - validate
+      - ensure
+      - confirm
+      - examine
+      - analyze
+      - evaluate
+      - assess
+      - monitor
+      - track
+      - compare
+      - reconcile
+      - match
+      - approve
+      - authorize
+      - sign
+      - document
+      - record
+      - log
+      - maintain
+      - update
+      - generate
+      - prepare
+      - create
+      - establish
+      - implement
+      - execute
+      - perform
+
+      # Compound activities
+      - conduct review
+      - perform check
+      - carry out
+      - run report
+      - generate report
+      - prepare documentation
+      - maintain record
+      - ensure compliance
+      - verify accuracy
+      - validate completeness
+      - cross-check
+      - double-check
+      - sign off
+      - follow up
+      - identify discrepancies
+      - resolve issues
+      - address exceptions
+      - match transactions
+      - approve documents
+      - authorize access
+    append: false
+
+  WHY:
+    weight: 10
+    keywords:
+      # Purpose indicators
+      - to ensure
+      - in order to
+      - for the purpose of
+      - designed to
+      - intended to
+      - so that
+      - purpose
+      - objective
+      - goal
+
+      # Risk-related terms
+      - prevent
+      - detect
+      - mitigate
+      - risk
+      - error
+      - fraud
+      - misstatement
+      - compliance
+      - regulatory
+      - requirement
+      - policy
+      - procedure
+      - standard
+      - guideline
+      - regulation
+      - law
+      - mandate
+      - obligation
+      - safeguard
+      - protect
+
+      # Benefit terms
+      - accuracy
+      - completeness
+      - validity
+      - integrity
+      - reliability
+      - consistency
+      - efficiency
+      - effectiveness
+      - quality
+      - improvement
+      - enhancement
+      - optimization
+      - assurance
+    append: false
+
+  ESCALATION:
+    weight: 3
+    keywords:
+      # Escalation terms
+      - escalate
+      - escalation
+      - escalated to
+      - reported to
+      - elevated to
+      - notify
+      - notification
+      - alert
+      - inform
+      - communicate
+      - report
+      - elevated
+      - elevation
+      - raised
+      - raising
+      - communicate
+      - communication
+      - reported
+      - reporting
+      - highlight
+      - highlighted
+      - inform
+      - informed
+      - contact
+      - contacted
+      - route
+      - routed
+      - forward
+      - forwarded
+      - submitted
+      - submission
+
+      # Issue handling
+      - exception
+      - exceptions
+      - failure
+      - failures
+      - issue
+      - issues
+      - resolution
+      - remediate
+      - remediation
+      - handle
+      - handling
+      - address
+      - resolve
+      - resolution
+      - respond
+      - response
+      - breach
+      - violation
+      - discrepancy
+      - unauthorized
+      - inappropriate
+      - incomplete
+      - error
+      - problem
+      - concern
+      - risk
+      - incident
+      - trigger
+      - flag
+      - flagged
+      - immediate
+      - urgent
+      - priority
+      - corrective
+      - correction
+      - fix
+      - follow-up
+      - follow up
+      - revoke
+      - disable
+      - addressed
+      - addressing
+      - managed
+      - managing
+      - coordinated
+      - coordination
+      - documented
+      - documentation
+      - tracked
+      - tracking
+      - updated
+      - updating
+      - monitored
+      - monitoring
+      - warning
+      - action
+      - deviation
+      - anomaly
+      - finding
+
+      # Conditional phrases
+      - if necessary
+      - as necessary
+      - if needed
+      - if required
+      - when needed
+      - if identified
+      - when identified
+
+      # Escalation targets
+      - management
+      - supervisor
+      - manager
+      - senior
+      - executive
+      - leadership
+      - committee
+      - board
+      - higher level
+      - appropriate
+      - cfo
+      - director
+      - manager
+      - supervisor
+      - head
+      - chief
+      - executive
+    append: false

@@ -20,7 +20,7 @@ from enhanced_who import enhanced_who_detection_v2
 from enhanced_what import enhance_what_detection, mark_possible_standalone_controls
 from enhanced_when import enhance_when_detection
 from enhanced_why import enhance_why_detection
-from enhanced_escalation_final import enhance_escalation_detection
+from enhanced_escalation import enhance_escalation_detection
 
 
 class ControlElement:
@@ -64,7 +64,7 @@ class ControlElement:
             if self.name == "WHO":
                 control_type = context.get("control_type")
                 frequency = context.get("frequency")
-                self.enhanced_results = enhanced_who_detection_v2(text, nlp, control_type, frequency)
+                self.enhanced_results = enhanced_who_detection_v2(text, nlp, control_type, frequency, self.keywords)
                 self.score = self.enhanced_results.get("confidence", 0)
                 self.matched_keywords = [
                     self.enhanced_results.get("primary", {}).get("text", "")] if self.enhanced_results.get(
@@ -241,26 +241,6 @@ def enhanced_semantic_similarity(text, element_keywords, nlp):
     return similar_terms[:5], avg_similarity  # Limit to top 5 to avoid noise
 
 
-def create_control_domain_clusters():
-    """Create domain-specific clusters of related terms for control descriptions"""
-    domain_clusters = {
-        # Review-related terms
-        "review": ["review", "examine", "inspect", "assess", "evaluate",
-                   "analyze", "check", "scrutinize", "study", "look over"],
-
-        # Approval-related terms
-        "approve": ["approve", "authorize", "sign off", "sanction", "endorse",
-                    "validate", "confirm", "certify", "ratify", "permit"],
-
-        # Timing-related terms
-        "monthly": ["monthly", "every month", "each month", "once a month",
-                    "on a monthly basis", "month-end", "monthly cycle"],
-
-    }
-
-    return domain_clusters
-
-
 def boost_term_by_context(term, doc):
     """Boost similarity scores based on the term's role in the sentence"""
     boost = 1.0
@@ -343,244 +323,90 @@ class EnhancedControlAnalyzer:
     """Enhanced analyzer with specialized detection modules for each element"""
 
     def __init__(self, config_file=None):
-                # Load config manager
+        # Load config manager
         self.config_manager = ConfigManager(config_file)
         self.config = self.config_manager.config if self.config_manager else {}
 
-        # Initialize spaCy with larger model for better semantic analysis
-        try:
-            # Try loading the medium-sized model first for better NLP capabilities
-            self.nlp = spacy.load("en_core_web_md")
-        except OSError:
-            try:
-                # Fall back to small model if medium isn't available
-                self.nlp = spacy.load("en_core_web_sm")
-                print(
-                    "Using the small spaCy model. For better results, install the medium model with: python -m spacy download en_core_web_md")
-            except OSError:
-                print("Downloading spaCy model...")
-                spacy.cli.download("en_core_web_sm")
-                self.nlp = spacy.load("en_core_web_sm")
+        # Initialize spaCy with model specified in config
+        self.nlp = self._initialize_spacy_model()
 
-        # Initialize elements with their weights
-        self.elements = {
-            "WHO": ControlElement("WHO", 30, self._get_who_keywords()),
-            "WHEN": ControlElement("WHEN", 20, self._get_when_keywords()),
-            "WHAT": ControlElement("WHAT", 30, self._get_what_keywords()),
-            "WHY": ControlElement("WHY", 10, self._get_why_keywords()),
-            "ESCALATION": ControlElement("ESCALATION", 3, self._get_escalation_keywords())
-        }
+        # Initialize elements with their weights from config
+        self.elements = self._initialize_elements()
 
         # Set up matchers for each element
         for element in self.elements.values():
             element.setup_matchers(self.nlp)
 
-        # Vague terms that should be avoided
-        self.vague_terms = self._get_vague_terms()
+        # Vague terms that should be avoided - loaded from config
+        self.vague_terms = self.config.get('vague_terms', [])
         self.vague_matcher = PhraseMatcher(self.nlp.vocab, attr="LOWER")
         vague_phrases = [self.nlp(term) for term in self.vague_terms]
         if vague_phrases:
             self.vague_matcher.add("vague_patterns", vague_phrases)
 
-        # Configure enhanced detection
-        self.use_enhanced_detection = True
+        # Configure enhanced detection - can be overridden via config
+        self.use_enhanced_detection = self.config.get('use_enhanced_detection', True)
 
-    def _get_who_keywords(self):
-        """Return keywords related to WHO performs the control"""
-        return [
-            # Roles and positions
-            "manager", "director", "supervisor", "analyst", "specialist", "officer",
-            "coordinator", "lead", "team lead", "department head", "staff", "committee",
-            "board", "executive", "administrator", "chief", "president", "vp", "vice president",
-            "controller", "accountant", "auditor", "reviewer", "approver", "owner", "preparer",
-            "personnel", "individual", "employee", "representative", "agent", "person", "party",
-            "resource", "cfo", "finance director", "financial controller", "corporate controller",
-            "fund accountant", "general ledger accountant", "senior accountant", "junior accountant",
-            "staff accountant", "accounts payable", "accounts receivable", "revenue accountant",
-            "fixed asset accountant", "cost accountant", "tax accountant", "payroll specialist",
-            "billing specialist", "treasury analyst", "cash manager", "financial analyst",
-            "financial planning analyst", "budget analyst", "forecasting specialist",
-            "financial reporting manager", "accounting manager", "accounting supervisor",
-            "bookkeeper", "credit analyst", "accounts supervisor", "cae", "audit director",
-            "internal audit manager", "senior internal auditor", "internal auditor", "it auditor",
-            "compliance officer", "chief compliance officer", "compliance manager",
-            "compliance analyst", "regulatory compliance", "sox compliance", "controls specialist",
-            "control tester", "risk analyst", "risk manager", "control owner", "process owner",
-            "treasurer", "assistant treasurer", "treasury manager", "treasury analyst",
-            "investment manager", "investment analyst", "portfolio manager",
-            "cash management specialist", "cio", "cto", "it director", "it manager",
-            "system administrator", "network administrator", "database administrator",
-            "application owner", "application administrator", "security administrator",
-            "systems analyst", "it security", "it support", "it governance", "data steward",
-            "data custodian", "data owner", "coo", "operations director", "operations manager",
-            "business unit head", "division leader", "business manager", "product manager",
-            "program manager", "project manager", "process manager", "line manager",
-            "shift supervisor", "team leader", "functional manager", "unit head",
-            "department supervisor", "ceo", "management",
+        # Get penalty configuration from config
+        self.vague_term_penalty = self.config.get('vague_term_penalty', 2)
+        self.max_vague_penalty = self.config.get('max_vague_penalty', 10)
 
-            # Committees and teams
-            "board of directors", "audit committee", "risk committee", "governance committee",
-            "executive committee", "management committee", "steering committee", "leadership team",
-            "senior leadership", "executive management", "c-suite", "senior management",
-            "finance team", "accounting department", "treasury department", "audit group",
-            "internal audit team", "external auditors", "compliance team", "risk management team",
-            "it department", "security team", "operations team", "business unit", "management team",
-            "executive team", "control team", "process team", "project team", "governance team",
-            "reporting team", "financial operations", "accounting operations", "back office",
-            "front office", "middle office", "shared services", "group", "unit", "division",
-            "function", "office", "organization", "entity", "branch",
+        # Get multi-control penalty settings from config
+        self.multi_control_penalty = self.config.get('penalties', {}).get('multi_control', {})
+        self.points_per_control = self.multi_control_penalty.get('points_per_control', 5)
+        self.max_multi_control_penalty = self.multi_control_penalty.get('max_penalty', 10)
 
-            # Systems and automation
-            "application", "system", "software", "platform", "program", "tool", "utility",
-            "database", "server", "network", "interface", "portal", "dashboard", "module",
-            "service", "bot", "workflow", "algorithm", "erp", "sap", "oracle", "peoplesoft",
-            "servicenow", "sharepoint", "crm", "grc system", "financial system",
-            "accounting system", "reporting system", "monitoring system", "control system",
-            "ticketing system", "workflow system", "automatically", "automatic", "automated",
-            "programmed", "scheduled", "scripted", "configured", "batched", "robotic",
-            "systematic", "rules-based", "recurring", "job", "routine", "process",
-            "system-generated", "system performs", "automated control", "system restricts",
-            "system enforces", "generates", "calculates", "computes", "processes", "validates",
-            "restricts", "limits", "prevents", "blocks"
-        ]
+        # Get domain clusters from config
+        self.domain_clusters = self.config.get('domain_clusters', {})
 
-    def _get_when_keywords(self):
-        """Return keywords related to WHEN the control is performed"""
-        return [
-            # Frequencies
-            "daily", "weekly", "biweekly", "monthly", "quarterly", "annually",
-            "yearly", "semi-annually", "biannually", "periodically", "semi-monthly",
-            "bi-monthly", "bi-annual", "hourly", "intraday",
+        # Get thresholds from config
+        self.excellent_threshold = self.config.get('category_thresholds', {}).get('excellent', 65)
+        self.good_threshold = self.config.get('category_thresholds', {}).get('good', 45)
 
-            # Specific timing
-            "every", "each", "after", "before", "prior to", "following",
-            "upon", "when", "whenever", "as soon as", "immediately",
-            "subsequently", "once", "twice", "frequency", "schedule",
-            "upon", "during", "within", "by", "deadline", "due date",
-            "time frame", "period", "day", "week", "month", "year",
+    def _initialize_spacy_model(self):
+        """Initialize spaCy model based on configuration"""
+        spacy_config = self.config.get('spacy', {})
+        preferred_model = spacy_config.get('preferred_model', 'en_core_web_md')
+        fallback_model = spacy_config.get('fallback_model', 'en_core_web_sm')
 
-            # Months and quarters
-            "january", "february", "march", "april", "may", "june",
-            "july", "august", "september", "october", "november", "december",
-            "q1", "q2", "q3", "q4",
+        try:
+            # Try loading the preferred model first
+            return spacy.load(preferred_model)
+        except OSError:
+            try:
+                # Fall back to smaller model if preferred isn't available
+                nlp = spacy.load(fallback_model)
+                print(
+                    f"Using {fallback_model} model. For better results, install {preferred_model} with: python -m spacy download {preferred_model}")
+                return nlp
+            except OSError:
+                print(f"Downloading spaCy model {fallback_model}...")
+                spacy.cli.download(fallback_model)
+                return spacy.load(fallback_model)
 
-            # Time periods
-            "month end", "quarter end", "year end", "period end", "fiscal",
-            "calendar", "date", "schedule", "interval", "regular", "periodic",
-            "scheduled", "ongoing", "continuous", "real-time", "triggered",
-            "event-driven", "basis", "times", "hours", "minutes", "immediately",
-            "upon receipt", "end of", "beginning of", "start of", "close of",
-            "completion of", "cycle", "interval",
+    def _initialize_elements(self):
+        """Initialize elements with weights and keywords from configuration"""
+        elements = {}
+        config_elements = self.config.get('elements', {})
 
-            # Time sequence
-            "first", "second", "third", "fourth", "subsequent", "next",
-            "previous", "initial", "final", "prior", "post", "mid",
+        # Default element configuration if not specified in YAML
+        default_elements = {
+            "WHO": {"weight": 30, "keywords": []},
+            "WHEN": {"weight": 20, "keywords": []},
+            "WHAT": {"weight": 30, "keywords": []},
+            "WHY": {"weight": 10, "keywords": []},
+            "ESCALATION": {"weight": 3, "keywords": []}
+        }
 
-            # Time of day
-            "morning", "afternoon", "evening", "weekend", "business day",
-            "workday", "timeframe",
+        # Merge defaults with configuration
+        for name, defaults in default_elements.items():
+            element_config = config_elements.get(name, {})
+            weight = element_config.get('weight', defaults['weight'])
+            keywords = element_config.get('keywords', defaults['keywords'])
 
-            # Other timing patterns
-            "recurring", "ad hoc", "as needed", "per", "routinely",
-            "intermittent", "on-demand", "rolling", "cadence", "seasonal", "interim",
+            elements[name] = ControlElement(name, weight, keywords)
 
-            # Time-based triggers
-            "triggered", "event", "occurrence", "instance", "transaction",
-            "processing", "closing", "reconciliation", "review cycle"
-        ]
-
-    def _get_what_keywords(self):
-        """Return keywords related to WHAT activities are performed"""
-        return [
-            # Action verbs
-            "review", "verify", "check", "validate", "ensure", "confirm",
-            "examine", "analyze", "evaluate", "assess", "monitor", "track",
-            "compare", "reconcile", "match", "approve", "authorize", "sign",
-            "document", "record", "log", "maintain", "update", "generate",
-            "prepare", "create", "establish", "implement", "execute", "perform",
-
-            # Compound activities
-            "conduct review", "perform check", "carry out", "run report",
-            "generate report", "prepare documentation", "maintain record",
-            "ensure compliance", "verify accuracy", "validate completeness",
-            "cross-check", "double-check", "sign off", "follow up",
-            "identify discrepancies", "resolve issues", "address exceptions",
-            "match transactions", "approve documents", "authorize access"
-        ]
-
-    def _get_why_keywords(self):
-        """Return keywords related to WHY the control exists"""
-        return [
-            # Purpose indicators
-            "to ensure", "in order to", "for the purpose of", "designed to",
-            "intended to", "so that", "purpose", "objective", "goal",
-
-            # Risk-related terms
-            "prevent", "detect", "mitigate", "risk", "error", "fraud",
-            "misstatement", "compliance", "regulatory", "requirement",
-            "policy", "procedure", "standard", "guideline", "regulation",
-            "law", "mandate", "obligation", "safeguard", "protect",
-
-            # Benefit terms
-            "accuracy", "completeness", "validity", "integrity", "reliability",
-            "consistency", "efficiency", "effectiveness", "quality",
-            "improvement", "enhancement", "optimization", "assurance"
-        ]
-
-    def _get_escalation_keywords(self):
-        """Return keywords related to ESCALATION procedures"""
-        return [
-            # Escalation terms
-            "escalate", "escalation", "escalated to", "reported to", "elevated to",
-            "notify", "notification", "alert", "inform", "communicate", "report",
-            "elevated", "elevation", "raised", "raising", "communicate", "communication",
-            "reported", "reporting", "highlight", "highlighted", "inform", "informed",
-            "contact", "contacted", "route", "routed", "forward", "forwarded",
-            "submitted", "submission",
-
-            # Issue handling
-            "exception", "exceptions", "failure", "failures", "issue", "issues",
-            "resolution", "remediate", "remediation", "handle", "handling",
-            "address", "resolve", "resolution", "respond", "response", "breach",
-            "violation", "discrepancy", "unauthorized", "inappropriate",
-            "incomplete", "error", "problem", "concern", "risk", "incident",
-            "trigger", "flag", "flagged", "immediate", "urgent", "priority",
-            "corrective", "correction", "fix", "follow-up", "follow up",
-            "revoke", "disable", "addressed", "addressing", "managed", "managing",
-            "coordinated", "coordination", "documented", "documentation",
-            "tracked", "tracking", "updated", "updating", "monitored", "monitoring",
-            "warning", "action", "deviation", "anomaly", "finding",
-
-            # Conditional phrases
-            "if necessary", "as necessary", "if needed", "if required",
-            "when needed", "if identified", "when identified",
-
-            # Escalation targets
-            "management", "supervisor", "manager", "senior", "executive",
-            "leadership", "committee", "board", "higher level", "appropriate",
-            "cfo", "director", "manager", "supervisor", "head", "chief", "executive"
-        ]
-
-    def _get_vague_terms(self):
-        """Return vague terms that should be avoided in control descriptions"""
-        return [
-            # Ambiguous terms
-            "appropriate", "timely", "periodically", "regularly", "as needed",
-            "when necessary", "if required", "as applicable", "as appropriate",
-            "may", "might", "could", "should", "would", "possibly", "potentially",
-
-            # Undefined references
-            "etc", "and so on", "and so forth", "among others", "various",
-            "several", "numerous", "many", "few", "some", "certain",
-
-            # Non-specific quantities
-            "adequate", "sufficient", "enough", "substantial", "reasonable",
-            "considerable", "significant", "insignificant", "minimal", "maximal",
-
-            # Unclear actions
-            "handle", "manage", "deal with", "address", "take care of",
-            "process", "facilitate", "coordinate", "arrange", "oversee"
-        ]
+        return elements
 
     def analyze_control(self, control_id, description, frequency=None, control_type=None, risk_description=None):
         """
@@ -658,22 +484,25 @@ class EnhancedControlAnalyzer:
         # Remove duplicates
         vague_terms_found = list(set(vague_terms_found))
 
-        # Calculate vague terms penalty (max 10 points)
-        vague_penalty = min(len(vague_terms_found) * 2, 10)
+        # Calculate vague terms penalty based on config
+        vague_penalty = min(len(vague_terms_found) * self.vague_term_penalty, self.max_vague_penalty)
 
         # Calculate total score
         total_score = sum(weighted_scores.values()) - vague_penalty
         total_score = max(0, total_score)  # Ensure score is not negative
 
-        # Apply multi-control penalty if detected
+        # Apply multi-control penalty if detected, using config values
         if multi_control_indicators["detected"]:
-            multi_control_penalty = min(10, multi_control_indicators["count"] * 5)
+            multi_control_penalty = min(
+                self.max_multi_control_penalty,
+                multi_control_indicators["count"] * self.points_per_control
+            )
             total_score = max(0, total_score - multi_control_penalty)
 
-        # Determine category
-        if total_score >= 65:
+        # Determine category based on config thresholds
+        if total_score >= self.excellent_threshold:
             category = "Excellent"
-        elif total_score >= 45:
+        elif total_score >= self.good_threshold:
             category = "Good"
         else:
             category = "Needs Improvement"
@@ -743,14 +572,22 @@ class EnhancedControlAnalyzer:
         if not description or not frequency_value:
             return False, "Missing description or frequency value"
 
-        # Convert frequency value to standard terms
-        frequency_terms = {
+        # Get frequency terms from config
+        frequency_terms = self.config.get('frequency_terms', {})
+
+        # Default frequencies if not in config
+        default_frequency_terms = {
             "daily": ["daily", "each day", "every day"],
             "weekly": ["weekly", "each week", "every week"],
             "monthly": ["monthly", "each month", "every month"],
             "quarterly": ["quarterly", "each quarter", "every quarter"],
             "annually": ["annually", "yearly", "each year", "every year"]
         }
+
+        # Merge with defaults if config doesn't have these frequencies
+        for freq, terms in default_frequency_terms.items():
+            if freq not in frequency_terms:
+                frequency_terms[freq] = terms
 
         # Normalize frequency value to lowercase
         frequency_value = frequency_value.lower().strip()
@@ -780,19 +617,23 @@ class EnhancedControlAnalyzer:
         if not description or not control_type:
             return False, "Missing description or control type value"
 
-        # Define keywords for different control types
-        control_type_keywords = {
+        # Get control type keywords from config
+        control_type_keywords = self.config.get('control_type_keywords', {})
+
+        # Default control type keywords if not in config
+        default_control_type_keywords = {
             "preventive": ["prevent", "preventive", "preventative", "avoid", "before", "prior to", "stops"],
             "detective": ["detect", "detective", "identify", "discover", "find", "after", "following", "review",
                           "monitor", "reconcile"],
-            "corrective": ["correct", "corrective", "remediate", "fix", "resolve", "address", "adjust"]
+            "corrective": ["correct", "corrective", "remediate", "fix", "resolve", "address", "adjust"],
+            "automated": ["system", "automated", "automatic", "software", "program", "script",
+                          "job", "batch", "workflow", "algorithm", "systematic"]
         }
 
-        # Add automated control type
-        control_type_keywords["automated"] = [
-            "system", "automated", "automatic", "software", "program", "script",
-            "job", "batch", "workflow", "algorithm", "systematic"
-        ]
+        # Merge with defaults if config doesn't have these types
+        for type_name, keywords in default_control_type_keywords.items():
+            if type_name not in control_type_keywords:
+                control_type_keywords[type_name] = keywords
 
         # Normalize control type
         control_type = control_type.lower().strip()
@@ -839,7 +680,7 @@ class EnhancedControlAnalyzer:
             # Read the Excel file
             df = pd.read_excel(file_path, engine='openpyxl')
 
-             # Ensure required columns exist
+            # Ensure required columns exist
             if id_column not in df.columns:
                 raise ValueError(f"ID column '{id_column}' not found in file")
 
@@ -1097,9 +938,9 @@ class EnhancedControlAnalyzer:
             ["Average Score", f"{avg_score:.1f}"],
             ["", ""],
             ["Category Breakdown", ""],
-            ["Excellent (65-100)", excellent_count],
-            ["Good (45-64)", good_count],
-            ["Needs Improvement (0-44)", needs_improvement_count],
+            [f"Excellent ({self.excellent_threshold}-100)", excellent_count],
+            [f"Good ({self.good_threshold}-{self.excellent_threshold - 1})", good_count],
+            [f"Needs Improvement (0-{self.good_threshold - 1})", needs_improvement_count],
             ["", ""],
             ["Multi-Control Descriptions", multi_control_count],
             ["", ""],
@@ -1172,22 +1013,22 @@ class EnhancedControlAnalyzer:
             ["Scoring Method", ""],
             ["Each element is weighted based on its importance:", ""],
             ["", ""],
-            ["WHO: 32%", ""],
-            ["WHEN: 22%", ""],
-            ["WHAT: 32%", ""],
-            ["WHY: 11%", ""],
-            ["ESCALATION: 3%", ""],
+            [f"WHO: {self.elements['WHO'].weight}%", ""],
+            [f"WHEN: {self.elements['WHEN'].weight}%", ""],
+            [f"WHAT: {self.elements['WHAT'].weight}%", ""],
+            [f"WHY: {self.elements['WHY'].weight}%", ""],
+            [f"ESCALATION: {self.elements['ESCALATION'].weight}%", ""],
             ["", ""],
             ["Penalties are applied for:", ""],
-            ["- Vague terms (up to 10 points)", ""],
-            ["- Multiple controls in one description (up to 10 points)", ""],
+            [f"- Vague terms (up to {self.max_vague_penalty} points)", ""],
+            [f"- Multiple controls in one description (up to {self.max_multi_control_penalty} points)", ""],
             ["", ""],
             ["Categories", ""],
             ["Controls are categorized based on their total score:", ""],
             ["", ""],
-            ["Excellent: 65-100", ""],
-            ["Good: 45-64", ""],
-            ["Needs Improvement: 0-44", ""]
+            [f"Excellent: {self.excellent_threshold}-100", ""],
+            [f"Good: {self.good_threshold}-{self.excellent_threshold - 1}", ""],
+            [f"Needs Improvement: 0-{self.good_threshold - 1}", ""]
         ]
 
         # Add validation methodology if applicable
@@ -1336,12 +1177,14 @@ def main():
     """Command-line interface for the Enhanced Control Description Analyzer"""
     parser = argparse.ArgumentParser(description='Analyze control descriptions with enhanced NLP capabilities.')
     parser.add_argument('file', help='Excel file with control descriptions')
-    parser.add_argument('--id-column', default='A', help='Column containing control IDs (letter or name)')
-    parser.add_argument('--desc-column', default='B', help='Column containing control descriptions (letter or name)')
-    parser.add_argument('--freq-column', help='Column containing frequency values for validation (letter or name)')
-    parser.add_argument('--type-column', help='Column containing control type values for validation (letter or name)')
-    parser.add_argument('--risk-column', help='Column containing risk descriptions for WHY alignment (letter or name)')
+    parser.add_argument('--id-column', default='Control_ID', help='Column containing control IDs (name)')
+    parser.add_argument('--desc-column', default='Control_Description',
+                        help='Column containing control descriptions (name)')
+    parser.add_argument('--freq-column', help='Column containing frequency values for validation (name)')
+    parser.add_argument('--type-column', help='Column containing control type values for validation (name)')
+    parser.add_argument('--risk-column', help='Column containing risk descriptions for WHY alignment (name)')
     parser.add_argument('--output-file', help='Output Excel file path')
+    parser.add_argument('--config', help='Path to configuration file')
     parser.add_argument('--disable-enhanced-detection', action='store_true', help='Disable enhanced detection modules')
 
     args = parser.parse_args()
@@ -1351,8 +1194,8 @@ def main():
         base_name = os.path.splitext(args.file)[0]
         args.output_file = f"{base_name}_enhanced_analysis.xlsx"
 
-    # Create enhanced analyzer and process file
-    analyzer = EnhancedControlAnalyzer()
+    # Create enhanced analyzer with config file if specified
+    analyzer = EnhancedControlAnalyzer(args.config)
 
     # Toggle enhanced detection if requested
     if args.disable_enhanced_detection:
