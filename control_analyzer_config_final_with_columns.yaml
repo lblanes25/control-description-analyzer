@@ -159,3 +159,4 @@ columns:
   description: Control_Description
   frequency: Frequency
   type: Control_Type
+  risk: Risk_Description
