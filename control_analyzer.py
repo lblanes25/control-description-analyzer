@@ -365,8 +365,8 @@ class EnhancedControlAnalyzer:
         self.domain_clusters = self.config.get('domain_clusters', {})
 
         # Get thresholds from config
-        self.excellent_threshold = self.config.get('category_thresholds', {}).get('excellent', 65)
-        self.good_threshold = self.config.get('category_thresholds', {}).get('good', 45)
+        self.excellent_threshold = self.config.get('category_thresholds', {}).get('excellent', 75)
+        self.good_threshold = self.config.get('category_thresholds', {}).get('good', 50)
 
     def _initialize_spacy_model(self):
         """Initialize spaCy model based on configuration"""
