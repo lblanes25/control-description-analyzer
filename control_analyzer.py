@@ -7,13 +7,18 @@ import os
 import sys
 import re
 import pandas as pd
-from config_manager import ConfigManager
 import numpy as np
 import spacy
+import pickle
+import gc
+import time
+import io
+from datetime import datetime
 from spacy.matcher import PhraseMatcher
 from openpyxl import Workbook
 from openpyxl.styles import Font, PatternFill
 from openpyxl.utils.dataframe import dataframe_to_rows
+from config_manager import ConfigManager
 
 # Import enhanced detection modules
 from enhanced_who import enhanced_who_detection_v2
@@ -1172,6 +1177,327 @@ class EnhancedControlAnalyzer:
         # Save workbook
         wb.save(output_file)
 
+
+def analyze_file_with_batches(self, file_path, id_column, desc_column, freq_column=None,
+                              type_column=None, risk_column=None, output_file=None,
+                              batch_size=500, temp_dir=None):
+    """
+    Analyze controls from an Excel file in batches and generate a detailed report
+
+    Args:
+        file_path: Path to Excel file containing controls
+        id_column: Column containing control IDs
+        desc_column: Column containing control descriptions
+        freq_column: Optional column containing frequency values
+        type_column: Optional column containing control type values
+        risk_column: Optional column containing risk descriptions
+        output_file: Optional path for output Excel report
+        batch_size: Number of controls to process in each batch
+        temp_dir: Directory to store temporary batch results
+    """
+    print(f"Reading file: {file_path}")
+
+    # Create temp directory if specified
+    if temp_dir:
+        os.makedirs(temp_dir, exist_ok=True)
+    else:
+        temp_dir = "temp_batch_results"
+        os.makedirs(temp_dir, exist_ok=True)
+
+    try:
+        # Read the Excel file
+        df = pd.read_excel(file_path, engine='openpyxl')
+
+        # Ensure required columns exist
+        if id_column not in df.columns:
+            raise ValueError(f"ID column '{id_column}' not found in file")
+
+        if desc_column not in df.columns:
+            raise ValueError(f"Description column '{desc_column}' not found in file")
+
+        # Check optional columns
+        if freq_column and freq_column not in df.columns:
+            print(f"Warning: Frequency column '{freq_column}' not found in file. Frequency validation will be skipped.")
+            freq_column = None
+
+        if type_column and type_column not in df.columns:
+            print(
+                f"Warning: Control type column '{type_column}' not found in file. Control type validation will be skipped.")
+            type_column = None
+
+        if risk_column and risk_column not in df.columns:
+            print(
+                f"Warning: Risk description column '{risk_column}' not found in file. Risk alignment will be skipped.")
+            risk_column = None
+
+        # Initialize results and tracking variables
+        all_results = []
+        total_controls = len(df)
+        start_time = time.time()
+
+        print(f"Analyzing {total_controls} controls in batches of {batch_size}...")
+
+        # Process in batches
+        for batch_start in range(0, total_controls, batch_size):
+            batch_end = min(batch_start + batch_size, total_controls)
+            batch_num = batch_start // batch_size + 1
+            total_batches = (total_controls + batch_size - 1) // batch_size
+
+            batch_start_time = time.time()
+            print(f"\nProcessing batch {batch_num}/{total_batches}: controls {batch_start + 1}-{batch_end}")
+
+            # Get the slice of DataFrame for this batch
+            batch_df = df.iloc[batch_start:batch_end].copy()
+            batch_results = []
+
+            # Process each control in the batch
+            for i, (idx, row) in enumerate(batch_df.iterrows()):
+                if i % 25 == 0:
+                    # Show more granular progress within batch
+                    progress = (i + 1) / len(batch_df) * 100
+                    print(f"  Batch progress: {progress:.1f}% ({i + 1}/{len(batch_df)})")
+
+                control_id = row[id_column]
+                description = row[desc_column]
+
+                # Optional metadata
+                frequency = row[freq_column] if freq_column and freq_column in row else None
+                control_type = row[type_column] if type_column and type_column in row else None
+                risk_description = row[risk_column] if risk_column and risk_column in row else None
+
+                try:
+                    # Analyze control
+                    result = self.analyze_control(control_id, description, frequency, control_type, risk_description)
+                    batch_results.append(result)
+                except Exception as e:
+                    # Log error but continue processing
+                    error_msg = f"Error analyzing control {control_id}: {str(e)}"
+                    print(error_msg)
+                    # Add minimal error entry to maintain indexing
+                    batch_results.append({
+                        "control_id": control_id,
+                        "description": description,
+                        "total_score": 0,
+                        "category": "Error",
+                        "missing_elements": [],
+                        "error_message": str(e)
+                    })
+
+            # Save batch results to temporary file
+            timestamp = datetime.now().strftime("%Y%m%d_%H%M%S")
+            batch_filename = os.path.join(temp_dir, f"batch_{batch_num:04d}_{timestamp}.pkl")
+            try:
+                with open(batch_filename, 'wb') as f:
+                    pickle.dump(batch_results, f, protocol=4)  # Use protocol 4 for compatibility
+            except Exception as e:
+                print(f"Warning: Could not save batch file ({e}). Continuing analysis...")
+
+            # Add to overall results
+            all_results.extend(batch_results)
+
+            # Calculate batch statistics
+            batch_time = time.time() - batch_start_time
+            controls_per_second = len(batch_df) / batch_time if batch_time > 0 else 0
+
+            # Estimate remaining time
+            completed = batch_end
+            remaining = total_controls - completed
+            estimated_time = remaining / controls_per_second if controls_per_second > 0 else 0
+
+            # Report batch completion
+            print(f"  Batch {batch_num}/{total_batches} completed in {batch_time:.1f} seconds")
+            print(f"  Processing speed: {controls_per_second:.2f} controls/second")
+            print(f"  Progress: {completed}/{total_controls} controls ({completed / total_controls * 100:.1f}%)")
+
+            hours, remainder = divmod(estimated_time, 3600)
+            minutes, seconds = divmod(remainder, 60)
+            print(f"  Estimated time remaining: {int(hours)}h {int(minutes)}m {int(seconds)}s")
+
+            # Save checkpoint of all results so far
+            checkpoint_file = os.path.join(temp_dir, "all_results_checkpoint.pkl")
+            try:
+                with open(checkpoint_file, 'wb') as f:
+                    pickle.dump(all_results, f, protocol=4)
+            except Exception as e:
+                print(f"Warning: Could not save checkpoint ({e}). Continuing analysis...")
+
+            # Clear memory
+            gc.collect()
+
+            # Optional: Clear the NLP model's cache to free memory
+            try:
+                # Get all pipelines and clear their caches
+                for pipe_name in self.nlp.pipe_names:
+                    pipe = self.nlp.get_pipe(pipe_name)
+                    if hasattr(pipe, "vocab") and hasattr(pipe.vocab, "strings"):
+                        pipe.vocab.strings.clean_up()
+            except Exception:
+                # If cleanup fails, just continue
+                pass
+
+        # Create output file if specified
+        if output_file:
+            try:
+                self._generate_enhanced_report(
+                    all_results,
+                    output_file,
+                    freq_column is not None,
+                    type_column is not None,
+                    risk_column is not None
+                )
+                print(f"\nAnalysis complete. Results saved to {output_file}")
+            except Exception as e:
+                print(f"Error generating final report: {e}")
+                # Try to save results in pickle format
+                emergency_output = os.path.splitext(output_file)[0] + "_emergency.pkl"
+                with open(emergency_output, 'wb') as f:
+                    pickle.dump(all_results, f, protocol=4)
+                print(f"Emergency results saved to {emergency_output}")
+
+        # Calculate total time
+        total_time = time.time() - start_time
+        hours, remainder = divmod(total_time, 3600)
+        minutes, seconds = divmod(remainder, 60)
+        print(f"\nTotal processing time: {int(hours)}h {int(minutes)}m {int(seconds)}s")
+        print(f"Average processing speed: {total_controls / total_time:.2f} controls/second")
+
+        return all_results
+
+    except Exception as e:
+        print(f"Error analyzing file: {e}")
+        raise
+    finally:
+        # Save any results we have even if an error occurred
+        if 'all_results' in locals() and len(all_results) > 0:
+            emergency_file = os.path.join(temp_dir, f"emergency_results_{datetime.now().strftime('%Y%m%d_%H%M%S')}.pkl")
+            try:
+                with open(emergency_file, 'wb') as f:
+                    pickle.dump(all_results, f, protocol=4)
+                print(f"Emergency results saved to {emergency_file}")
+            except Exception as e:
+                print(f"Failed to save emergency results: {e}")
+
+
+def resume_from_checkpoint(checkpoint_file, analyzer, args):
+    """Resume analysis from a saved checkpoint"""
+    import pickle
+    import pandas as pd
+    import io
+    import os
+
+    print(f"Resuming from checkpoint: {checkpoint_file}")
+
+    try:
+        # Load checkpoint data
+        try:
+            with open(checkpoint_file, 'rb') as f:
+                checkpoint_data = pickle.load(f)
+        except (TypeError, io.UnsupportedOperation) as e:
+            print(f"Error opening checkpoint file: {e}")
+            # Try with absolute path
+            abs_path = os.path.abspath(checkpoint_file)
+            print(f"Trying with absolute path: {abs_path}")
+            with open(abs_path, 'rb') as f:
+                checkpoint_data = pickle.load(f)
+
+        # Extract completed results
+        if isinstance(checkpoint_data, list):
+            # Simple checkpoint with just results
+            completed_results = checkpoint_data
+            last_control_id = completed_results[-1]["control_id"] if completed_results else None
+        elif isinstance(checkpoint_data, dict):
+            # Advanced checkpoint with metadata
+            completed_results = checkpoint_data.get("results", [])
+            last_control_id = checkpoint_data.get("last_control_id")
+
+        print(f"Loaded {len(completed_results)} completed controls from checkpoint")
+
+        # Read the Excel file to get remaining controls
+        df = pd.read_excel(args.file, engine='openpyxl')
+
+        # Find the index of the last processed control
+        last_index = -1
+        if last_control_id:
+            for i, row in df.iterrows():
+                if str(row[args.id_column]) == str(last_control_id):
+                    last_index = i
+                    break
+
+        if last_index == -1:
+            print("Warning: Could not find last processed control. Starting from beginning.")
+            last_index = -1
+
+        # Create DataFrame with remaining controls
+        remaining_df = df.iloc[last_index + 1:].copy()
+
+        if len(remaining_df) == 0:
+            print("No remaining controls to process. Analysis was already complete.")
+
+            # Generate the final report
+            if args.output_file:
+                analyzer._generate_enhanced_report(
+                    completed_results,
+                    args.output_file,
+                    args.freq_column is not None,
+                    args.type_column is not None,
+                    args.risk_column is not None
+                )
+                print(f"Final report generated at {args.output_file}")
+
+            return completed_results, 0
+
+        print(f"Resuming analysis with {len(remaining_df)} remaining controls")
+
+        # Create a temporary file with the remaining controls
+        import tempfile
+        with tempfile.NamedTemporaryFile(suffix='.xlsx', delete=False) as temp_file:
+            temp_path = temp_file.name
+
+        remaining_df.to_excel(temp_path, engine='openpyxl', index=False)
+
+        # Process the remaining controls
+        temp_output = os.path.splitext(args.output_file)[0] + "_remaining.xlsx"
+
+        results = analyzer.analyze_file_with_batches(
+            temp_path,
+            args.id_column,
+            args.desc_column,
+            args.freq_column,
+            args.type_column,
+            args.risk_column,
+            temp_output,
+            args.batch_size,
+            args.temp_dir
+        )
+
+        # Combine results
+        all_results = completed_results + results
+
+        # Generate the final report
+        if args.output_file:
+            analyzer._generate_enhanced_report(
+                all_results,
+                args.output_file,
+                args.freq_column is not None,
+                args.type_column is not None,
+                args.risk_column is not None
+            )
+            print(f"Final report generated at {args.output_file}")
+
+        # Delete the temporary file
+        if os.path.exists(temp_path):
+            try:
+                os.unlink(temp_path)
+            except Exception as e:
+                print(f"Warning: Could not delete temporary file: {e}")
+
+        return all_results, 0
+
+    except Exception as e:
+        print(f"Error resuming from checkpoint: {e}")
+        import traceback
+        traceback.print_exc()
+        return None, 1
 
 def main():
     """Command-line interface for the Enhanced Control Description Analyzer"""
