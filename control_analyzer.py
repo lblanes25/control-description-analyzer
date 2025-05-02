@@ -1,5 +1,5 @@
-#!/usr/bin/env python3
-# Enhanced Control Description Analyzer
+#!/usr/bin/env python3.12
+# Control Description Analyzer
 # Integrates specialized detection modules for each control element
 
 import argparse
@@ -100,8 +100,19 @@ class ControlElement:
                 risk_description = context.get("risk_description")
                 self.enhanced_results = enhance_why_detection(text, nlp, risk_description, self.keywords)
                 self.score = self.enhanced_results.get("score", 0) if self.enhanced_results else 0
-                self.matched_keywords = self.enhanced_results.get("extracted_keywords",
-                                                                  []) if self.enhanced_results else []
+                if self.enhanced_results:
+                    top = self.enhanced_results.get("top_match", {})
+                    if isinstance(top, dict):
+                        if top.get("text"):
+                            self.matched_keywords = [top["implied_purpose"]]
+                        elif top.get("implied_purpose"):
+                            self.matched_keywords = [top["text"]]
+                        else:
+                            self.matched_keywords = self.enhanced_results.get("extracted_keywords", [])
+                    else:
+                        self.matched_keywords = self.enhanced_results.get("extracted_keywords", [])
+                else:
+                    self.matched_keywords = []
 
             elif self.name == "ESCALATION":
                 self.enhanced_results = enhance_escalation_detection(text, nlp, self.keywords)

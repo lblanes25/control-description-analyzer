@@ -143,11 +143,9 @@ def enhance_why_detection(text: str, nlp, risk_description: str = None, existing
 
     for pattern in purpose_patterns:
         matches = list(re.finditer(pattern, text.lower()))
-        if not matches:
-            print(f"[WHY DEBUG] No matches found for pattern: {pattern}")
+
         for match in matches:
             purpose_text = match.group(0)
-            print(f"[WHY DEBUG] Found pattern match: '{purpose_text}'")
             if is_valid_why_match(purpose_text, text, nlp):
                 explicit_why_candidates.append({
                     "text": purpose_text,
@@ -457,8 +455,6 @@ def enhance_why_detection(text: str, nlp, risk_description: str = None, existing
     explicit_why_candidates = valid_explicit_candidates
 
     if explicit_why_candidates:
-        print(f"[WHY DEBUG] Top explicit candidate: '{explicit_why_candidates[0]['text']}'")
-        print(f"[WHY DEBUG] Score: {explicit_why_candidates[0]['score']}")
 
     # Determine overall WHY score and top match
     if explicit_why_candidates:
@@ -473,9 +469,6 @@ def enhance_why_detection(text: str, nlp, risk_description: str = None, existing
         top_match = None
         base_score = 0  # Ensure zero score when nothing found
         why_category = None
-
-    print(f"[WHY DEBUG] Base score: {base_score}")
-    print(f"[WHY DEBUG] WHY category: {why_category}")
 
     return {
         "explicit_why": explicit_why_candidates,
