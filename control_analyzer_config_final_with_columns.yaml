@@ -391,6 +391,12 @@ frequency_terms:
     - on a weekly basis
     - week
     - weekly basis
+      # Explicit weekday examples for matching
+    - every Monday
+    - every Tuesday
+    - every Wednesday
+    - every Thursday
+    - every Friday
   biweekly:
     - biweekly
     - twice a week

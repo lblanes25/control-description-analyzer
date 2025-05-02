@@ -12,7 +12,6 @@ import spacy
 import pickle
 import gc
 import time
-import io
 from datetime import datetime
 from spacy.matcher import PhraseMatcher
 from openpyxl import Workbook
@@ -70,18 +69,20 @@ class ControlElement:
                 control_type = context.get("control_type")
                 frequency = context.get("frequency")
                 self.enhanced_results = enhanced_who_detection_v2(text, nlp, control_type, frequency, self.keywords)
-                self.score = self.enhanced_results.get("confidence", 0)
+                self.score = self.enhanced_results.get("confidence", 0) if self.enhanced_results else 0
                 self.matched_keywords = [
-                    self.enhanced_results.get("primary", {}).get("text", "")] if self.enhanced_results.get(
+                    self.enhanced_results.get("primary", {}).get("text",
+                                                                 "")] if self.enhanced_results and self.enhanced_results.get(
                     "primary") else []
 
             elif self.name == "WHAT":
                 self.enhanced_results = enhance_what_detection(text, nlp, self.keywords)
-                self.score = self.enhanced_results.get("score", 0)
-                if self.enhanced_results.get("primary_action"):
+                self.score = self.enhanced_results.get("score", 0) if self.enhanced_results else 0
+                if self.enhanced_results and self.enhanced_results.get("primary_action"):
                     self.matched_keywords = [self.enhanced_results["primary_action"]["full_phrase"]]
                 else:
-                    self.matched_keywords = [a["full_phrase"] for a in self.enhanced_results.get("actions", [])[:3]]
+                    self.matched_keywords = [a["full_phrase"] for a in self.enhanced_results.get("actions", [])[
+                                                                       :3]] if self.enhanced_results else []
 
             elif self.name == "WHEN":
                 self.enhanced_results = enhance_when_detection(
@@ -91,19 +92,22 @@ class ControlElement:
                     self.keywords,
                     context.get("frequency")
                 )
-                self.score = self.enhanced_results.get("score", 0)
-                self.matched_keywords = self.enhanced_results.get("extracted_keywords", [])
+                self.score = self.enhanced_results.get("score", 0) if self.enhanced_results else 0
+                self.matched_keywords = self.enhanced_results.get("extracted_keywords",
+                                                                  []) if self.enhanced_results else []
 
             elif self.name == "WHY":
                 risk_description = context.get("risk_description")
                 self.enhanced_results = enhance_why_detection(text, nlp, risk_description, self.keywords)
-                self.score = self.enhanced_results.get("score", 0)
-                self.matched_keywords = self.enhanced_results.get("extracted_keywords", [])
+                self.score = self.enhanced_results.get("score", 0) if self.enhanced_results else 0
+                self.matched_keywords = self.enhanced_results.get("extracted_keywords",
+                                                                  []) if self.enhanced_results else []
 
             elif self.name == "ESCALATION":
                 self.enhanced_results = enhance_escalation_detection(text, nlp, self.keywords)
-                self.score = self.enhanced_results.get("score", 0)
-                self.matched_keywords = [p["text"] for p in self.enhanced_results.get("phrases", [])]
+                self.score = self.enhanced_results.get("score", 0) if self.enhanced_results else 0
+                self.matched_keywords = [p["text"] for p in
+                                         self.enhanced_results.get("phrases", [])] if self.enhanced_results else []
 
             else:
                 # Fall back to base implementation for other elements
@@ -512,9 +516,18 @@ class EnhancedControlAnalyzer:
         else:
             category = "Needs Improvement"
 
-        # Identify missing elements
-        missing_elements = [name for name, element in self.elements.items()
-                            if element.score == 0]
+        # Define threshold by element type
+        element_thresholds = {
+            "WHO": 5.0,
+            "WHEN": 5.0,
+            "WHAT": 5.0,
+            "WHY": 2.0,  # Lower threshold for WHY since it typically scores lower
+            "ESCALATION": 1.0  # Lowest threshold as these are often bonus elements
+        }
+
+        # Identify missing elements using element-specific thresholds
+        missing_elements = [name for name, score in weighted_scores.items()
+                            if score < element_thresholds.get(name, 5.0)]
 
         # Add validation results
         validation_results = {}

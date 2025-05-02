@@ -8,7 +8,7 @@ def identify_control_action_subjects(doc):
         "examine", "analyze", "evaluate", "assess", "monitor", "track",
         "investigate", "inspect", "audit", "oversee", "supervise", "ensure",
         "perform", "execute", "conduct", "disable", "enforce", "generate",
-        "address", "compare", "maintain", "identify", "correct", "update"
+        "address", "compare", "maintain", "identify", "correct", "update",
 
         # New preventive action verbs
         "prevent", "block", "restrict", "limit", "deny", "prohibit",
@@ -179,6 +179,7 @@ def classify_entity_type(text, nlp):
 
     # Use NLP to check for person or organization entities
     doc = nlp(text)
+
     for ent in doc.ents:
         if ent.label_ in ("PERSON", "ORG"):
             return "human"
@@ -186,6 +187,65 @@ def classify_entity_type(text, nlp):
     # Default to unknown if no clear classification
     return "unknown"
 
+
+def is_valid_performer(text):
+    """Check if a text segment is likely to be a valid performer"""
+    # Filter out common false positives
+    false_positives = ["changes", "results", "distributions", "communications"]
+
+    if any(fp.lower() == text.lower() for fp in false_positives):
+        return False
+
+    # Should have a role or organizational indicator
+    role_indicators = ["manager", "director", "team", "staff", "officer", "group", "department"]
+    has_role = any(indicator in text.lower() for indicator in role_indicators)
+
+    # Should not be just a verb or action
+    action_only = re.match(r'^\w+ed$', text.strip()) is not None
+
+    return has_role and not action_only
+
+
+def is_valid_performer_in_context(entity, full_text, nlp):
+    """Check if an entity is likely to be a control performer based on surrounding context"""
+    # Look for verb patterns around the entity
+    window_size = 15  # words
+
+    # Find the position of the entity in the text
+    entity_pos = full_text.find(entity)
+    if entity_pos == -1:
+        return False
+
+    # Get text window around entity
+    start_pos = max(0, entity_pos - 100)
+    end_pos = min(len(full_text), entity_pos + len(entity) + 100)
+    context_window = full_text[start_pos:end_pos]
+
+    # Check for control verb patterns
+    control_patterns = [
+        r'(review|approve|verify|monitor|check|validate|reconcile)\s+by',
+        r'(reviewed|approved|verified|monitored|checked|validated|reconciled)\s+by',
+        r'performed\s+by',
+        r'conducted\s+by',
+        r'executed\s+by',
+        r'is\s+responsible\s+for'
+    ]
+
+    for pattern in control_patterns:
+        if re.search(pattern, context_window, re.IGNORECASE):
+            return True
+
+    # Check if the entity appears to be the subject of a control verb
+    doc = nlp(context_window)
+    for token in doc:
+        if token.dep_ == "nsubj" and token.head.lemma_ in ["review", "approve", "verify", "monitor"]:
+            for chunk in doc.noun_chunks:
+                if token.i >= chunk.start and token.i < chunk.end:
+                    chunk_text = chunk.text.lower()
+                    if entity.lower() in chunk_text:
+                        return True
+
+    return False
 
 def calculate_who_confidence(entity, control_type=None, frequency=None):
     """Calculate confidence score for a WHO entity with improved scoring"""
@@ -299,10 +359,56 @@ def enhanced_who_detection_v2(text, nlp, control_type=None, frequency=None, exis
     try:
         doc = nlp(text)
 
-        # CHANGE 2: Add special handling for CTRL-011 type cases
+        # Define review_approve_candidate at function level
+        review_approve_candidate = None
+
+        # CRITICAL PATTERN: "X is reviewed and approved by Y" - where Y is the WHO
+        review_approve_pattern = re.search(
+            r'(?:are|is|must be)\s+(?:reviewed|approved|validated|checked|reconciled)(?:\s+and\s+(?:reviewed|approved|validated|checked))?\s+by\s+(?:the\s+)?([a-zA-Z0-9\s\(\)\-\.,]+?(?:team|manager|director|supervisor|analyst|administrator|officer|group|department|specialist|stakeholders|compliance|stakeholder)(?:[,.]\s+including\s+[^\.]+)?)',
+            text, re.IGNORECASE
+        )
+
+        if review_approve_pattern:
+            performer = review_approve_pattern.group(1).strip()
+
+            # Check for "including" pattern which often gives more specific performers
+            including_match = re.search(r'including\s+([^\.]+)', performer, re.IGNORECASE)
+            if including_match:
+                # Get the more specific performers after "including"
+                specific_performers = including_match.group(1).strip()
+                # Create a high priority candidate with the specific performers
+                entity_type = classify_entity_type(specific_performers, nlp)
+                confidence = 1.0
+
+                review_approve_candidate = {
+                    "text": specific_performers,
+                    "verb": "reviews/approves",
+                    "type": entity_type,
+                    "score": confidence,
+                    "position": review_approve_pattern.start(1),
+                    "role": "primary",
+                    "pattern_match": "critical_passive"
+                }
+            else:
+                # Use the standard performer extracted from the pattern
+                entity_type = classify_entity_type(performer, nlp)
+                confidence = 1.0
+
+                review_approve_candidate = {
+                    "text": performer,
+                    "verb": "reviews/approves",
+                    "type": entity_type,
+                    "score": confidence,
+                    "position": review_approve_pattern.start(1),
+                    "role": "primary",
+                    "pattern_match": "critical_passive"
+                }
+        # Add special handling for CTRL-011 type cases
         detailed_control_pattern = re.search(
             r'(on\s+a\s+[a-z]+\s+basis|[a-z]+ly),\s+(?:the\s+)?([a-zA-Z\s]+(?:manager|director|supervisor))', text,
             re.IGNORECASE)
+
+        high_priority_candidate = None
         if detailed_control_pattern:
             performer = detailed_control_pattern.group(2).strip()
             entity_type = classify_entity_type(performer, nlp)
@@ -320,8 +426,6 @@ def enhanced_who_detection_v2(text, nlp, control_type=None, frequency=None, exis
                 "role": "primary"
             }
 
-            # We'll insert this at the beginning of who_candidates later
-
         # First check for clear control structures to identify primary performers
         primary_performers_from_structure = detect_control_structure(text)
 
@@ -330,7 +434,53 @@ def enhanced_who_detection_v2(text, nlp, control_type=None, frequency=None, exis
         by_pattern_regex = r'by\s+(?:the\s+)?([a-zA-Z\s]+\s+(?:manager|director|supervisor|analyst|team|administrator|controller|accountant|auditor|officer|staff|employee|specialist|group|department))'
         by_matches = re.finditer(by_pattern_regex, text, re.IGNORECASE)
 
+        # Passive voice pattern detection
+        passive_pattern_regex = r'(?:is|are|was|were)\s+(?:\w+ed)(?:\s+and\s+\w+ed)?\s+by\s+(?:the\s+)?([a-zA-Z0-9\s\(\)\-\.,]+?(?:team|manager|director|supervisor|analyst|administrator|officer|group|department|specialist))'
+        passive_matches = list(re.finditer(passive_pattern_regex, text, re.IGNORECASE))
+
+        # Try to capture organizational units with parentheses
+        org_unit_pattern = r'([A-Z][a-zA-Z0-9\s\(\)\-\.,]+?(?:team|group|unit|department|division))'
+        org_matches = list(re.finditer(org_unit_pattern, text))
+
+        # Combine all potential entity matches
         who_candidates = []
+
+        # Add review_approve_candidate if it exists
+        if review_approve_candidate:
+            who_candidates.append(review_approve_candidate)
+
+        # Process passive matches first (highest confidence)
+        for match in passive_matches:
+            performer = match.group(1).strip()
+            # Skip common false positives or if entire sentence is captured
+            if not is_valid_performer(performer) or len(performer) > 50:
+                continue
+
+            # Check if this is the subject of the sentence instead of the performer
+            # Look for key patterns that indicate this is not a performer
+            if re.match(r'all|any|each|every|the', performer.lower()):
+                continue
+
+            who_candidates.append({
+                "text": performer,
+                "verb": "reviewed",
+                "type": classify_entity_type(performer, nlp),
+                "score": 0.9,
+                "position": match.start()
+            })
+
+        # If no passive matches, process organizational units
+        if not who_candidates:
+            for match in org_matches:
+                performer = match.group(1).strip()
+                if is_valid_performer_in_context(performer, text, nlp):
+                    who_candidates.append({
+                        "text": performer,
+                        "verb": "unknown",
+                        "type": "human",
+                        "score": 0.7,
+                        "position": match.start()
+                    })
 
         # If we have a detailed control pattern, add it first (highest priority)
         if detailed_control_pattern:
@@ -396,7 +546,6 @@ def enhanced_who_detection_v2(text, nlp, control_type=None, frequency=None, exis
         # Add "by [performer]" to action subjects
         action_subjects.extend(by_performers)
 
-        # CHANGE 3: Fix passive voice handling
         # If still no subjects but we have passive verbs, check if this is a passive without performer
         if not action_subjects and passive_verbs and not who_candidates:
             # Look for subjects that might be mistaken as performers
@@ -405,6 +554,10 @@ def enhanced_who_detection_v2(text, nlp, control_type=None, frequency=None, exis
                 head = token.head  # This is the main verb
                 for child in head.children:
                     if child.dep_ == "nsubjpass":
+                        # Filter out known non-performers in passive voice
+                        if child.text.lower() in ["changes", "distributions", "communications", "result", "results",
+                                                  "materials"]:
+                            continue  # These are never performers
                         subjects.append(child.text.lower())
 
             # Common non-performer subjects in passive constructions
@@ -519,7 +672,7 @@ def enhanced_who_detection_v2(text, nlp, control_type=None, frequency=None, exis
             # Lemmatize subject text for comparison
             subject_text = subject["text"].lower()
 
-            # Extended list of non-performer terms
+            # Non-performer terms list
             non_performer_terms = [
                 "exception", "exceptions", "record", "records",
                 "transaction", "transactions", "issue", "issues",
@@ -527,7 +680,12 @@ def enhanced_who_detection_v2(text, nlp, control_type=None, frequency=None, exis
                 "error", "errors", "task", "tasks",
                 "action", "actions", "item", "items",
                 "report", "reports", "document", "documents",
-                "reconciliation", "reconciliations", "activity", "activities"
+                "reconciliation", "reconciliations", "activity", "activities",
+                "change", "changes", "distribution", "distributions",
+                "communication", "communications", "material", "materials",
+                "result", "results", "rating", "ratings",
+                "balance", "balances", "filing", "filings",
+                "disbursement", "disbursements", "campaign", "campaigns"
             ]
 
             # Skip if subject contains any non-performer term
@@ -622,6 +780,13 @@ def enhanced_who_detection_v2(text, nlp, control_type=None, frequency=None, exis
                 "confidence": 0,
                 "message": "No performer detected"
             }
+
+        # Priority override: If we found a critical passive match, ensure it's first
+        if review_approve_candidate:
+            # Check if it's already in the list
+            if all(c.get("pattern_match") != "critical_passive" for c in who_candidates):
+                # It's not in the list yet, so insert it
+                who_candidates.insert(0, review_approve_candidate)
 
         # Sort candidates by score and then by position in text
         who_candidates.sort(key=lambda x: (-x["score"], x["position"]))

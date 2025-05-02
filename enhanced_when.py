@@ -1,7 +1,4 @@
-import spacy
-from typing import Dict, List, Any, Optional, Tuple, Union
 import re
-
 
 def enhance_when_detection(text, nlp, control_type=None, existing_keywords=None, frequency_metadata=None):
     """
@@ -34,9 +31,67 @@ def enhance_when_detection(text, nlp, control_type=None, existing_keywords=None,
     try:
         # Process the text
         doc = nlp(text)
-
-        # Simplest, most direct approach to handle common vague terms
         text_lower = text.lower()
+
+        # Helper function to validate cycle-based timing references
+        def _is_valid_cycle_reference(text, context):
+            """Validate that a cycle reference is actually indicating timing and not just process"""
+
+            # Check if the cycle reference includes timing words
+            timing_indicators = [
+                "every", "each", "before", "after", "during", "upon", "following",
+                "prior to", "at", "when", "within"
+            ]
+
+            if any(indicator in text.lower() for indicator in timing_indicators):
+                return True
+
+            # Check the surrounding context for timing indicators
+            context_lower = context.lower()
+            if any(indicator in context_lower for indicator in timing_indicators):
+                return True
+
+            # Check for verbs that typically indicate periodic actions
+            action_verbs = [
+                "perform", "conduct", "execute", "run", "complete", "do", "implement",
+                "carry out", "undertake"
+            ]
+
+            if any(verb in context_lower for verb in action_verbs):
+                return True
+
+            return False
+
+        # Check for just "defined in procedure" or similar references with no actual timing
+        procedure_only_patterns = [
+            r'defined in (procedure|policy|document|standard)',
+            r'outlined in (procedure|policy|document|standard)',
+            r'described in (procedure|policy|document|standard)',
+            r'according to (procedure|policy|document|standard)',
+            r'per (procedure|policy|document|standard)',
+            r'as per (procedure|policy|document|standard)',
+            r'based on (procedure|policy|document|standard)',
+            r'in accordance with (procedure|policy|document|standard)'
+        ]
+
+        # If text only references a procedure without a specific timing, return near-zero score
+        if any(re.search(pattern, text_lower) for pattern in procedure_only_patterns) and not any(
+                term in text_lower for term in ['daily', 'weekly', 'monthly', 'quarterly', 'annually',
+                                                'within', 'every', 'each']):
+            return {
+                "candidates": [],
+                "top_match": None,
+                "score": 0,  # Zero score for procedure-only references
+                "extracted_keywords": [],
+                "multi_frequency_detected": False,
+                "frequencies": [],
+                "validation": {"is_valid": False, "message": "Only procedure reference without timing"},
+                "vague_terms": [],
+                "improvement_suggestions": [
+                    "Add specific frequency (daily, weekly, monthly) instead of just referencing a procedure."],
+                "specific_timing_found": False,
+                "primary_vague_term": False
+            }
 
         # SPECIAL HANDLING FOR "MAY" - Explicit check for "may" used in an uncertain sense
         # "Reconciliations are performed but may vary..." should be flagged as vague
@@ -63,7 +118,7 @@ def enhance_when_detection(text, nlp, control_type=None, existing_keywords=None,
                         "is_vague": True,
                         "is_primary": True
                     },
-                    "score": 0.05,  # Near-zero score
+                    "score": 0,  # Zero score to ensure missing element
                     "extracted_keywords": ["may"],
                     "multi_frequency_detected": False,
                     "frequencies": [],
@@ -100,7 +155,7 @@ def enhance_when_detection(text, nlp, control_type=None, existing_keywords=None,
                 starts_with_vague = True
                 break
 
-        # If control starts with vague term, short-circuit to near-zero score
+        # If control starts with vague term, short-circuit to zero score
         if starts_with_vague:
             # Collect the vague term for reporting
             vague_match = None
@@ -111,7 +166,7 @@ def enhance_when_detection(text, nlp, control_type=None, existing_keywords=None,
                     vague_match = term
                     break
 
-            # Create minimal result with near-zero score
+            # Create minimal result with zero score
             return {
                 "candidates": [{
                     "text": vague_match if vague_match else "vague timing term",
@@ -127,7 +182,7 @@ def enhance_when_detection(text, nlp, control_type=None, existing_keywords=None,
                     "is_vague": True,
                     "is_primary": True
                 },
-                "score": 0.05,  # Near-zero score
+                "score": 0,  # Zero score to ensure missing element
                 "extracted_keywords": [vague_match] if vague_match else ["vague timing"],
                 "multi_frequency_detected": False,
                 "frequencies": [],
@@ -192,6 +247,13 @@ def enhance_when_detection(text, nlp, control_type=None, existing_keywords=None,
             "may vary", "may change", "may differ", "may be", "may not"
         ]
 
+        # Terms that should be excluded when context indicates they're not timing-related
+        context_exclusions = {
+            "following": ["lines", "business", "areas", "items", "steps", "fields", "sections"],
+            "time": ["real-time", "one time", "first time", "last time"],
+            "period": ["reporting period", "accounting period", "time period"]
+        }
+
         # Track all timing-related matches
         when_candidates = []
         detected_frequencies = []
@@ -204,14 +266,13 @@ def enhance_when_detection(text, nlp, control_type=None, existing_keywords=None,
             term_regex = r'\b' + re.escape(term) + r'\b'
             for match in re.finditer(term_regex, text.lower()):
                 start, end = match.span()
-
                 vague_terms_found.append({
                     "text": match.group(),
                     "span": [start, end],
                     "suggested_replacement": _suggest_specific_alternative(term)
                 })
 
-        # Explicit frequency term matching (specific timing)
+        # 1. Explicit frequency term matching (check for specific timing)
         for pattern in all_patterns:
             pattern_regex = r'\b' + re.escape(pattern) + r'\b'
             for match in re.finditer(pattern_regex, text.lower()):
@@ -220,6 +281,22 @@ def enhance_when_detection(text, nlp, control_type=None, existing_keywords=None,
 
                 # Skip if this is part of a vague term (e.g., "on a regular basis")
                 if any(vague["span"][0] <= start and vague["span"][1] >= end for vague in vague_terms_found):
+                    continue
+
+                # NEW: Check for exclusion contexts
+                # For example, skip "following" when it's used like "following lines of business"
+                should_exclude = False
+                if pattern in context_exclusions:
+                    exclusion_context = context_exclusions[pattern]
+                    context_after = text_lower[end:min(len(text_lower), end + 30)]
+
+                    # Check if any exclusion words appear right after the pattern
+                    if any(re.search(r'\b' + re.escape(exclude_word) + r'\b', context_after)
+                           for exclude_word in exclusion_context):
+                        should_exclude = True
+
+                # Skip if it's an excluded context
+                if should_exclude:
                     continue
 
                 # Found a specific timing expression
@@ -245,32 +322,117 @@ def enhance_when_detection(text, nlp, control_type=None, existing_keywords=None,
                     "context": surrounding_text
                 })
 
-        # Detect complex temporal patterns
         # Complex patterns like "within X days of", "after completion of", etc.
         complex_patterns = [
+            # Existing patterns
             (r'within\s+(\d+)\s+(day|week|month|business day|working day)s?', "timeframe"),
             (r'after\s+([\w\s]+?)\s+(is|are|has been|have been)', "sequential"),
             (r'prior\s+to\s+([\w\s]+)', "precondition"),
-            (r'following\s+([\w\s]+)', "sequential"),
+            (r'following\s+(completion|finalization|approval|review)\s+of', "sequential"),
             (r'upon\s+([\w\s]+)', "trigger"),
-            (r'by\s+the\s+(\d+)(?:st|nd|rd|th)\s+(day|week|month)', "deadline")
+            (r'by\s+the\s+(\d+)(?:st|nd|rd|th)\s+(day|week|month)', "deadline"),
+
+            # New financial cycle patterns
+            (r'before\s+(?:each|every)\s+(?:financial|month[- ]end|quarter[- ]end|year[- ]end)\s+close',
+             "financial_cycle"),
+            (r'after\s+(?:each|every|the)\s+(?:financial|month[- ]end|quarter[- ]end|year[- ]end)\s+close',
+             "financial_cycle"),
+            (r'during\s+(?:the|each|every)\s+(?:financial|month[- ]end|quarter[- ]end|year[- ]end)\s+close',
+             "financial_cycle"),
+            (r'at\s+(?:the|each|every)\s+(?:financial|month[- ]end|quarter[- ]end|year[- ]end)\s+close',
+             "financial_cycle"),
+            (r'(?:before|after|during|at)\s+(?:the|each|every)\s+close\s+(?:process|period|cycle)', "financial_cycle"),
+
+            # Day of week/month patterns (for cases like "every Friday")
+            (r'(?i)every\s+(?:monday|tuesday|wednesday|thursday|friday|saturday|sunday)', "weekly_schedule"),
+            (r'(?i)each\s+(?:monday|tuesday|wednesday|thursday|friday|saturday|sunday)', "weekly_schedule"),
+            (r'(?i)on\s+(?:monday|tuesday|wednesday|thursday|friday|saturday|sunday)s?', "weekly_schedule"),
         ]
+
+        # Add specific time period patterns
+        time_period_patterns = [
+            (r'(?:at|during|before|after)\s+(?:fiscal|calendar)\s+(?:year|quarter|month)[\s-]end', "fiscal_period"),
+            (r'(?:at|during|before|after)\s+(?:month|quarter|year)[\s-]end\s+close', "close_period"),
+            (r'(?:at|during)\s+(?:each|every|the)\s+closing\s+(?:cycle|period|process)', "close_period"),
+            (r'(?:at|during)\s+(?:year|quarter|month)[\s-]end', "period_end"),
+            (r'(?:fiscal|calendar)\s+(?:year|quarter|month)[\s-]end', "fiscal_period"),
+            (r'(?:close|closing)\s+(?:cycle|period|process)', "close_period"),
+        ]
+
+        # Add these patterns to the complex_patterns list
+        complex_patterns.extend(time_period_patterns)
+
+        # Business cycle and event-based timing
+        business_cycle_patterns = [
+            (
+                r'(?:during|after|before|at)\s+(?:the|each|every)\s+(?:audit|review|assessment|reporting)\s+(?:cycle|period|process)',
+                "business_cycle"),
+            (
+                r'(?:upon|after|following)\s+(?:completion|finalization)\s+of\s+(?:the|each|every)\s+(?:audit|review|assessment|reporting)',
+                "business_cycle"),
+            (
+                r'(?:as\s+part\s+of|during)\s+(?:the|each|every)\s+(?:audit|review|assessment|reporting)\s+(?:cycle|process)',
+                "business_cycle"),
+
+            # Event-based triggers
+            (
+                r'(?:upon|after|when|following)\s+(?:receipt|notification|identification|detection)\s+of',
+                "event_trigger"),
+            (r'(?:immediately|promptly)\s+(?:upon|after|following)\s+(?:detection|identification|discovery)',
+             "event_trigger"),
+            (r'(?:within\s+\d+\s+(?:day|hour|minute|week)s?)\s+of\s+(?:detection|identification|discovery)',
+             "event_trigger"),
+
+            # System event triggers
+            (r'(?:after|when|upon)\s+(?:system|application|platform|database)\s+(?:update|upgrade|change|modification)',
+             "system_event"),
+            (
+                r'(?:before|prior\s+to)\s+(?:system|application|platform|database)\s+(?:update|upgrade|change|modification)',
+                "system_event"),
+        ]
+
+        # Add these patterns to the complex_patterns list
+        complex_patterns.extend(business_cycle_patterns)
 
         for pattern, pattern_type in complex_patterns:
             for match in re.finditer(pattern, text.lower()):
                 start, end = match.span()
+
                 # Skip if this is part of a vague term
                 if any(vague["span"][0] <= start and vague["span"][1] >= end for vague in vague_terms_found):
                     continue
 
-                # Found a specific timing expression
-                specific_timing_found = True
+                matched_text = match.group()
                 surrounding_text = text[max(0, start - 30):min(len(text), end + 30)]
 
+                # For "following" pattern, verify it's actually a timing indicator
+                if pattern_type == "sequential" and "following" in pattern:
+                    # Skip if what follows isn't timing-related
+                    if any(non_timing in matched_text for non_timing in
+                           ["following lines", "following business", "following areas"]):
+                        continue
+
+                # For cycle-based patterns, validate they are actual timing indicators
+                if "cycle" in pattern_type or "period" in pattern_type:
+                    if not _is_valid_cycle_reference(matched_text, surrounding_text):
+                        continue
+
+                # Found a specific timing expression
+                specific_timing_found = True
+
+                # Assign appropriate score based on pattern type
+                pattern_score = 0.85  # Default score for complex patterns
+
+                # Adjust score based on pattern specificity
+                if pattern_type in ["financial_cycle", "weekly_schedule"]:
+                    pattern_score = 0.9  # Higher score for very specific patterns
+                elif pattern_type in ["event_trigger", "system_event"]:
+                    pattern_score = 0.8  # Slightly lower for event-based timing
+
                 when_candidates.append({
-                    "text": match.group(),
+                    "text": matched_text,
                     "method": f"complex_pattern_{pattern_type}",
-                    "score": 0.85,
+                    "score": pattern_score,
                     "span": [start, end],
                     "pattern_type": pattern_type,
                     "is_primary": True,  # Complex patterns are usually significant
@@ -278,18 +440,26 @@ def enhance_when_detection(text, nlp, control_type=None, existing_keywords=None,
                     "context": surrounding_text
                 })
 
-        # Check for implicit timing using spaCy's dependency parsing
+        # 3. Check for implicit timing using spaCy's dependency parsing
         # Look for temporal modifiers
         for token in doc:
             if token.dep_ == "npadvmod" and token.head.pos_ == "VERB":
                 # Check if it's likely a time-related modifier
                 if any(time_word in token.text.lower() for time_word in
                        ["time", "moment", "instance", "point", "period"]):
+
                     # Skip if this is part of a vague term
                     token_start = token.idx
                     token_end = token.idx + len(token.text)
                     if any(vague["span"][0] <= token_start and vague["span"][1] >= token_end for vague in
                            vague_terms_found):
+                        continue
+
+                    # Skip if it's in an excluded context
+                    context_window = text_lower[max(0, token_start - 5):min(len(text_lower), token_end + 15)]
+                    if any(excluded in context_window for excluded in
+                           ["real-time", "one time", "first time", "last time",
+                            "reporting period", "accounting period", "time period"]):
                         continue
 
                     # Consider this a potential specific timing expression
@@ -388,8 +558,8 @@ def enhance_when_detection(text, nlp, control_type=None, existing_keywords=None,
         primary_vague_term = any(c.get("is_primary", False) and c.get("is_vague", False) for c in when_candidates)
 
         if not specific_timing_found or primary_vague_term:
-            # Missing specific timing or primary timing is vague
-            final_score = 0.05  # Near zero score (effectively missing)
+            # Missing specific timing or primary timing is vague - ZERO SCORE
+            final_score = 0  # Was 0.05, now 0 to ensure it counts as missing
         else:
             # Get the best specific timing score
             specific_scores = [c.get("score", 0) for c in when_candidates if not c.get("is_vague", True)]

@@ -1,12 +1,11 @@
-import spacy
-from typing import Dict, List, Any, Optional, Tuple, Union
+from typing import Dict, List, Any, Optional
 import re
 
 
 def enhance_what_detection(text: str, nlp, existing_keywords: Optional[List[str]] = None) -> Dict[str, Any]:
     """
     Enhanced WHAT detection with improved verb categorization, strength analysis, and context handling
-    With fixes to properly distinguish between actions (WHAT) and purposes (WHY)
+    With improved filtering of timing phrases and better handling of action phrases
 
     Args:
         text: The control description text to analyze
@@ -24,6 +23,444 @@ def enhance_what_detection(text: str, nlp, existing_keywords: Optional[List[str]
         - voice: Dominant voice used (active/passive)
         - suggestions: Suggestions for improvement
     """
+
+    # Helper functions defined internally to avoid reference errors
+    def is_passive_construction(verb_token) -> bool:
+        """Determine if a verb is in passive voice"""
+        # Check for passive subject
+        if any(token.dep_ == "nsubjpass" for token in verb_token.children):
+            return True
+
+        # Check for passive auxiliary (be + past participle)
+        if verb_token.tag_ == "VBN":  # Past participle
+            # Look for form of "be" as an auxiliary
+            for ancestor in verb_token.ancestors:
+                if ancestor.lemma_ == "be" and ancestor.pos_ == "AUX":
+                    return True
+
+        return False
+
+    def is_action_ensure(verb_token) -> bool:
+        """Determine if "ensure" is being used as a primary action rather than as a purpose indicator"""
+        # If "ensure" is the main verb of the sentence, it might be a primary action
+        if verb_token.dep_ == "ROOT":
+            # Check if preceded by "to" which would indicate purpose
+            prev_token = verb_token.doc[verb_token.i - 1] if verb_token.i > 0 else None
+            if prev_token and prev_token.text.lower() == "to":
+                return False
+            return True
+
+        # If it's not a ROOT verb, check if it's part of a purpose clause
+        if verb_token.dep_ == "xcomp" or verb_token.dep_ == "advcl":
+            # Check if preceded by "to"
+            prev_token = verb_token.doc[verb_token.i - 1] if verb_token.i > 0 else None
+            if prev_token and prev_token.text.lower() == "to":
+                return False
+
+        # Default to treating it as an action
+        return True
+
+    def get_subject(verb_token) -> Optional[str]:
+        """Find the subject of a verb"""
+        for token in verb_token.children:
+            if token.dep_ in ["nsubj", "nsubjpass"]:
+                # Return the complete noun phrase, including any modifiers
+                return " ".join(t.text for t in token.subtree)
+
+        # If no direct subject found, look for a governing verb's subject (for compound verbs)
+        if verb_token.dep_ == "xcomp" and verb_token.head.pos_ == "VERB":
+            return get_subject(verb_token.head)
+
+        return None
+
+    def reconstruct_active_phrase(verb_token) -> str:
+        """For passive verbs, reconstruct an active voice phrase from the components"""
+        # Find the object (subject in passive voice)
+        subj = None
+        for token in verb_token.children:
+            if token.dep_ == "nsubjpass":
+                subj = token
+                break
+
+        if not subj:
+            # If no subject found, just use the verb
+            return verb_token.lemma_
+
+        # Collect the object and any modifiers
+        obj_tokens = list(subj.subtree)
+
+        # For special cases like "access is limited", improve the verb phrasing
+        if verb_token.lemma_ == "limit" and any(t.text.lower() == "access" for t in obj_tokens):
+            return "limit access"
+
+        if verb_token.lemma_ == "restrict" and any(t.text.lower() == "access" for t in obj_tokens):
+            return "restrict access"
+
+        if verb_token.lemma_ == "revoke" and any(t.text.lower() == "access" for t in obj_tokens):
+            return "revoke access rights"
+
+        if verb_token.lemma_ == "store" and any(t.text.lower() in ["item", "items"] for t in obj_tokens):
+            return "store items securely"
+
+        # Create active verb phrase: [VERB] + [OBJECT]
+        active_phrase = f"{verb_token.lemma_} {' '.join(t.text for t in obj_tokens)}"
+
+        return active_phrase
+
+    def get_verb_phrase_improved(verb_token, problematic_verbs) -> str:
+        """Extract the complete verb phrase (verb + objects) from a verb token"""
+        # Start with the verb itself
+        phrase_tokens = [verb_token]
+
+        # For problematic verbs, limit the phrase to direct objects only
+        if verb_token.lemma_.lower() in problematic_verbs:
+            # More restrictive extraction for problematic verbs
+            for token in verb_token.children:
+                if token.dep_ == "dobj":  # Only direct objects
+                    subtree = list(token.subtree)
+                    phrase_tokens.extend(subtree)
+        else:
+            # Standard extraction for normal verbs
+            for token in verb_token.children:
+                if token.dep_ in ["dobj", "iobj", "attr", "oprd"]:
+                    # Include the token and its children (to get the complete phrase)
+                    subtree = list(token.subtree)
+                    phrase_tokens.extend(subtree)
+                elif token.dep_ == "prep":
+                    # Include prepositional phrases but only if they're essential
+                    # Skip non-essential prepositions that might be timing indicators
+                    if token.text.lower() not in ["on", "at", "before", "after", "during", "until"]:
+                        subtree = list(token.subtree)
+                        phrase_tokens.extend(subtree)
+                    else:
+                        # For timing prepositions, check if they're essential to the meaning
+                        next_token = token.doc[token.i + 1] if token.i + 1 < len(token.doc) else None
+                        if next_token and not any(next_token.text.lower().startswith(w) for w in
+                                                  ["a", "an", "the", "each", "every"]):
+                            subtree = list(token.subtree)
+                            phrase_tokens.extend(subtree)
+
+        # Sort tokens by their position in the original text
+        phrase_tokens.sort(key=lambda x: x.i)
+
+        # Combine into a phrase
+        verb_phrase = " ".join(token.text for token in phrase_tokens)
+
+        # Remove leading timing phrases
+        timing_prefixes = [
+            "on a ", "on an ", "daily ", "weekly ", "monthly ", "quarterly ", "annually ", "when ",
+            "as needed ", "as required ", "once ", "after ", "before ", "during "
+        ]
+        for prefix in timing_prefixes:
+            if verb_phrase.lower().find(prefix) == 0:
+                verb_phrase = verb_phrase[len(prefix):].strip()
+
+        # Remove trailing process phrases
+        process_suffixes = [
+            " according to", " based on", " part of", " as part of", " per ", " in accordance with"
+        ]
+        for suffix in process_suffixes:
+            if verb_phrase.lower().endswith(suffix):
+                verb_phrase = verb_phrase[:-len(suffix)].strip()
+
+        return verb_phrase
+
+    def assess_phrase_completeness(verb_phrase) -> float:
+        """Assess how complete a verb phrase is as a control action"""
+        # Split into words
+        words = verb_phrase.split()
+
+        # Very short phrases are likely incomplete
+        if len(words) < 2:
+            return 0.4
+
+        # Phrases with just prepositions at the end are incomplete
+        if words[-1].lower() in ["to", "for", "with", "by", "on", "at", "in"]:
+            return 0.5
+
+        # Phrases ending with process indicators are incomplete
+        process_endings = ["according", "based", "part", "accordance"]
+        if words[-1].lower() in process_endings:
+            return 0.5
+
+        # Long enough phrases with a verb and object are likely complete
+        if len(words) >= 3:
+            return 1.0
+
+        # Default completeness
+        return 0.8
+
+    def assess_object_specificity(verb_token) -> float:
+        """Assess how specific the object of a verb is"""
+        # Find direct objects
+        objects = []
+        for token in verb_token.children:
+            if token.dep_ in ["dobj", "pobj", "attr"]:
+                # Get the complete subtree
+                objects.extend(list(token.subtree))
+
+        if not objects:
+            return 0.0
+
+        # Assess specificity based on length, modifiers, and noun types
+        score = min(1.0, len(objects) / 5.0)  # Longer object phrases tend to be more specific
+
+        # Check for modifiers that make objects more specific
+        specificity_indicators = ["specific", "certain", "particular", "defined", "exact"]
+        if any(token.lemma_.lower() in specificity_indicators for token in objects):
+            score += 0.2
+
+        # Check for numeric modifiers (usually make things more specific)
+        if any(token.pos_ == "NUM" for token in objects):
+            score += 0.2
+
+        # Check for proper nouns (usually more specific)
+        if any(token.pos_ == "PROPN" for token in objects):
+            score += 0.2
+
+        # Check for technical terms (usually more specific)
+        tech_terms = ["system", "application", "database", "server", "protocol", "interface",
+                      "module", "component", "api", "configuration", "parameter", "threshold"]
+        if any(token.lemma_.lower() in tech_terms for token in objects):
+            score += 0.1
+
+        # Check for vague generic terms that reduce specificity
+        vague_object_terms = ["item", "thing", "stuff", "issue", "matter", "situation", "exception",
+                              "information", "data", "content", "material", "object"]
+        if any(token.lemma_.lower() in vague_object_terms for token in objects):
+            score -= 0.3  # Significant penalty for vague objects
+
+        return min(1.0, max(0.0, score))  # Ensure score is between 0 and 1
+
+    def is_core_control_action(verb_token, verb_lemma) -> bool:
+        """Determine if a verb represents a core control action rather than a supporting process action"""
+        # Core control actions are typically the main verbs that directly mitigate risk
+        core_control_verbs = {
+            "review", "verify", "approve", "validate", "reconcile", "check",
+            "confirm", "compare", "examine", "investigate", "audit", "analyze",
+            "evaluate", "assess", "test", "monitor", "inspect", "revoke",
+            "disable", "remove", "age", "notify", "route", "raise", "limit", "restrict"
+        }
+
+        # Non-control verbs - explicitly mark these as NOT core actions
+        non_control_verbs = {
+            "use", "launch", "set", "meet", "include", "have", "sound",
+            "be", "exist", "contain", "get", "put", "receive", "send", "take",
+            "store", "engage", "schedule", "log", "close", "complete", "finish"
+        }
+
+        # If it's a known non-control verb, it's definitely not a core action
+        if verb_lemma in non_control_verbs:
+            return False
+
+        # If it's a known core control verb, it's likely a core action
+        if verb_lemma in core_control_verbs:
+            # Check if the verb has an object - verbs without objects are less likely to be core actions
+            has_object = any(child.dep_ in ["dobj", "pobj", "attr"] for child in verb_token.children)
+            if not has_object:
+                return False
+            return True
+
+        # If it's the root verb of the sentence, it's more likely to be a core action
+        if verb_token.dep_ == "ROOT":
+            # Unless it's passive and a problematic verb
+            if is_passive_construction(verb_token) and verb_lemma in ["use", "launch", "set", "meet"]:
+                return False
+            # Check if it has an object
+            has_object = any(child.dep_ in ["dobj", "pobj", "attr"] for child in verb_token.children)
+            if not has_object:
+                return False
+            return True
+
+        # Supporting actions are often in subordinate clauses
+        if verb_token.dep_ in ["advcl", "relcl", "ccomp"]:
+            return False
+
+        # Default to False for uncertain cases
+        return False
+
+    def get_specific_alternatives(verb_lemma) -> str:
+        """Provide specific alternative verb suggestions based on the context"""
+        alternatives = {
+            "perform": "'verify', 'examine', or 'evaluate'",
+            "do": "'execute', 'conduct', or 'complete'",
+            "look": "'examine', 'inspect', or 'review'",
+            "check": "'verify', 'validate', or 'examine'",
+            "make": "'create', 'prepare', or 'develop'",
+            "handle": "'process', 'resolve', or 'manage'",
+            "see": "'identify', 'recognize', or 'detect'",
+            "watch": "'monitor', 'observe', or 'track'",
+            "address": "'resolve', 'rectify', or 'remediate'",
+            "consider": "'evaluate', 'assess', or 'analyze'",
+            "manage": "'administer', 'supervise', or 'oversee'",
+            "review": "'examine', 'analyze', or 'evaluate'",
+            "flag": "'identify', 'mark', or 'highlight'",
+            "monitor": "'track', 'supervise', or 'observe'",
+            "use": "'utilize', 'apply', or 'implement'",
+            "launch": "'initiate', 'deploy', or 'implement'",
+            "set": "'establish', 'configure', or 'specify'",
+            "age": "'classify by age', 'categorize', or 'track aging of'",
+            "meet": "'achieve', 'satisfy', or 'fulfill'",
+            "include": "'incorporate', 'integrate', or 'contain'",
+            "sound": "'establish', 'implement', or 'maintain'",
+            "raise": "'escalate', 'notify', or 'alert'",
+            "store": "'secure', 'maintain', or 'place'",
+            "log": "'record', 'document', or 'register'",
+            "schedule": "'plan', 'arrange', or 'program'"
+        }
+
+        return alternatives.get(verb_lemma, "'verify', 'approve', or 'reconcile'")
+
+    def extract_fallback_actions(doc, problematic_verbs):
+        """Attempt to extract fallback actions when standard methods fail"""
+        fallback_actions = []
+
+        # Look for control verb phrases using pattern matching
+        control_patterns = [
+            (r'(notify|alert|inform)\s+([a-z\s]+)', 0.75),  # notify management, alert team
+            (r'(age|categorize)\s+([a-z\s]+)', 0.7),  # age receivables, categorize items
+            (r'(receive|collect)\s+([a-z\s]+)', 0.6),  # receive sign-offs, collect approvals
+            (r'(limit|restrict)\s+([a-z\s]+)\s+to\s+([a-z\s]+)', 0.75),  # limit access to authorized
+            (r'(route|escalate|forward)\s+([a-z\s]+)\s+to\s+([a-z\s]+)', 0.75)  # route exceptions to support
+        ]
+
+        text = doc.text.lower()
+
+        for pattern, confidence in control_patterns:
+            for match in re.finditer(pattern, text):
+                verb = match.group(1)
+                full_phrase = match.group(0)
+
+                # Skip problematic verbs unless they're in a strong control context
+                if verb in problematic_verbs and not any(
+                        ctx in full_phrase for ctx in ["access", "approval", "review"]):
+                    continue
+
+                fallback_actions.append({
+                    "verb": verb,
+                    "verb_lemma": verb,
+                    "full_phrase": full_phrase,
+                    "subject": None,
+                    "is_passive": False,
+                    "strength": confidence,
+                    "strength_category": "medium",
+                    "confidence": confidence,
+                    "span": [match.start(), match.end()],
+                    "sentence": "Extracted fallback action",
+                    "is_core_action": True,
+                    "completeness": 0.8
+                })
+
+        # Look for special case controls common in security/IT controls
+        special_cases = [
+            (r'(access|permission)s?\s+(?:are|is)\s+(limited|restricted)\s+to', "limit access to authorized personnel",
+             0.8),
+            (r'(batch\s+job)s?\s+(?:are|is)\s+(scheduled|run)', "schedule batch jobs", 0.7),
+            (r'(exception)s?\s+(?:are|is)\s+(routed|sent)\s+to', "route exceptions", 0.75),
+            (r'(notification)s?\s+(?:are|is)\s+(sent|delivered)\s+to', "send notifications", 0.7),
+            (r'(system)\s+automatically\s+(ages)', "age receivables automatically", 0.8),
+            (r'items\s+are\s+(inventoried|counted)', "inventory items", 0.7)
+        ]
+
+        for pattern, replacement, confidence in special_cases:
+            if re.search(pattern, text):
+                fallback_actions.append({
+                    "verb": replacement.split()[0],
+                    "verb_lemma": replacement.split()[0],
+                    "full_phrase": replacement,
+                    "subject": None,
+                    "is_passive": False,
+                    "strength": confidence,
+                    "strength_category": "medium",
+                    "confidence": confidence,
+                    "span": [0, 1],  # Dummy span
+                    "sentence": "Extracted special case",
+                    "is_core_action": True,
+                    "completeness": 0.9
+                })
+
+        return fallback_actions
+
+    def extract_noun_phrase_actions(doc, nlp):
+        """Analyze noun phrases to identify potential control actions"""
+        actions = []
+
+        # Control activity nouns that often indicate actions
+        control_nouns = {
+            "review": 0.8,
+            "approval": 0.8,
+            "validation": 0.8,
+            "verification": 0.8,
+            "reconciliation": 0.8,
+            "assessment": 0.7,
+            "monitoring": 0.7,
+            "inspection": 0.7,
+            "audit": 0.8,
+            "analysis": 0.7,
+            "confirmation": 0.7,
+            "evaluation": 0.7,
+            "check": 0.7,
+            "authorization": 0.8,
+            "testing": 0.7
+        }
+
+        # Examine noun chunks
+        for chunk in doc.noun_chunks:
+            if len(chunk) > 1:  # Ignore single word chunks
+                head = chunk.root
+                head_text = head.text.lower()
+
+                # Check if the head is a control-related noun
+                if head_text in control_nouns:
+                    # Convert noun to verb form
+                    verb_mapping = {
+                        "review": "review",
+                        "approval": "approve",
+                        "validation": "validate",
+                        "verification": "verify",
+                        "reconciliation": "reconcile",
+                        "assessment": "assess",
+                        "monitoring": "monitor",
+                        "inspection": "inspect",
+                        "audit": "audit",
+                        "analysis": "analyze",
+                        "confirmation": "confirm",
+                        "evaluation": "evaluate",
+                        "check": "check",
+                        "authorization": "authorize",
+                        "testing": "test"
+                    }
+
+                    verb = verb_mapping.get(head_text, "perform")
+
+                    # Get modifiers to form an action phrase
+                    modifiers = [t.text for t in chunk if t.i != head.i]
+
+                    # Construct the phrase: verb + modifiers
+                    if modifiers:
+                        modified_phrase = " ".join([verb] + modifiers)
+                    else:
+                        modified_phrase = f"{verb} {head_text}"
+
+                    actions.append({
+                        "verb": verb,
+                        "verb_lemma": verb,
+                        "full_phrase": modified_phrase,
+                        "subject": None,
+                        "is_passive": False,
+                        "strength": control_nouns[head_text],
+                        "strength_category": "medium",
+                        "confidence": control_nouns[head_text] * 0.8,
+                        # Slightly lower confidence for noun-derived actions
+                        "span": [chunk.start, chunk.end],
+                        "sentence": doc[chunk.sent.start:chunk.sent.end].text,
+                        "is_core_action": True,
+                        "completeness": 0.8
+                    })
+
+        return actions
+
+    # Main function logic starts here
     if not text or text.strip() == '':
         return {
             "actions": [],
@@ -40,30 +477,52 @@ def enhance_what_detection(text: str, nlp, existing_keywords: Optional[List[str]
         # Process the text
         doc = nlp(text.lower())
 
+        passive_voice_detected = False  # initialize flag
+
         # Categorize verbs by strength with default scores
         high_strength_verbs = {
             "approve": 1.0, "authorize": 1.0, "reconcile": 1.0, "validate": 1.0,
             "certify": 1.0, "sign-off": 1.0, "verify": 1.0, "confirm": 0.9,
             "test": 0.9, "enforce": 0.9, "authenticate": 0.9,
             "audit": 0.9, "inspect": 0.9, "investigate": 0.9, "scrutinize": 0.9,
-            "compare": 0.9  # Moved from medium to high strength
+            "compare": 0.9, "review": 0.85,  # Moved review up from medium
+            "check": 0.85, "notify": 0.85, "route": 0.85  # Added more high-value control verbs
         }
 
         medium_strength_verbs = {
-            "review": 0.7, "examine": 0.7, "analyze": 0.7,
+            "examine": 0.7, "analyze": 0.7,
             "evaluate": 0.7, "assess": 0.7, "track": 0.7, "document": 0.7,
             "record": 0.7, "maintain": 0.6, "prepare": 0.6, "generate": 0.6,
-            "update": 0.6, "calculate": 0.6, "process": 0.6, "recalculate": 0.7
+            "update": 0.6, "calculate": 0.6, "process": 0.6, "recalculate": 0.7,
+            "monitor": 0.65,  # Moved up from low
+            "revoke": 0.7,  # Added specific control verb
+            "disable": 0.7,  # Added specific control verb
+            "remove": 0.7,  # Added specific control verb
+            "limit": 0.7,  # Added specific control verb
+            "restrict": 0.7,  # Added specific control verb
+            "age": 0.7,  # Changed from problematic to valid control verb
+            "receive": 0.65,  # Added for CTRL-004
+            "resolve": 0.7  # Added for exception handling
         }
 
         # Significantly lowered strength values for weak verbs
         low_strength_verbs = {
-            "check": 0.3, "look": 0.2, "monitor": 0.4, "observe": 0.3,
+            "look": 0.2, "observe": 0.3,
             "view": 0.2, "consider": 0.2, "watch": 0.2, "note": 0.3,
             "see": 0.1, "handle": 0.2, "manage": 0.3, "coordinate": 0.3,
-            "facilitate": 0.2, "oversee": 0.4, "run": 0.3, "perform": 0.3,  # Reduced "perform" from 0.5 to 0.3
-            "address": 0.2  # Added "address" with very low score
+            "facilitate": 0.2, "oversee": 0.4, "run": 0.3, "perform": 0.3,
+            "address": 0.2, "raise": 0.4  # Added "raise" with medium-low score
         }
+
+        # Problematic verbs that are often not control actions, or are process descriptors
+        problematic_verbs = {
+            "use": 0.1, "launch": 0.1, "set": 0.1, "meet": 0.1, "include": 0.1,
+            "have": 0.1, "be": 0.1, "exist": 0.1, "contain": 0.1, "sound": 0.1,
+            "store": 0.2, "engage": 0.2, "schedule": 0.2, "used": 0.1, "log": 0.3
+        }
+
+        # Combine and extend with problematic verbs
+        low_strength_verbs.update(problematic_verbs)
 
         # Combine and extend with existing keywords if provided
         all_verbs = {**high_strength_verbs, **medium_strength_verbs, **low_strength_verbs}
@@ -75,7 +534,73 @@ def enhance_what_detection(text: str, nlp, existing_keywords: Optional[List[str]
                     all_verbs[kw.lower()] = 0.6
 
         # ----------------
-        # NEW: Purpose phrase detection to identify WHY segments and exclude from WHAT
+        # Timing phrase detection to eliminate WHEN segments from WHAT
+        # Expanded pattern list
+        # ----------------
+        timing_phrases = [
+            r'on\s+an?\s+[a-z-]+\s+basis',  # on a monthly basis, on an ad-hoc basis
+            r'daily|weekly|monthly|quarterly|annually|yearly',
+            r'each\s+(day|week|month|quarter|year)',
+            r'every\s+(day|week|month|quarter|year)',
+            r'when\s+(necessary|needed|required|appropriate)',
+            r'as\s+(needed|required|appropriate)',
+            r'once\s+[a-z]+',  # once completed, once approved
+            r'prior\s+to',
+            r'subsequent\s+to',
+            r'following\s+the',
+            r'after\s+[a-z]+',
+            r'before\s+[a-z]+',
+            r'during\s+[a-z]+',
+            r'\d+\s+(days?|weeks?|months?)',  # 30 days, 2 weeks
+            r'at\s+(the\s+)?(beginning|end|close|start)',
+            r'(day|week|month|quarter|year)[\s-]end',
+            r'nightly',
+            r'timely'
+        ]
+
+        # Find all timing phrases to exclude from WHAT candidates
+        timing_spans = []
+        for pattern in timing_phrases:
+            matches = re.finditer(pattern, text.lower())
+            for match in matches:
+                timing_spans.append((match.start(), match.end()))
+
+        # ----------------
+        # Process descriptor phrases - patterns that indicate process description, not control actions
+        # ----------------
+        process_phrases = [
+            r'has\s+processes?',
+            r'have\s+processes?',
+            r'are\s+used\s+for',
+            r'is\s+used\s+for',
+            r'are\s+stored',
+            r'is\s+stored',
+            r'are\s+included',
+            r'is\s+included',
+            r'according\s+to',
+            r'based\s+on',
+            r'part\s+of',
+            r'component\s+of',
+            r'element\s+of',
+            r'such\s+as',
+            r'includes',
+            r'include',
+            r'included',
+            r'have\s+been',
+            r'has\s+been',
+            r'are\s+subject\s+to',
+            r'is\s+subject\s+to'
+        ]
+
+        # Find all process phrases to exclude from WHAT candidates
+        process_spans = []
+        for pattern in process_phrases:
+            matches = re.finditer(pattern, text.lower())
+            for match in matches:
+                process_spans.append((match.start(), match.end()))
+
+        # ----------------
+        # Purpose phrase detection to identify WHY segments and exclude from WHAT
         # ----------------
         purpose_phrases = [
             r'to\s+(ensure|verify|confirm|validate|prevent|detect|mitigate|comply|adhere|demonstrate|maintain|support|achieve|provide)',
@@ -83,7 +608,8 @@ def enhance_what_detection(text: str, nlp, existing_keywords: Optional[List[str]
             r'for\s+the\s+purpose\s+of\s+[^\.;,]*',
             r'designed\s+to\s+[^\.;,]*',
             r'intended\s+to\s+[^\.;,]*',
-            r'so\s+that\s+[^\.;,]*'
+            r'so\s+that\s+[^\.;,]*',
+            r'to\s+ensure\s+[^\.;,]*'
         ]
 
         # Find all purpose phrases to exclude from WHAT candidates
@@ -111,12 +637,20 @@ def enhance_what_detection(text: str, nlp, existing_keywords: Optional[List[str]
             for token in sent:
                 # Check if token is a verb
                 if token.pos_ == "VERB":
+                    # Get the lemmatized form of the verb
+                    verb_lemma = token.lemma_.lower()
+
+                    # Skip if this verb is part of a timing phrase (WHEN not WHAT)
+                    if any(token.idx >= start and token.idx < end for start, end in timing_spans):
+                        continue
+
+                    # Skip if this verb is part of a process phrase (not a control action)
+                    if any(token.idx >= start and token.idx < end for start, end in process_spans):
+                        continue
+
                     # Skip if this verb is part of a purpose phrase (WHY not WHAT)
                     if any(token.idx >= start and token.idx < end for start, end in purpose_spans):
                         continue
-
-                    # Get the lemmatized form of the verb
-                    verb_lemma = token.lemma_.lower()
 
                     # Skip auxiliary verbs and common verbs that don't represent control actions
                     if verb_lemma in ["be", "have", "do", "can", "could", "would", "should", "may", "might"]:
@@ -126,13 +660,40 @@ def enhance_what_detection(text: str, nlp, existing_keywords: Optional[List[str]
                     if verb_lemma == "ensure" and not is_action_ensure(token):
                         continue
 
-                    # Get the verb phrase (verb + objects) with improved extraction
-                    verb_phrase = get_verb_phrase_improved(token)
+                    # Skip problematic verbs when in passive voice or subordinate clauses
+                    if verb_lemma in problematic_verbs and (is_passive_construction(token) or token.dep_ != "ROOT"):
+                        continue
 
-                    # Determine if this is passive voice
+                    # Get the verb phrase with improved extraction that reconstructs proper SVO order
                     is_passive = is_passive_construction(token)
+                    if is_passive:
+                        verb_phrase = reconstruct_active_phrase(token)
+                    else:
+                        verb_phrase = get_verb_phrase_improved(token, problematic_verbs)
+
+                    # Skip if the verb phrase is empty after processing or too short
+                    if not verb_phrase or len(verb_phrase.split()) < 2:
+                        continue
+
+                    # Skip if the verb phrase starts with a timing phrase
+                    timing_start_patterns = [
+                        "on a", "on an", "daily", "weekly", "monthly", "quarterly", "annually",
+                        "when", "as needed", "as required", "once", "after", "before", "during"
+                    ]
+                    if any(verb_phrase.lower().find(pattern) == 0 for pattern in timing_start_patterns):
+                        continue
+
+                    # Skip phrases that are process descriptions rather than actions
+                    process_patterns = [
+                        "has process", "have process", "according to", "based on", "part of",
+                        "are used", "is used", "are stored", "is stored", "are included", "is included",
+                        "includes", "include", "included", "such as", "have been", "has been"
+                    ]
+                    if any(pattern in verb_phrase.lower() for pattern in process_patterns):
+                        continue
 
                     if is_passive:
+                        passive_voice_detected = True
                         passive_voice_count += 1
                     else:
                         active_voice_count += 1
@@ -160,13 +721,17 @@ def enhance_what_detection(text: str, nlp, existing_keywords: Optional[List[str]
                     # 2. Voice (prefer active)
                     # 3. Subject clarity
                     # 4. Position in the text (earlier = more important)
-                    # 5. Object specificity (new)
-                    # 6. Vague term penalty (new)
+                    # 5. Object specificity
+                    # 6. Vague term penalty
+                    # 7. Phrase completeness
                     confidence = verb_strength
 
-                    # Adjust for voice
+                    # Adjust for voice - higher penalty for passive problematic verbs
                     if is_passive:
-                        confidence *= 0.8  # Increased penalty for passive voice (was 0.9)
+                        if verb_lemma in problematic_verbs:
+                            confidence *= 0.2  # Severe penalty for passive problematic verbs
+                        else:
+                            confidence *= 0.4  # Increased penalty for passive voice (was 0.8)
 
                     # Adjust for subject clarity
                     if subject:
@@ -176,11 +741,15 @@ def enhance_what_detection(text: str, nlp, existing_keywords: Optional[List[str]
                     position_factor = 1.0 - (token.i / len(doc)) * 0.2
                     confidence *= position_factor
 
-                    # NEW: Adjust for object specificity
+                    # Adjust for object specificity
                     object_specificity = assess_object_specificity(token)
                     confidence *= (1.0 + object_specificity * 0.2)
 
-                    # NEW: Apply vague term penalty
+                    # Adjust for phrase completeness - penalize incomplete phrases
+                    phrase_completeness = assess_phrase_completeness(verb_phrase)
+                    confidence *= phrase_completeness
+
+                    # Apply vague term penalty
                     # Check sentence for vague terms like "as needed", "when appropriate"
                     vague_terms = ["as needed", "when necessary", "as appropriate",
                                    "when appropriate", "as required", "if needed"]
@@ -188,6 +757,10 @@ def enhance_what_detection(text: str, nlp, existing_keywords: Optional[List[str]
 
                     if any(term in sent_text for term in vague_terms):
                         confidence *= 0.7  # Strong penalty for vague temporal terms
+
+                    # Apply ROOT boost - primary verbs in the sentence are more likely to be control actions
+                    if token.dep_ == "ROOT":
+                        confidence *= 1.2
 
                     # Cap confidence at 1.0
                     confidence = min(1.0, confidence)
@@ -204,14 +777,63 @@ def enhance_what_detection(text: str, nlp, existing_keywords: Optional[List[str]
                         "confidence": confidence,
                         "span": [token.i, token.i + 1],
                         "sentence": sent.text,
-                        "is_core_action": is_core_control_action(token, verb_lemma)
-                        # NEW: Flag for core control actions
+                        "is_core_action": is_core_control_action(token, verb_lemma),
+                        "completeness": phrase_completeness
                     })
+
+        # If no actions found, try to extract fallback actions using more relaxed criteria
+        if not actions:
+            fallback_actions = extract_fallback_actions(doc, problematic_verbs)
+            actions.extend(fallback_actions)
+
+        # Filter out problematic action phrases with enhanced filtering
+        filtered_actions = []
+        for action in actions:
+            # Skip timing phrases
+            if any(action["full_phrase"].lower().find(pattern) == 0 for pattern in [
+                "on a", "on an", "when", "as needed", "daily", "weekly", "monthly",
+                "quarterly", "annually", "once", "after", "before", "during"
+            ]):
+                continue
+
+            # Skip process description phrases
+            if any(pattern in action["full_phrase"].lower() for pattern in [
+                "has process", "have process", "according to", "based on", "part of",
+                "are used", "is used", "are stored", "is stored", "are included", "is included",
+                "includes", "include", "included", "such as", "have been", "has been"
+            ]):
+                continue
+
+            # Skip phrases with completeness score below threshold (unless we have no other actions)
+            if len(actions) > 1 and action["completeness"] < 0.5:
+                continue
+
+            # Skip passive problematic verbs with low confidence
+            if action["is_passive"] and action["verb_lemma"] in problematic_verbs and action[
+                "confidence"] < 0.4:
+                continue
+
+            # Remove any timing words at the beginning of the phrase
+            full_phrase = action["full_phrase"]
+            timing_words = ["once", "daily", "weekly", "monthly", "quarterly", "annually", "when", "as"]
+            words = full_phrase.split()
+            if words and words[0].lower() in timing_words:
+                action["full_phrase"] = " ".join(words[1:])
+
+            filtered_actions.append(action)
+
+        # Use filtered actions
+        actions = filtered_actions
+
+        # If still no actions after filtering, try noun phrase analysis
+        if not actions:
+            noun_phrase_actions = extract_noun_phrase_actions(doc, nlp)
+            actions.extend(noun_phrase_actions)
 
         # Sort actions by confidence
         actions.sort(key=lambda x: x["confidence"], reverse=True)
 
-        # NEW: Filter for core control actions to identify primary and secondary
+        # Filter for core control actions to identify primary and secondary
         core_actions = [a for a in actions if a.get("is_core_action", False)]
 
         # If no core actions found, fall back to all actions
@@ -270,7 +892,6 @@ def enhance_what_detection(text: str, nlp, existing_keywords: Optional[List[str]
         suggestions = []
 
         if primary_action and primary_action["strength_category"] == "low":
-            # NEW: Provide specific alternative suggestions based on context
             specific_alts = get_specific_alternatives(primary_action["verb_lemma"])
             suggestions.append(
                 f"Replace weak verb '{primary_action['verb']}' with a stronger control verb like {specific_alts}")
@@ -283,16 +904,21 @@ def enhance_what_detection(text: str, nlp, existing_keywords: Optional[List[str]
                 "This appears to describe a process rather than a specific control action; consider breaking into separate controls")
 
         if not primary_action:
-            suggestions.append("No clear control action detected; add a specific verb describing what the control does")
+            suggestions.append(
+                "No clear control action detected; add a specific verb describing what the control does")
 
-        # NEW: Suggestion for vague objects
+        # Suggestion for vague objects
         if primary_action and assess_object_specificity(doc[primary_action["span"][0]]) < 0.5:
-            suggestions.append(f"Consider clarifying the object of '{primary_action['verb_lemma']}' to be more specific.")
+            suggestions.append(
+                f"Consider clarifying the object of '{primary_action['verb_lemma']}' to be more specific.")
+
+        if passive_voice_detected:
+            suggestions.append("Consider using active voice to clearly indicate responsibility for control activities.")
 
         return {
             "actions": actions,
             "primary_action": primary_action,
-            "secondary_actions": secondary_actions,  # NEW: Return secondary actions
+            "secondary_actions": secondary_actions,
             "score": final_score,
             "verb_strength": avg_verb_strength,
             "is_process": is_process,
@@ -315,221 +941,6 @@ def enhance_what_detection(text: str, nlp, existing_keywords: Optional[List[str]
         }
 
 
-def get_verb_phrase_improved(verb_token) -> str:
-    """
-    Extract the complete verb phrase (verb + objects) from a verb token
-    Improved to handle more complex verb phrases and collect more context
-
-    Args:
-        verb_token: A spaCy token that is a verb
-
-    Returns:
-        The complete verb phrase as a string
-    """
-    # Start with the verb itself
-    phrase_tokens = [verb_token]
-
-    # Add direct and indirect objects, plus prepositional phrases that modify the verb
-    for token in verb_token.children:
-        if token.dep_ in ["dobj", "iobj", "pobj", "attr", "oprd"]:
-            # Include the token and its children (to get the complete phrase)
-            subtree = list(token.subtree)
-            phrase_tokens.extend(subtree)
-        elif token.dep_ == "prep":
-            # Include prepositional phrases
-            subtree = list(token.subtree)
-            phrase_tokens.extend(subtree)
-        elif token.dep_ == "advcl" and token.pos_ != "VERB":
-            # Include adverbial clauses that aren't separate verbs
-            subtree = list(token.subtree)
-            phrase_tokens.extend(subtree)
-
-    # Sort tokens by their position in the original text
-    phrase_tokens.sort(key=lambda x: x.i)
-
-    # Combine into a phrase
-    return " ".join(token.text for token in phrase_tokens)
-
-
-def get_subject(verb_token) -> Optional[str]:
-    """
-    Find the subject of a verb
-
-    Args:
-        verb_token: A spaCy token that is a verb
-
-    Returns:
-        The subject as a string, or None if no subject is found
-    """
-    for token in verb_token.children:
-        if token.dep_ in ["nsubj", "nsubjpass"]:
-            # Return the complete noun phrase, including any modifiers
-            return " ".join(t.text for t in token.subtree)
-
-    # If no direct subject found, look for a governing verb's subject (for compound verbs)
-    if verb_token.dep_ == "xcomp" and verb_token.head.pos_ == "VERB":
-        return get_subject(verb_token.head)
-
-    return None
-
-
-def is_passive_construction(verb_token) -> bool:
-    """
-    Determine if a verb is in passive voice
-
-    Args:
-        verb_token: A spaCy token that is a verb
-
-    Returns:
-        True if the verb is in passive voice, False otherwise
-    """
-    # Check for passive subject
-    if any(token.dep_ == "nsubjpass" for token in verb_token.children):
-        return True
-
-    # Check for passive auxiliary (be + past participle)
-    if verb_token.tag_ == "VBN":  # Past participle
-        # Look for form of "be" as an auxiliary
-        for ancestor in verb_token.ancestors:
-            if ancestor.lemma_ == "be" and ancestor.pos_ == "AUX":
-                return True
-
-    return False
-
-
-def is_action_ensure(verb_token) -> bool:
-    """
-    Determine if "ensure" is being used as a primary action rather than as a purpose indicator
-
-    Args:
-        verb_token: A spaCy token for the "ensure" verb
-
-    Returns:
-        True if it appears to be a primary action, False if it's a purpose indicator
-    """
-    # If "ensure" is the main verb of the sentence, it might be a primary action
-    if verb_token.dep_ == "ROOT":
-        # Check if preceded by "to" which would indicate purpose
-        prev_token = verb_token.doc[verb_token.i - 1] if verb_token.i > 0 else None
-        if prev_token and prev_token.text.lower() == "to":
-            return False
-        return True
-
-    # If it's not a ROOT verb, check if it's part of a purpose clause
-    if verb_token.dep_ == "xcomp" or verb_token.dep_ == "advcl":
-        # Check if preceded by "to"
-        prev_token = verb_token.doc[verb_token.i - 1] if verb_token.i > 0 else None
-        if prev_token and prev_token.text.lower() == "to":
-            return False
-
-    # Default to treating it as an action
-    return True
-
-
-def assess_object_specificity(verb_token) -> float:
-    """
-    Assess how specific the object of a verb is
-
-    Args:
-        verb_token: A spaCy token that is a verb
-
-    Returns:
-        Float score from 0.0 (vague) to 1.0 (very specific)
-    """
-    # Find direct objects
-    objects = []
-    for token in verb_token.children:
-        if token.dep_ in ["dobj", "pobj", "attr"]:
-            # Get the complete subtree
-            objects.extend(list(token.subtree))
-
-    if not objects:
-        return 0.0
-
-    # Assess specificity based on length, modifiers, and noun types
-    score = min(1.0, len(objects) / 5.0)  # Longer object phrases tend to be more specific
-
-    # Check for modifiers that make objects more specific
-    specificity_indicators = ["specific", "certain", "particular", "defined", "exact"]
-    if any(token.lemma_.lower() in specificity_indicators for token in objects):
-        score += 0.2
-
-    # Check for numeric modifiers (usually make things more specific)
-    if any(token.pos_ == "NUM" for token in objects):
-        score += 0.2
-
-    # NEW: Check for vague generic terms that reduce specificity
-    vague_object_terms = ["item", "thing", "stuff", "issue", "matter", "situation", "exception"]
-    if any(token.lemma_.lower() in vague_object_terms for token in objects):
-        score -= 0.3  # Significant penalty for vague objects
-
-    return min(1.0, max(0.0, score))  # Ensure score is between 0 and 1
-
-
-def is_core_control_action(verb_token, verb_lemma) -> bool:
-    """
-    Determine if a verb represents a core control action rather than a supporting process action
-
-    Args:
-        verb_token: A spaCy token that is a verb
-        verb_lemma: The lemmatized form of the verb
-
-    Returns:
-        True if it appears to be a core control action, False otherwise
-    """
-    # Core control actions are typically the main verbs that directly mitigate risk
-    core_control_verbs = {
-        "review", "verify", "approve", "validate", "reconcile", "check",
-        "confirm", "compare", "examine", "investigate", "audit", "analyze",
-        "evaluate", "assess", "test", "monitor", "inspect"
-    }
-
-    # If it's a known core control verb, it's likely a core action
-    if verb_lemma in core_control_verbs:
-        return True
-
-    # If it's the root verb of the sentence, it's more likely to be a core action
-    if verb_token.dep_ == "ROOT":
-        return True
-
-    # Supporting actions are often in subordinate clauses
-    if verb_token.dep_ in ["advcl", "relcl", "ccomp"]:
-        return False
-
-    # Default to False for uncertain cases
-    return False
-
-
-def get_specific_alternatives(verb_lemma) -> str:
-    """
-    Provide specific alternative verb suggestions based on the context
-
-    Args:
-        verb_lemma: The lemmatized form of the verb to replace
-
-    Returns:
-        String with 2-3 specific suggested replacements
-    """
-    alternatives = {
-        "perform": "'verify', 'examine', or 'evaluate'",
-        "do": "'execute', 'conduct', or 'complete'",
-        "look": "'examine', 'inspect', or 'review'",
-        "check": "'verify', 'validate', or 'examine'",
-        "make": "'create', 'prepare', or 'develop'",
-        "handle": "'process', 'resolve', or 'manage'",
-        "see": "'identify', 'recognize', or 'detect'",
-        "watch": "'monitor', 'observe', or 'track'",
-        "address": "'resolve', 'rectify', or 'remediate'",
-        "consider": "'evaluate', 'assess', or 'analyze'",
-        "manage": "'administer', 'supervise', or 'oversee'",
-        "review": "'examine', 'analyze', or 'evaluate'",
-        "flag": "'identify', 'mark', or 'highlight'",
-        "monitor": "'track', 'supervise', or 'observe'"
-    }
-
-    return alternatives.get(verb_lemma, "'verify', 'approve', or 'reconcile'")
-
-
 def mark_possible_standalone_controls(description: str, nlp) -> List[Dict[str, Any]]:
     """
     Analyze a potentially multi-control description and mark potential standalone controls
@@ -550,28 +961,38 @@ def mark_possible_standalone_controls(description: str, nlp) -> List[Dict[str, A
 
     # Analyze each sentence
     for i, sent in enumerate(sentences):
-        # Analyze this sentence
-        result = enhance_what_detection(sent.text, nlp)
+        try:
+            # Analyze this sentence
+            result = enhance_what_detection(sent.text, nlp)
 
-        # If it has a clear action, it might be a separate control
-        if result["primary_action"] and result["score"] > 0.5 and not result["is_process"]:
-            potential_controls.append({
-                "text": sent.text,
-                "span": [sent.start, sent.end],
-                "score": result["score"],
-                "action": result["primary_action"]["full_phrase"] if result["primary_action"] else None,
-                "control_type": determine_likely_control_type(sent.text)  # NEW: Determine likely control type
-            })
+            # Check if result is None before trying to access its properties
+            if result is None:
+                continue
 
-    # NEW: Also look for controls that might be in the same sentence
+            # If it has a clear action, it might be a separate control
+            if result["primary_action"] and result["score"] > 0.5 and not result["is_process"]:
+                potential_controls.append({
+                    "text": sent.text,
+                    "span": [sent.start, sent.end],
+                    "score": result["score"],
+                    "action": result["primary_action"]["full_phrase"] if result["primary_action"] else None,
+                    "control_type": determine_likely_control_type(sent.text)
+                })
+        except Exception as e:
+            print(f"Error analyzing sentence {i}: {e}")
+            continue
+
+    # Also look for controls that might be in the same sentence
     # Split long sentences with multiple verbs and conjunctions
     if len(sentences) == 1 and len(doc) > 20:  # If only one long sentence
-        compound_control_candidates = identify_compound_controls(doc, nlp)
-        if compound_control_candidates:
-            potential_controls.extend(compound_control_candidates)
+        try:
+            compound_control_candidates = identify_compound_controls(doc)
+            if compound_control_candidates:
+                potential_controls.extend(compound_control_candidates)
+        except Exception as e:
+            print(f"Error identifying compound controls: {e}")
 
     return potential_controls
-
 
 def determine_likely_control_type(text: str) -> str:
     """
@@ -590,7 +1011,8 @@ def determine_likely_control_type(text: str) -> str:
         return "preventive"
 
     # Detective control indicators
-    if any(term in text_lower for term in ["detect", "identify", "discover", "find", "monitor", "review", "reconcile"]):
+    if any(term in text_lower for term in
+           ["detect", "identify", "discover", "find", "monitor", "review", "reconcile"]):
         return "detective"
 
     # Corrective control indicators
@@ -599,14 +1021,12 @@ def determine_likely_control_type(text: str) -> str:
 
     return "unknown"
 
-
-def identify_compound_controls(doc, nlp) -> List[Dict[str, Any]]:
+def identify_compound_controls(doc) -> List[Dict[str, Any]]:
     """
     Identify potential compound controls within a single sentence
 
     Args:
         doc: spaCy document
-        nlp: spaCy NLP model
 
     Returns:
         List of potential standalone controls
