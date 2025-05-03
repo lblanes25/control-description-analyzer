@@ -103,9 +103,9 @@ class ControlElement:
                 if self.enhanced_results:
                     top = self.enhanced_results.get("top_match", {})
                     if isinstance(top, dict):
-                        if top.get("text"):
+                        if "implied_purpose" in top:
                             self.matched_keywords = [top["implied_purpose"]]
-                        elif top.get("implied_purpose"):
+                        elif "text" in top:
                             self.matched_keywords = [top["text"]]
                         else:
                             self.matched_keywords = self.enhanced_results.get("extracted_keywords", [])

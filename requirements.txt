@@ -6,6 +6,7 @@ openpyxl>=3.0.7
 PyYAML>=5.1.0
 spacy>=3.0.0
 spacy-lookups-data>=1.0.0
+PyQt5>=5.15.0
 
 # Visualization dependencies
 plotly>=4.14.0
@@ -28,3 +29,6 @@ pytest>=6.2.5
 black>=21.5b2
 flake8>=3.9.2
 mypy>=0.812
+
+# Packaging tools
+pyinstaller>=5.0.0
