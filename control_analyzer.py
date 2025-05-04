@@ -35,6 +35,7 @@ class ControlElement:
         self.weight = weight
         self.keywords = keywords or []
         self.score = 0
+        self.normalized_score = 0
         self.matched_keywords = []
         self.phrases = []  # For spaCy PhraseMatcher
         self.context_relevance = 0.0  # Measure of how relevant the matches are in context
@@ -70,6 +71,7 @@ class ControlElement:
                 frequency = context.get("frequency")
                 self.enhanced_results = enhanced_who_detection_v2(text, nlp, control_type, frequency, self.keywords)
                 self.score = self.enhanced_results.get("confidence", 0) if self.enhanced_results else 0
+                self.normalized_score = self.score * 100
                 self.matched_keywords = [
                     self.enhanced_results.get("primary", {}).get("text",
                                                                  "")] if self.enhanced_results and self.enhanced_results.get(
@@ -78,6 +80,7 @@ class ControlElement:
             elif self.name == "WHAT":
                 self.enhanced_results = enhance_what_detection(text, nlp, self.keywords)
                 self.score = self.enhanced_results.get("score", 0) if self.enhanced_results else 0
+                self.normalized_score = self.score * 100
                 if self.enhanced_results and self.enhanced_results.get("primary_action"):
                     self.matched_keywords = [self.enhanced_results["primary_action"]["full_phrase"]]
                 else:
@@ -93,6 +96,7 @@ class ControlElement:
                     context.get("frequency")
                 )
                 self.score = self.enhanced_results.get("score", 0) if self.enhanced_results else 0
+                self.normalized_score = self.score * 100
                 self.matched_keywords = self.enhanced_results.get("extracted_keywords",
                                                                   []) if self.enhanced_results else []
 
@@ -100,6 +104,7 @@ class ControlElement:
                 risk_description = context.get("risk_description")
                 self.enhanced_results = enhance_why_detection(text, nlp, risk_description, self.keywords)
                 self.score = self.enhanced_results.get("score", 0) if self.enhanced_results else 0
+                self.normalized_score = self.score * 100
                 if self.enhanced_results:
                     top = self.enhanced_results.get("top_match", {})
                     if isinstance(top, dict):
@@ -117,6 +122,7 @@ class ControlElement:
             elif self.name == "ESCALATION":
                 self.enhanced_results = enhance_escalation_detection(text, nlp, self.keywords)
                 self.score = self.enhanced_results.get("score", 0) if self.enhanced_results else 0
+                self.normalized_score = self.score * 100
                 self.matched_keywords = [p["text"] for p in
                                          self.enhanced_results.get("phrases", [])] if self.enhanced_results else []
 
@@ -129,7 +135,6 @@ class ControlElement:
         else:
             # Use base implementation
             return self._base_analyze(text, nlp)
-
     def _base_analyze(self, text, nlp):
         """Original analysis method as fallback"""
         # Create spaCy doc
@@ -170,7 +175,9 @@ class ControlElement:
         self.score = self.score * max(0.7, self.context_relevance)
 
         # Return weighted score
+        self.normalized_score = self.score * 100
         return self.score * self.weight
+
 
     def get_enhancement_feedback(self):
         """Get feedback from enhanced detection if available"""
@@ -477,18 +484,21 @@ class EnhancedControlAnalyzer:
         }
 
         # Analyze for each element with specialized detection
+        normalized_scores = {}
         weighted_scores = {}
         matched_keywords = {}
         enhancement_feedback = {}
 
         for name, element in self.elements.items():
-            # Pass context to analyze method
-            weighted_scores[name] = element.analyze(
+            element.analyze(
                 description,
                 self.nlp,
                 self.use_enhanced_detection,
                 **context
             )
+            normalized_scores[name] = element.normalized_score  # For reporting
+            weight = element.weight
+            weighted_scores[name] = (element.normalized_score * weight / 100)  # Contribution to total
             matched_keywords[name] = element.matched_keywords
             enhancement_feedback[name] = element.get_enhancement_feedback()
 
@@ -575,6 +585,7 @@ class EnhancedControlAnalyzer:
             "missing_elements": missing_elements,
             "vague_terms_found": vague_terms_found,
             "weighted_scores": weighted_scores,
+            "normalized_scores": normalized_scores,
             "matched_keywords": matched_keywords,
             "enhancement_feedback": enhancement_feedback,
             "validation_results": validation_results,
@@ -788,11 +799,11 @@ class EnhancedControlAnalyzer:
                 "Category": r["category"],
                 "Missing Elements": ", ".join(r["missing_elements"]) if r["missing_elements"] else "None",
                 "Vague Terms": ", ".join(r["vague_terms_found"]) if r["vague_terms_found"] else "None",
-                "WHO Score": r["weighted_scores"]["WHO"],
-                "WHEN Score": r["weighted_scores"]["WHEN"],
-                "WHAT Score": r["weighted_scores"]["WHAT"],
-                "WHY Score": r["weighted_scores"]["WHY"],
-                "ESCALATION Score": r["weighted_scores"]["ESCALATION"],
+                "WHO Score": r["normalized_scores"]["WHO"],
+                "WHEN Score": r["normalized_scores"]["WHEN"],
+                "WHAT Score": r["normalized_scores"]["WHAT"],
+                "WHY Score": r["normalized_scores"]["WHY"],
+                "ESCALATION Score": r["normalized_scores"]["ESCALATION"],
             }
 
             # Add multi-control indicators

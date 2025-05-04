@@ -8,8 +8,8 @@ from PyQt5.QtWidgets import (QApplication, QMainWindow, QWidget, QVBoxLayout,
                              QHBoxLayout, QLabel, QLineEdit, QTextEdit, QPushButton,
                              QTabWidget, QFileDialog, QProgressBar, QMessageBox,
                              QGroupBox, QFormLayout, QComboBox, QTableWidget,
-                             QTableWidgetItem, QHeaderView, QCheckBox, QSpinBox)
-from PyQt5.QtCore import Qt, QThread, pyqtSignal, QSize
+                             QTableWidgetItem, QHeaderView, QCheckBox, QSpinBox, QSplitter)
+from PyQt5.QtCore import Qt, QThread, pyqtSignal
 from PyQt5.QtGui import QIcon, QFont, QPixmap
 
 # Import your analyzer code
@@ -42,6 +42,7 @@ class AnalyzerWorker(QThread):
                 freq_col = self.options.get('frequency_column')
                 type_col = self.options.get('type_column')
                 risk_col = self.options.get('risk_column')
+                leader_col = self.options.get('leader_column')
 
                 # Read the file to get control count for progress updates
                 df = pd.read_excel(self.file_path)
@@ -65,9 +66,17 @@ class AnalyzerWorker(QThread):
                         frequency = row.get(freq_col) if freq_col and freq_col in row else None
                         control_type = row.get(type_col) if type_col and type_col in row else None
                         risk_description = row.get(risk_col) if risk_col and risk_col in row else None
+                        audit_leader = row.get(leader_col) if leader_col and leader_col in row else None
+
+                        # Get Audit Leader if available (assuming 'Audit Leader' is a column in your Excel)
+                        audit_leader = row.get('Audit Leader') if 'Audit Leader' in row else None
 
                         # Analyze this control
                         result = original_analyze(control_id, description, frequency, control_type, risk_description)
+                        # Add Audit Leader to the result
+                        if audit_leader:
+                            result["Audit Leader"] = audit_leader
+
                         results.append(result)
 
                         # Update progress
@@ -108,6 +117,58 @@ class AnalyzerWorker(QThread):
             self.error_signal.emit(str(e))
             import traceback
             traceback.print_exc()
+
+
+def apply_button_style(button):
+    """Apply consistent button styling"""
+    button.setStyleSheet("""
+        QPushButton {
+            background-color: #016FD0;
+            color: white;
+            border-radius: 5px;
+            padding: 6px 12px;
+        }
+        QPushButton:hover {
+            background-color: #005fa3;
+        }
+    """)
+
+class DraggableLineEdit(QLineEdit):
+    def __init__(self, parent=None):
+        super().__init__(parent)
+        self.setAcceptDrops(True)
+        self.parent_window = parent
+
+    def dragEnterEvent(self, event):
+        if event.mimeData().hasUrls():
+            event.acceptProposedAction()
+
+    def dropEvent(self, event):
+        if event.mimeData().hasUrls():
+            for url in event.mimeData().urls():
+                file_path = url.toLocalFile()
+                if file_path.lower().endswith(('.xlsx', '.xls', '.xlsm')):
+                    self.setText(file_path)
+
+                    # Trigger auto-column mapping, like the browse button does
+                    try:
+                        df = pd.read_excel(file_path, nrows=0)
+                        columns = df.columns.tolist()
+
+                        if self.parent_window:
+                            if id_cols := [col for col in columns if "id" in col.lower()]:
+                                self.parent_window.id_column_input.setText(id_cols[0])
+                            if desc_cols := [col for col in columns if "desc" in col.lower()]:
+                                self.parent_window.desc_column_input.setText(desc_cols[0])
+                            if freq_cols := [col for col in columns if "freq" in col.lower()]:
+                                self.parent_window.freq_column_input.setText(freq_cols[0])
+                            if type_cols := [col for col in columns if "type" in col.lower()]:
+                                self.parent_window.type_column_input.setText(type_cols[0])
+                            if risk_cols := [col for col in columns if "risk" in col.lower()]:
+                                self.parent_window.risk_column_input.setText(risk_cols[0])
+                    except Exception as e:
+                        print(f"Error loading dropped Excel file: {e}")
+            event.acceptProposedAction()
 
 
 class ControlAnalyzerGUI(QMainWindow):
@@ -153,6 +214,13 @@ class ControlAnalyzerGUI(QMainWindow):
 
         # Main layout
         main_layout = QVBoxLayout(self.central_widget)
+
+        # Add header with blue background and white text
+        header = QLabel("Control Description Analyzer")
+        header.setStyleSheet(
+            "background-color: #016FD0; color: white; padding: 10px; font-size: 20px; font-weight: bold;")
+        header.setAlignment(Qt.AlignCenter)
+        main_layout.insertWidget(0, header)
 
         # Create tabs
         self.tabs = QTabWidget()
@@ -226,6 +294,7 @@ class ControlAnalyzerGUI(QMainWindow):
         # Analyze button
         analyze_btn = QPushButton("Analyze Control")
         analyze_btn.setIcon(QIcon("icons/analyze.png"))
+        apply_button_style(analyze_btn)  # Apply the style
         analyze_btn.clicked.connect(self.analyze_single_control)
         layout.addWidget(analyze_btn)
 
@@ -234,12 +303,15 @@ class ControlAnalyzerGUI(QMainWindow):
         samples_layout = QHBoxLayout()
 
         excellent_btn = QPushButton("Excellent Example")
+        apply_button_style(excellent_btn)  # Apply the style
         excellent_btn.clicked.connect(lambda: self.load_sample_control("excellent"))
 
         good_btn = QPushButton("Good Example")
+        apply_button_style(good_btn)  # Apply the style
         good_btn.clicked.connect(lambda: self.load_sample_control("good"))
 
         poor_btn = QPushButton("Poor Example")
+        apply_button_style(poor_btn)  # Apply the style
         poor_btn.clicked.connect(lambda: self.load_sample_control("poor"))
 
         samples_layout.addWidget(excellent_btn)
@@ -252,6 +324,24 @@ class ControlAnalyzerGUI(QMainWindow):
         layout.addStretch()
         return tab
 
+    def load_excel_columns(self, file_path):
+        try:
+            df = pd.read_excel(file_path, nrows=0)
+            columns = df.columns.tolist()
+
+            self.excel_file_path.setText(file_path)
+
+            # Set column inputs if matching names exist
+            if any("id" in col.lower() for col in columns):
+                self.id_column_input.setText(next(col for col in columns if "id" in col.lower()))
+            if any("desc" in col.lower() for col in columns):
+                self.desc_column_input.setText(next(col for col in columns if "desc" in col.lower()))
+            # ... repeat for freq, type, risk, leader as needed
+
+            self.status_bar.showMessage(f"Loaded {file_path}")
+        except Exception as e:
+            self.show_error(f"Error loading dropped file: {str(e)}")
+
     def create_excel_file_tab(self):
         """Create the tab for analyzing an Excel file"""
         tab = QWidget()
@@ -261,7 +351,8 @@ class ControlAnalyzerGUI(QMainWindow):
         file_group = QGroupBox("Excel File")
         file_layout = QHBoxLayout()
 
-        self.excel_file_path = QLineEdit()
+        self.excel_file_path = DraggableLineEdit(self)
+        self.excel_file_path.setAcceptDrops(True)
         self.excel_file_path.setReadOnly(True)
         self.excel_file_path.setPlaceholderText("Select an Excel file...")
 
@@ -292,6 +383,9 @@ class ControlAnalyzerGUI(QMainWindow):
 
         self.risk_column_input = QLineEdit("Risk_Description")
         columns_layout.addRow("Risk Column (optional):", self.risk_column_input)
+
+        self.leader_column_input = QLineEdit("Audit Leader")
+        columns_layout.addRow("Audit Leader Column (optional):", self.leader_column_input)
 
         columns_group.setLayout(columns_layout)
         layout.addWidget(columns_group)
@@ -327,9 +421,58 @@ class ControlAnalyzerGUI(QMainWindow):
         return tab
 
     def create_results_tab(self):
-        """Create the tab for showing analysis results"""
+        """Create the tab for showing analysis results with filtering and detailed views"""
         tab = QWidget()
         layout = QVBoxLayout(tab)
+
+        # Add filter section
+        filter_group = QGroupBox("Filters")
+        filter_layout = QHBoxLayout()
+
+        # Category filter
+        self.category_filter = QComboBox()
+        self.category_filter.addItems(["All Categories", "Excellent", "Good", "Needs Improvement"])
+        self.category_filter.currentIndexChanged.connect(self.apply_result_filters)
+        filter_layout.addWidget(QLabel("Category:"))
+        filter_layout.addWidget(self.category_filter)
+
+        # Score range filter
+        filter_layout.addWidget(QLabel("Min Score:"))
+        self.min_score_filter = QSpinBox()
+        self.min_score_filter.setRange(0, 100)
+        self.min_score_filter.setValue(0)
+        self.min_score_filter.valueChanged.connect(self.apply_result_filters)
+        filter_layout.addWidget(self.min_score_filter)
+
+        filter_layout.addWidget(QLabel("Max Score:"))
+        self.max_score_filter = QSpinBox()
+        self.max_score_filter.setRange(0, 100)
+        self.max_score_filter.setValue(100)
+        self.max_score_filter.valueChanged.connect(self.apply_result_filters)
+        filter_layout.addWidget(self.max_score_filter)
+
+        # Audit Leader filter (populated dynamically when results are loaded)
+        filter_layout.addWidget(QLabel("Audit Leader:"))
+        self.leader_filter = QComboBox()
+        self.leader_filter.addItem("All Leaders")
+        self.leader_filter.currentIndexChanged.connect(self.apply_result_filters)
+        filter_layout.addWidget(self.leader_filter)
+
+        # Add reset button
+        reset_filters_btn = QPushButton("Reset Filters")
+        apply_button_style(reset_filters_btn)
+        reset_filters_btn.clicked.connect(self.reset_result_filters)
+        filter_layout.addWidget(reset_filters_btn)
+
+        filter_group.setLayout(filter_layout)
+        layout.addWidget(filter_group)
+
+        # Results table with status count
+        table_layout = QVBoxLayout()
+
+        # Status label to show filter counts
+        self.results_status_label = QLabel("No results available")
+        table_layout.addWidget(self.results_status_label)
 
         # Results table
         self.results_table = QTableWidget()
@@ -340,26 +483,309 @@ class ControlAnalyzerGUI(QMainWindow):
         self.results_table.horizontalHeader().setSectionResizeMode(QHeaderView.Stretch)
         self.results_table.setSelectionBehavior(QTableWidget.SelectRows)
         self.results_table.cellClicked.connect(self.show_result_details)
+        table_layout.addWidget(self.results_table)
 
-        layout.addWidget(self.results_table)
+        # Wrap the table section in a group box
+        results_group = QGroupBox("Controls")
+        results_group.setLayout(table_layout)
+        layout.addWidget(results_group)
 
-        # Details section
+        # Split the bottom area into two panels for details and keywords/feedback
+        bottom_splitter = QSplitter(Qt.Horizontal)
+
+        # Left panel - Control details
         details_group = QGroupBox("Control Details")
         details_layout = QVBoxLayout()
-
         self.control_detail_text = QTextEdit()
         self.control_detail_text.setReadOnly(True)
         details_layout.addWidget(self.control_detail_text)
-
         details_group.setLayout(details_layout)
-        layout.addWidget(details_group)
+
+        # Right panel - Keywords and Feedback
+        keywords_feedback_group = QGroupBox("Keywords & Feedback")
+        keywords_feedback_layout = QVBoxLayout()
+
+        # Create a tab widget for the right panel
+        kf_tabs = QTabWidget()
+
+        # Keywords tab
+        keywords_tab = QWidget()
+        keywords_layout = QVBoxLayout(keywords_tab)
+        self.keywords_table = QTableWidget()
+        self.keywords_table.setColumnCount(2)
+        self.keywords_table.setHorizontalHeaderLabels(["Element", "Keywords"])
+        self.keywords_table.horizontalHeader().setSectionResizeMode(QHeaderView.Stretch)
+        keywords_layout.addWidget(self.keywords_table)
+
+        # Feedback tab
+        feedback_tab = QWidget()
+        feedback_layout = QVBoxLayout(feedback_tab)
+        self.feedback_table = QTableWidget()
+        self.feedback_table.setColumnCount(2)
+        self.feedback_table.setHorizontalHeaderLabels(["Element", "Improvement Suggestions"])
+        self.feedback_table.horizontalHeader().setSectionResizeMode(QHeaderView.Stretch)
+        feedback_layout.addWidget(self.feedback_table)
+
+        # Add tabs to the tab widget
+        kf_tabs.addTab(keywords_tab, "Keywords")
+        kf_tabs.addTab(feedback_tab, "Feedback")
+
+        keywords_feedback_layout.addWidget(kf_tabs)
+        keywords_feedback_group.setLayout(keywords_feedback_layout)
+
+        # Add both panels to the splitter
+        bottom_splitter.addWidget(details_group)
+        bottom_splitter.addWidget(keywords_feedback_group)
+
+        # Set initial sizes (60% left, 40% right)
+        bottom_splitter.setSizes([600, 400])
+
+        layout.addWidget(bottom_splitter)
+
+        # Actions section
+        actions_layout = QHBoxLayout()
 
         # Export button
         export_btn = QPushButton("Export Results to Excel")
+        apply_button_style(export_btn)
         export_btn.clicked.connect(self.export_results)
-        layout.addWidget(export_btn)
+        actions_layout.addWidget(export_btn)
+
+        # Copy to clipboard button
+        copy_btn = QPushButton("Copy Selected Control")
+        apply_button_style(copy_btn)
+        copy_btn.clicked.connect(self.copy_selected_control)
+        actions_layout.addWidget(copy_btn)
+
+        layout.addLayout(actions_layout)
 
         return tab
+
+    def apply_result_filters(self):
+        """Apply the selected filters to the results table"""
+        if not self.results:
+            return
+
+        # Get filter values
+        category_filter = self.category_filter.currentText()
+        min_score = self.min_score_filter.value()
+        max_score = self.max_score_filter.value()
+        leader_filter = self.leader_filter.currentText()
+
+        # Clear existing rows
+        self.results_table.setRowCount(0)
+
+        # Add filtered results
+        row_idx = 0
+        for result in self.results:
+            # Check category filter
+            if category_filter != "All Categories" and result.get("category", "") != category_filter:
+                continue
+
+            # Check score filter
+            score = result.get("total_score", 0)
+            if score < min_score or score > max_score:
+                continue
+
+            # Check audit leader filter
+            if leader_filter != "All Leaders":
+                result_leader = result.get("Audit Leader", result.get("metadata", {}).get("Audit Leader", "Unknown"))
+                if result_leader != leader_filter:
+                    continue
+
+            # Add row if it passes all filters
+            self.results_table.insertRow(row_idx)
+
+            # Set values
+            self.results_table.setItem(row_idx, 0, QTableWidgetItem(str(result.get("control_id", ""))))
+
+            score_item = QTableWidgetItem(f"{result.get('total_score', 0):.1f}")
+            self.results_table.setItem(row_idx, 1, score_item)
+
+            category = result.get("category", "Unknown")
+            category_item = QTableWidgetItem(category)
+
+            # Set category cell color
+            if category == "Excellent":
+                category_item.setBackground(Qt.green)
+            elif category == "Good":
+                category_item.setBackground(Qt.yellow)
+            else:
+                category_item.setBackground(Qt.red)
+
+            self.results_table.setItem(row_idx, 2, category_item)
+
+            # Element scores
+            normalized_scores = result.get("normalized_scores", {})
+            weighted_scores = result.get("weighted_scores", {})
+            self.results_table.setItem(row_idx, 3, QTableWidgetItem(f"{normalized_scores.get('WHO', 0):.1f}"))
+            self.results_table.setItem(row_idx, 4, QTableWidgetItem(f"{normalized_scores.get('WHEN', 0):.1f}"))
+            self.results_table.setItem(row_idx, 5, QTableWidgetItem(f"{normalized_scores.get('WHAT', 0):.1f}"))
+            self.results_table.setItem(row_idx, 6, QTableWidgetItem(f"{normalized_scores.get('WHY', 0):.1f}"))
+            self.results_table.setItem(row_idx, 7, QTableWidgetItem(f"{normalized_scores.get('ESCALATION', 0):.1f}"))
+
+            row_idx += 1
+
+        # Update status label with filter info
+        self.results_status_label.setText(f"Showing {self.results_table.rowCount()} of {len(self.results)} controls")
+
+    def reset_result_filters(self):
+        """Reset all result filters to default values"""
+        self.category_filter.setCurrentIndex(0)  # "All Categories"
+        self.min_score_filter.setValue(0)
+        self.max_score_filter.setValue(100)
+        self.leader_filter.setCurrentIndex(0)  # "All Leaders"
+
+        # This will trigger apply_result_filters via the connected signals
+
+    def update_audit_leader_options(self):
+        """Update the audit leader filter dropdown with available leaders"""
+        if not self.results:
+            return
+
+        # Clear existing items (except "All Leaders")
+        while self.leader_filter.count() > 1:
+            self.leader_filter.removeItem(1)
+
+        # Collect unique audit leaders
+        leaders = set()
+        for result in self.results:
+            # Check both possible locations of the Audit Leader field
+            leader = result.get("Audit Leader")
+            if not leader:
+                # Try metadata
+                leader = result.get("metadata", {}).get("Audit Leader")
+
+            if leader and leader != "Unknown":
+                leaders.add(leader)
+
+        # Add to dropdown
+        for leader in sorted(leaders):
+            self.leader_filter.addItem(leader)
+
+    def show_result_details(self, row, column):
+        """Show details for the selected control"""
+        if not self.results or self.results_table.rowCount() == 0:
+            return
+
+        # Get the control ID from the selected row
+        control_id = self.results_table.item(row, 0).text()
+
+        # Find the corresponding result
+        for result in self.results:
+            if str(result.get("control_id", "")) == control_id:
+                # Print the structure
+                print("Keywords structure:", result.get("matched_keywords", {}))
+                print("Feedback structure:", result.get("enhancement_feedback", {}))
+                # Format detailed text
+                detail_text = f"<h2>Control {result.get('control_id', '')}</h2>"
+                detail_text += f"<p><b>Score:</b> {result.get('total_score', 0):.1f} - {result.get('category', 'Unknown')}</p>"
+                detail_text += f"<p><b>Description:</b> {result.get('description', '')}</p>"
+
+                # Missing elements
+                missing = result.get("missing_elements", [])
+                if missing:
+                    detail_text += f"<p><b>Missing Elements:</b> {', '.join(missing)}</p>"
+
+                # Vague terms
+                vague_terms = result.get("vague_terms_found", [])
+                if vague_terms:
+                    detail_text += f"<p><b>Vague Terms:</b> {', '.join(vague_terms)}</p>"
+
+                # Set the detail text
+                self.control_detail_text.setHtml(detail_text)
+
+                # Update keywords table
+                self.update_keywords_table(result)
+
+                # Update feedback table
+                self.update_feedback_table(result)
+
+                break
+
+    def update_keywords_table(self, result):
+        """Update the keywords table with the control's matched keywords"""
+        matched_keywords = result.get("matched_keywords", {})
+
+        # Clear existing rows
+        self.keywords_table.setRowCount(0)
+
+        # Add rows for each element
+        for i, element in enumerate(["WHO", "WHEN", "WHAT", "WHY", "ESCALATION"]):
+            keywords = matched_keywords.get(element, [])
+            if keywords:
+                self.keywords_table.insertRow(i)
+                self.keywords_table.setItem(i, 0, QTableWidgetItem(element))
+                self.keywords_table.setItem(i, 1, QTableWidgetItem(", ".join(keywords)))
+            else:
+                self.keywords_table.insertRow(i)
+                self.keywords_table.setItem(i, 0, QTableWidgetItem(element))
+                self.keywords_table.setItem(i, 1, QTableWidgetItem("None"))
+
+        # Adjust row heights
+        for i in range(self.keywords_table.rowCount()):
+            self.keywords_table.setRowHeight(i, 30)
+
+    def update_feedback_table(self, result):
+        """Update the feedback table with the control's enhancement feedback"""
+        feedback = result.get("enhancement_feedback", {})
+
+        # Clear existing rows
+        self.feedback_table.setRowCount(0)
+
+        # Add rows for each element
+        for i, element in enumerate(["WHO", "WHEN", "WHAT", "WHY", "ESCALATION"]):
+            element_feedback = feedback.get(element)
+
+            if element_feedback:
+                self.feedback_table.insertRow(i)
+                self.feedback_table.setItem(i, 0, QTableWidgetItem(element))
+
+                # Format feedback text
+                if isinstance(element_feedback, list):
+                    feedback_text = "\n".join([f"• {item}" for item in element_feedback])
+                else:
+                    feedback_text = str(element_feedback)
+
+                feedback_item = QTableWidgetItem(feedback_text)
+                feedback_item.setTextAlignment(Qt.AlignTop | Qt.AlignLeft)
+                self.feedback_table.setItem(i, 1, feedback_item)
+            else:
+                self.feedback_table.insertRow(i)
+                self.feedback_table.setItem(i, 0, QTableWidgetItem(element))
+                self.feedback_table.setItem(i, 1, QTableWidgetItem("No suggestions"))
+
+        # Adjust row heights based on content
+        for i in range(self.feedback_table.rowCount()):
+            content = self.feedback_table.item(i, 1).text()
+            lines = content.count('\n') + 1
+            self.feedback_table.setRowHeight(i, max(30, lines * 20))  # 20 pixels per line
+
+    def copy_selected_control(self):
+        """Copy the selected control to clipboard"""
+        selected_rows = self.results_table.selectedIndexes()
+        if not selected_rows:
+            self.status_bar.showMessage("No control selected")
+            return
+
+        # Get the control ID from the selected row
+        row = selected_rows[0].row()
+        control_id = self.results_table.item(row, 0).text()
+
+        # Find the corresponding result
+        for result in self.results:
+            if str(result.get("control_id", "")) == control_id:
+                # Format text for clipboard
+                clipboard_text = f"Control ID: {result.get('control_id', '')}\n"
+                clipboard_text += f"Score: {result.get('total_score', 0):.1f} - {result.get('category', 'Unknown')}\n"
+                clipboard_text += f"Description: {result.get('description', '')}\n"
+
+                # Copy to clipboard
+                clipboard = QApplication.clipboard()
+                clipboard.setText(clipboard_text)
+
+                self.status_bar.showMessage(f"Copied control {control_id} to clipboard")
+                break
 
     def create_visualization_tab(self):
         """Create the tab for visualizations"""
@@ -395,6 +821,7 @@ class ControlAnalyzerGUI(QMainWindow):
 
         # Open visualization button
         open_vis_btn = QPushButton("Open Selected Visualization")
+        apply_button_style(open_vis_btn)
         open_vis_btn.clicked.connect(self.open_visualization)
         vis_layout.addWidget(open_vis_btn)
 
@@ -403,6 +830,7 @@ class ControlAnalyzerGUI(QMainWindow):
 
         # Dashboard button
         dashboard_btn = QPushButton("Open Visualization Dashboard")
+        apply_button_style(dashboard_btn)
         dashboard_btn.clicked.connect(self.open_dashboard)
         layout.addWidget(dashboard_btn)
 
@@ -536,6 +964,7 @@ class ControlAnalyzerGUI(QMainWindow):
         freq_column = self.freq_column_input.text().strip()
         type_column = self.type_column_input.text().strip()
         risk_column = self.risk_column_input.text().strip()
+        leader_column = self.leader_column_input.text().strip()
 
         # Get options
         batch_size = self.batch_size_input.value()
@@ -555,6 +984,7 @@ class ControlAnalyzerGUI(QMainWindow):
             'frequency_column': freq_column if freq_column else None,
             'type_column': type_column if type_column else None,
             'risk_column': risk_column if risk_column else None,
+            'leader_column': leader_column if leader_column else None,
             'batch_size': batch_size,
             'generate_visualizations': generate_vis,
             'visualization_dir': vis_dir
@@ -596,8 +1026,11 @@ class ControlAnalyzerGUI(QMainWindow):
         self.results = results
         self.status_bar.showMessage(f"Analysis complete: {len(results)} controls analyzed")
 
-        # Update results table
-        self.update_results_table()
+        # Update audit leader filter options FIRST
+        self.update_audit_leader_options()
+
+        # THEN apply result filters
+        self.apply_result_filters()
 
         # Update visualizations tab
         self.update_visualizations_tab()
@@ -650,53 +1083,6 @@ class ControlAnalyzerGUI(QMainWindow):
             self.results_table.setItem(i, 5, QTableWidgetItem(f"{weighted_scores.get('WHAT', 0):.1f}"))
             self.results_table.setItem(i, 6, QTableWidgetItem(f"{weighted_scores.get('WHY', 0):.1f}"))
             self.results_table.setItem(i, 7, QTableWidgetItem(f"{weighted_scores.get('ESCALATION', 0):.1f}"))
-
-    def show_result_details(self, row, column):
-        """Show details for the selected control"""
-        if not self.results or row >= len(self.results):
-            return
-
-        result = self.results[row]
-
-        # Format detailed text
-        detail_text = f"<h2>Control {result.get('control_id', '')}</h2>"
-        detail_text += f"<p><b>Score:</b> {result.get('total_score', 0):.1f} - {result.get('category', 'Unknown')}</p>"
-        detail_text += f"<p><b>Description:</b> {result.get('description', '')}</p>"
-
-        # Missing elements
-        missing = result.get("missing_elements", [])
-        if missing:
-            detail_text += f"<p><b>Missing Elements:</b> {', '.join(missing)}</p>"
-
-        # Vague terms
-        vague_terms = result.get("vague_terms_found", [])
-        if vague_terms:
-            detail_text += f"<p><b>Vague Terms:</b> {', '.join(vague_terms)}</p>"
-
-        # Element details
-        detail_text += "<h3>Element Scores</h3>"
-        weighted_scores = result.get("weighted_scores", {})
-        matched_keywords = result.get("matched_keywords", {})
-
-        for element in ["WHO", "WHEN", "WHAT", "WHY", "ESCALATION"]:
-            score = weighted_scores.get(element, 0)
-            keywords = matched_keywords.get(element, [])
-
-            detail_text += f"<p><b>{element}:</b> {score:.1f}</p>"
-            if keywords:
-                detail_text += f"<p>Keywords: {', '.join(keywords)}</p>"
-
-            # Add enhancement feedback if available
-            feedback = result.get("enhancement_feedback", {}).get(element)
-            if feedback:
-                if isinstance(feedback, list):
-                    feedback_text = "<br>- ".join(feedback)
-                    detail_text += f"<p>Suggestions:<br>- {feedback_text}</p>"
-                else:
-                    detail_text += f"<p>Feedback: {feedback}</p>"
-
-        # Set the detail text
-        self.control_detail_text.setHtml(detail_text)
 
     def update_visualizations_tab(self):
         """Update visualizations tab with available visualizations"""
@@ -944,6 +1330,38 @@ class ControlAnalyzerGUI(QMainWindow):
         error_box.setWindowTitle("Error")
         error_box.setText(message)
         error_box.exec_()
+
+class DraggableLineEdit(QLineEdit):
+    def __init__(self, parent=None):
+        super().__init__(parent)
+        self.setAcceptDrops(True)
+
+    def dragEnterEvent(self, event):
+        if event.mimeData().hasUrls():
+            url = event.mimeData().urls()[0]
+            if url.toLocalFile().endswith(('.xlsx', '.xls', '.xlsm')):
+                event.acceptProposedAction()
+
+    def dropEvent(self, event):
+        file_path = event.mimeData().urls()[0].toLocalFile()
+        self.setText(file_path)
+        self.parent().load_excel_columns(file_path)  # You must define this method
+
+class DraggableLineEdit(QLineEdit):
+    def __init__(self, parent=None):
+        super().__init__(parent)
+        self.setAcceptDrops(True)
+
+    def dragEnterEvent(self, event):
+        if event.mimeData().hasUrls():
+            url = event.mimeData().urls()[0]
+            if url.toLocalFile().endswith(('.xlsx', '.xls', '.xlsm')):
+                event.acceptProposedAction()
+
+    def dropEvent(self, event):
+        file_path = event.mimeData().urls()[0].toLocalFile()
+        self.setText(file_path)
+        self.parent().load_excel_columns(file_path)  # You must define this method
 
 
 def main():
