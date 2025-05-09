@@ -34,3 +34,12 @@ class ConfigManager:
     def get_type_keywords(self):
         """Get control type keywords from config"""
         return self.config.get("control_type_keywords", {})
+
+    def get_audit_leader_column(self):
+        """Get audit leader column name from config"""
+        columns = self.get_column_defaults()
+        # First look in columns section
+        if columns and "audit_leader" in columns:
+            return columns["audit_leader"]
+        # Then check for top level config
+        return self.config.get("audit_leader_column")

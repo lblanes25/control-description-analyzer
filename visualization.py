@@ -31,7 +31,8 @@ def generate_core_visualizations(results, output_dir):
         "WHY Score": r["weighted_scores"]["WHY"],
         "ESCALATION Score": r["weighted_scores"]["ESCALATION"],
         "Missing Elements": ", ".join(r["missing_elements"]) if r["missing_elements"] else "None",
-        "Audit Leader": r.get("Audit Leader", r.get("metadata", {}).get("Audit Leader", "Unknown")),
+        # Directly get "Audit Leader" - it's now consistently set in the result dictionary
+        "Audit Leader": r.get("Audit Leader", "Unknown"),
         "vague_terms_found": r.get("vague_terms_found", [])
     } for r in results])
 

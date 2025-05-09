@@ -30,17 +30,71 @@ from enhanced_escalation import enhance_escalation_detection
 class ControlElement:
     """Class representing a single control element with keywords and scoring logic"""
 
-    def __init__(self, name, weight, keywords=None):
-        self.name = name
-        self.weight = weight
-        self.keywords = keywords or []
-        self.score = 0
-        self.normalized_score = 0
-        self.matched_keywords = []
-        self.phrases = []  # For spaCy PhraseMatcher
-        self.context_relevance = 0.0  # Measure of how relevant the matches are in context
-        self.enhanced_results = {}  # Store results from enhanced detection
-        self.matcher = None
+    def __init__(self, config_file=None):
+        # Load config manager
+        self.config_manager = ConfigManager(config_file)
+        self.config = self.config_manager.config if self.config_manager else {}
+
+        # Initialize spaCy with model specified in config
+        self.nlp = self._initialize_spacy_model()
+
+        # Initialize elements with their weights from config
+        self.elements = self._initialize_elements()
+
+        # Set up matchers for each element
+        for element in self.elements.values():
+            element.setup_matchers(self.nlp)
+
+        # Vague terms that should be avoided - loaded from config
+        self.vague_terms = self.config.get('vague_terms', [])
+        self.vague_matcher = PhraseMatcher(self.nlp.vocab, attr="LOWER")
+        vague_phrases = [self.nlp(term) for term in self.vague_terms]
+        if vague_phrases:
+            self.vague_matcher.add("vague_patterns", vague_phrases)
+
+        # Configure enhanced detection - can be overridden via config
+        self.use_enhanced_detection = self.config.get('use_enhanced_detection', True)
+
+        # Get penalty configuration from config
+        self.vague_term_penalty = self.config.get('vague_term_penalty', 2)
+        self.max_vague_penalty = self.config.get('max_vague_penalty', 10)
+
+        # Get multi-control penalty settings from config
+        self.multi_control_penalty = self.config.get('penalties', {}).get('multi_control', {})
+        self.points_per_control = self.multi_control_penalty.get('points_per_control', 5)
+        self.max_multi_control_penalty = self.multi_control_penalty.get('max_penalty', 10)
+
+        # Get domain clusters from config
+        self.domain_clusters = self.config.get('domain_clusters', {})
+
+        # Get thresholds from config
+        self.excellent_threshold = self.config.get('category_thresholds', {}).get('excellent', 75)
+        self.good_threshold = self.config.get('category_thresholds', {}).get('good', 50)
+
+        # Get column mappings from config
+        self.column_mappings = self.config_manager.get_column_defaults()
+
+        # Standard column name mappings with defaults
+        self.default_column_mappings = {
+            "id": "Control_ID",
+            "description": "Control_Description",
+            "frequency": "Frequency",
+            "type": "Control_Type",
+            "risk": "Risk_Description",
+            "audit_leader": "Audit Leader"
+        }
+
+    def _get_column_name(self, column_key, override_value=None):
+        """Get column name from config or use override value or default"""
+        if override_value:
+            return override_value
+
+        # Try from config mappings first
+        if column_key in self.column_mappings:
+            return self.column_mappings[column_key]
+
+        # Fall back to default mapping
+        return self.default_column_mappings.get(column_key)
 
     def setup_matchers(self, nlp):
         """Set up phrase matchers for this element's keywords"""
@@ -73,9 +127,8 @@ class ControlElement:
                 self.score = self.enhanced_results.get("confidence", 0) if self.enhanced_results else 0
                 self.normalized_score = self.score * 100
                 self.matched_keywords = [
-                    self.enhanced_results.get("primary", {}).get("text",
-                                                                 "")] if self.enhanced_results and self.enhanced_results.get(
-                    "primary") else []
+                    self.enhanced_results.get("primary", {}).get("text", "")
+                ] if self.enhanced_results and self.enhanced_results.get("primary") else []
 
             elif self.name == "WHAT":
                 self.enhanced_results = enhance_what_detection(text, nlp, self.keywords)
@@ -390,6 +443,9 @@ class EnhancedControlAnalyzer:
         self.excellent_threshold = self.config.get('category_thresholds', {}).get('excellent', 75)
         self.good_threshold = self.config.get('category_thresholds', {}).get('good', 50)
 
+        # Get audit leader column from config
+        self.audit_leader_column = self.config_manager.get_audit_leader_column()
+
     def _initialize_spacy_model(self):
         """Initialize spaCy model based on configuration"""
         spacy_config = self.config.get('spacy', {})
@@ -418,10 +474,10 @@ class EnhancedControlAnalyzer:
 
         # Default element configuration if not specified in YAML
         default_elements = {
-            "WHO": {"weight": 30, "keywords": []},
-            "WHEN": {"weight": 20, "keywords": []},
-            "WHAT": {"weight": 30, "keywords": []},
-            "WHY": {"weight": 10, "keywords": []},
+            "WHO": {"weight": 32, "keywords": []},
+            "WHEN": {"weight": 22, "keywords": []},
+            "WHAT": {"weight": 32, "keywords": []},
+            "WHY": {"weight": 11, "keywords": []},
             "ESCALATION": {"weight": 3, "keywords": []}
         }
 
@@ -699,22 +755,32 @@ class EnhancedControlAnalyzer:
         else:
             return False, f"Control type in description does not indicate {control_type}"
 
-    def analyze_file(self, file_path, id_column, desc_column, freq_column=None, type_column=None, risk_column=None,
-                     output_file=None):
+    def analyze_file(self, file_path, id_column=None, desc_column=None, freq_column=None,
+                     type_column=None, risk_column=None, audit_leader_column=None, output_file=None):
         """
         Analyze controls from an Excel file and generate a detailed report
-        Enhanced with specialized detection modules and risk alignment
 
         Args:
             file_path: Path to Excel file containing controls
-            id_column: Column containing control IDs
-            desc_column: Column containing control descriptions
-            freq_column: Optional column containing frequency values
-            type_column: Optional column containing control type values
-            risk_column: Optional column containing risk descriptions
+            id_column: Column containing control IDs (overrides config)
+            desc_column: Column containing control descriptions (overrides config)
+            freq_column: Column containing frequency values (overrides config)
+            type_column: Column containing control type values (overrides config)
+            risk_column: Column containing risk descriptions (overrides config)
+            audit_leader_column: Column containing audit leader info (overrides config)
             output_file: Optional path for output Excel report
         """
+        # Get column names from config (with overrides from parameters)
+        id_column = self._get_column_name("id", id_column)
+        desc_column = self._get_column_name("description", desc_column)
+        freq_column = self._get_column_name("frequency", freq_column)
+        type_column = self._get_column_name("type", type_column)
+        risk_column = self._get_column_name("risk", risk_column)
+        audit_leader_column = self._get_column_name("audit_leader", audit_leader_column)
+
         print(f"Reading file: {file_path}")
+        print(f"Using columns: ID={id_column}, Description={desc_column}, Frequency={freq_column}, " +
+              f"Type={type_column}, Risk={risk_column}, Audit Leader={audit_leader_column}")
 
         try:
             # Read the Excel file
@@ -743,6 +809,21 @@ class EnhancedControlAnalyzer:
                     f"Warning: Risk description column '{risk_column}' not found in file. Risk alignment will be skipped.")
                 risk_column = None
 
+            if audit_leader_column and audit_leader_column not in df.columns:
+                print(f"Warning: Audit Leader column '{audit_leader_column}' not found in file.")
+
+                # Try to automatically detect Audit Leader column
+                potential_columns = ["Audit Leader", "audit leader", "Audit_Leader", "audit_leader",
+                                     "AuditLeader", "auditLeader", "Auditor", "Lead Auditor"]
+
+                for col in potential_columns:
+                    if col in df.columns:
+                        audit_leader_column = col
+                        print(f"Automatically detected Audit Leader column: '{col}'")
+                        break
+                else:
+                    audit_leader_column = None
+
             # Analyze each control
             results = []
             total_controls = len(df)
@@ -765,6 +846,13 @@ class EnhancedControlAnalyzer:
 
                 # Analyze control
                 result = self.analyze_control(control_id, description, frequency, control_type, risk_description)
+
+                # Add Audit Leader if available
+                if audit_leader_column and audit_leader_column in row:
+                    audit_leader = row[audit_leader_column]
+                    if not pd.isna(audit_leader):
+                        result["Audit Leader"] = audit_leader
+
                 results.append(result)
 
             # Create output file if specified
@@ -1213,24 +1301,36 @@ class EnhancedControlAnalyzer:
         wb.save(output_file)
 
 
-def analyze_file_with_batches(self, file_path, id_column, desc_column, freq_column=None,
-                              type_column=None, risk_column=None, output_file=None,
-                              batch_size=500, temp_dir=None):
+def analyze_file_with_batches(self, file_path, id_column=None, desc_column=None, freq_column=None,
+                              type_column=None, risk_column=None, audit_leader_column=None,
+                              output_file=None, batch_size=500, temp_dir=None):
     """
     Analyze controls from an Excel file in batches and generate a detailed report
 
     Args:
         file_path: Path to Excel file containing controls
-        id_column: Column containing control IDs
-        desc_column: Column containing control descriptions
-        freq_column: Optional column containing frequency values
-        type_column: Optional column containing control type values
-        risk_column: Optional column containing risk descriptions
+        id_column: Column containing control IDs (overrides config)
+        desc_column: Column containing control descriptions (overrides config)
+        freq_column: Column containing frequency values (overrides config)
+        type_column: Column containing control type values (overrides config)
+        risk_column: Column containing risk descriptions (overrides config)
+        audit_leader_column: Column containing audit leader info (overrides config)
         output_file: Optional path for output Excel report
         batch_size: Number of controls to process in each batch
         temp_dir: Directory to store temporary batch results
     """
+    # Get column names from config (with overrides from parameters)
+    id_column = self._get_column_name("id", id_column)
+    desc_column = self._get_column_name("description", desc_column)
+    freq_column = self._get_column_name("frequency", freq_column)
+    type_column = self._get_column_name("type", type_column)
+    risk_column = self._get_column_name("risk", risk_column)
+    audit_leader_column = self._get_column_name("audit_leader", audit_leader_column)
+
     print(f"Reading file: {file_path}")
+    print(f"Using columns: ID={id_column}, Description={desc_column}, Frequency={freq_column}, " +
+          f"Type={type_column}, Risk={risk_column}, Audit Leader={audit_leader_column}")
+    print(f"Using batch size: {batch_size}")
 
     # Create temp directory if specified
     if temp_dir:
@@ -1264,6 +1364,21 @@ def analyze_file_with_batches(self, file_path, id_column, desc_column, freq_colu
             print(
                 f"Warning: Risk description column '{risk_column}' not found in file. Risk alignment will be skipped.")
             risk_column = None
+
+        if audit_leader_column and audit_leader_column not in df.columns:
+            print(f"Warning: Audit Leader column '{audit_leader_column}' not found in file.")
+
+            # Try to automatically detect Audit Leader column
+            potential_columns = ["Audit Leader", "audit leader", "Audit_Leader", "audit_leader",
+                                 "AuditLeader", "auditLeader", "Auditor", "Lead Auditor"]
+
+            for col in potential_columns:
+                if col in df.columns:
+                    audit_leader_column = col
+                    print(f"Automatically detected Audit Leader column: '{col}'")
+                    break
+            else:
+                audit_leader_column = None
 
         # Initialize results and tracking variables
         all_results = []
@@ -1303,6 +1418,13 @@ def analyze_file_with_batches(self, file_path, id_column, desc_column, freq_colu
                 try:
                     # Analyze control
                     result = self.analyze_control(control_id, description, frequency, control_type, risk_description)
+
+                    # Add Audit Leader if available
+                    if audit_leader_column and audit_leader_column in row:
+                        audit_leader = row[audit_leader_column]
+                        if not pd.isna(audit_leader):
+                            result["Audit Leader"] = audit_leader
+
                     batch_results.append(result)
                 except Exception as e:
                     # Log error but continue processing
@@ -1324,8 +1446,9 @@ def analyze_file_with_batches(self, file_path, id_column, desc_column, freq_colu
             try:
                 with open(batch_filename, 'wb') as f:
                     pickle.dump(batch_results, f, protocol=4)  # Use protocol 4 for compatibility
+                print(f"  Batch results saved to {batch_filename}")
             except Exception as e:
-                print(f"Warning: Could not save batch file ({e}). Continuing analysis...")
+                print(f"  Warning: Could not save batch file: {e}")
 
             # Add to overall results
             all_results.extend(batch_results)
@@ -1353,8 +1476,9 @@ def analyze_file_with_batches(self, file_path, id_column, desc_column, freq_colu
             try:
                 with open(checkpoint_file, 'wb') as f:
                     pickle.dump(all_results, f, protocol=4)
+                print(f"  Checkpoint saved to {checkpoint_file}")
             except Exception as e:
-                print(f"Warning: Could not save checkpoint ({e}). Continuing analysis...")
+                print(f"  Warning: Could not save checkpoint: {e}")
 
             # Clear memory
             gc.collect()
@@ -1403,7 +1527,7 @@ def analyze_file_with_batches(self, file_path, id_column, desc_column, freq_colu
         raise
     finally:
         # Save any results we have even if an error occurred
-        if 'all_results' in locals() and len(all_results) > 0:
+        if 'all_results' in locals() and all_results:
             emergency_file = os.path.join(temp_dir, f"emergency_results_{datetime.now().strftime('%Y%m%d_%H%M%S')}.pkl")
             try:
                 with open(emergency_file, 'wb') as f:

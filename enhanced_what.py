@@ -134,11 +134,13 @@ def enhance_what_detection(text: str, nlp, existing_keywords: Optional[List[str]
                         phrase_tokens.extend(subtree)
                     else:
                         # For timing prepositions, check if they're essential to the meaning
-                        next_token = token.doc[token.i + 1] if token.i + 1 < len(token.doc) else None
-                        if next_token and not any(next_token.text.lower().startswith(w) for w in
-                                                  ["a", "an", "the", "each", "every"]):
-                            subtree = list(token.subtree)
-                            phrase_tokens.extend(subtree)
+                        # Fix: Check if next token exists before accessing it
+                        if token.i + 1 < len(token.doc):
+                            next_token = token.doc[token.i + 1]
+                            if not any(next_token.text.lower().startswith(w) for w in
+                                       ["a", "an", "the", "each", "every"]):
+                                subtree = list(token.subtree)
+                                phrase_tokens.extend(subtree)
 
         # Sort tokens by their position in the original text
         phrase_tokens.sort(key=lambda x: x.i)

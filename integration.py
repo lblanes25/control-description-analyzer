@@ -14,6 +14,7 @@ from datetime import datetime
 from typing import cast, BinaryIO, Any, List, Dict, Optional
 
 from control_analyzer import EnhancedControlAnalyzer
+from control_analyzer import ConfigManager
 from visualization import generate_core_visualizations
 from spacy.matcher import PhraseMatcher  # Required for apply_config_to_analyzer
 
@@ -46,6 +47,7 @@ def update_argument_parser(parser):
     parser.add_argument('--resume-from', help='Resume from a checkpoint file')
     parser.add_argument('--skip-visualizations', action='store_true',
                         help='Skip generating visualizations')
+    parser.add_argument('--audit-leader-column', help='Column containing Audit Leader information (overrides config)')
     return parser
 
 
@@ -252,6 +254,10 @@ def process_with_batch_option(analyzer, args):
     try:
         if args.use_batches:
             print(f"Using batch processing with batch size of {args.batch_size}")
+            print(f"Using columns: ID={args.id_column}, Description={args.desc_column}, "
+                  f"Frequency={args.freq_column}, Type={args.type_column}, "
+                  f"Risk={args.risk_column}, Audit Leader={args.audit_leader_column}")
+
             results = analyzer.analyze_file_with_batches(
                 args.file,
                 args.id_column,
@@ -259,6 +265,7 @@ def process_with_batch_option(analyzer, args):
                 args.freq_column,
                 args.type_column,
                 args.risk_column,
+                args.audit_leader_column,  # Add audit leader column
                 args.output_file,
                 args.batch_size,
                 args.temp_dir
@@ -272,6 +279,7 @@ def process_with_batch_option(analyzer, args):
                 args.freq_column,
                 args.type_column,
                 args.risk_column,
+                args.audit_leader_column,  # Add audit leader column
                 args.output_file
             )
 
@@ -535,6 +543,7 @@ def main():
     parser.add_argument('--freq-column', help='Column containing frequency values for validation')
     parser.add_argument('--type-column', help='Column containing control type values for validation')
     parser.add_argument('--risk-column', help='Column containing risk descriptions for alignment')
+    parser.add_argument('--audit-leader-column', help='Column containing Audit Leader information')
     parser.add_argument('--output-file', help='Output Excel file path')
     parser.add_argument('--config', help='Path to configuration file (YAML)')
     parser.add_argument('--open-dashboard', action='store_true',
@@ -546,6 +555,21 @@ def main():
     parser = update_argument_parser(parser)
 
     args = parser.parse_args()
+
+    config_manager = ConfigManager(args.config)
+    config = config_manager.config
+    column_map = config.get('columns', {})
+
+    # Use YAML config column mapping as defaults if not provided by CLI
+    args.id_column = column_map.get("id", "Control ID")
+    args.desc_column = column_map.get("description", "Control Description")
+    args.freq_column = column_map.get("frequency")
+    args.type_column = column_map.get("type", "Control Classification")
+    args.risk_column = column_map.get("risk", "Risk Description")
+
+    # Add audit_leader_column from config if not provided in CLI
+    if not args.audit_leader_column:
+        args.audit_leader_column = column_map.get("audit_leader", "Audit Leader")
 
     if not args.file and not args.resume_from:
         parser.print_help()
@@ -579,6 +603,9 @@ def main():
 
         # Standard processing workflow
         print(f"Analyzing controls from {args.file}...")
+        print(f"Using columns: ID={args.id_column}, Description={args.desc_column}, "
+              f"Frequency={args.freq_column}, Type={args.type_column}, "
+              f"Risk={args.risk_column}, Audit Leader={args.audit_leader_column}")
 
         results = analyzer.analyze_file(
             args.file,
@@ -587,6 +614,7 @@ def main():
             args.freq_column,
             args.type_column,
             args.risk_column,
+            args.audit_leader_column,  # Pass audit leader column to analyze_file
             args.output_file
         )
 
@@ -616,7 +644,3 @@ def main():
         print(f"Error: {str(e)}")
         traceback.print_exc()
         return 1
-
-
-if __name__ == "__main__":
-    sys.exit(main())

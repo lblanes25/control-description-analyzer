@@ -24,7 +24,7 @@ use_enhanced_detection: true
 # Element Definitions
 elements:
   WHO:
-    weight: 30
+    weight: 32
     keywords:
       # Roles and positions
       - manager
@@ -463,11 +463,12 @@ domain_clusters:
 
 # Column Mapping
 columns:
-  id: Control_ID
-  description: Control_Description
+  id: Control ID
+  description: Control Description
   frequency: Frequency
-  type: Control_Type
+  type: Control Type
   risk: Risk_Description
+  audit_leader: Audit Leader From AE
 
   portfolio_metadata:
     audits:
@@ -479,7 +480,7 @@ columns:
         leader: "John Doe"
 
   WHEN:
-    weight: 20
+    weight: 22
     keywords:
       # Frequencies
       - daily
@@ -627,7 +628,7 @@ columns:
     append: false
 
   WHAT:
-    weight: 30
+    weight: 32
     keywords:
       # Action verbs
       - review
@@ -685,7 +686,7 @@ columns:
     append: false
 
   WHY:
-    weight: 10
+    weight: 11
     keywords:
       # Purpose indicators
       - to ensure
