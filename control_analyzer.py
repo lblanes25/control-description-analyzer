@@ -882,43 +882,50 @@ class EnhancedControlAnalyzer:
 
     def _generate_enhanced_report(self, results, output_file, include_frequency=False,
                                   include_control_type=False, include_risk_alignment=False):
-        """
-        Generate a detailed Excel report with the enhanced analysis results
-        """
+        """Generate a detailed Excel report with the enhanced analysis results"""
         # Create results DataFrame with basic elements
         basic_results = []
         for r in results:
+            # Safely access nested dictionaries with defaults
+            normalized_scores = r.get("normalized_scores", {})
+            weighted_scores = r.get("weighted_scores", {})
+            missing_elements = r.get("missing_elements", [])
+            vague_terms = r.get("vague_terms_found", [])
+            multi_control = r.get("multi_control_indicators", {})
+            validation = r.get("validation_results", {})
+
             result_dict = {
-                "Control ID": r["control_id"],
-                "Description": r["description"],
-                "Total Score": r["total_score"],
-                "Category": r["category"],
-                "Missing Elements": ", ".join(r["missing_elements"]) if r["missing_elements"] else "None",
-                "Vague Terms": ", ".join(r["vague_terms_found"]) if r["vague_terms_found"] else "None",
-                "WHO Score": r["normalized_scores"]["WHO"],
-                "WHEN Score": r["normalized_scores"]["WHEN"],
-                "WHAT Score": r["normalized_scores"]["WHAT"],
-                "WHY Score": r["normalized_scores"]["WHY"],
-                "ESCALATION Score": r["normalized_scores"]["ESCALATION"],
+                "Control ID": r.get("control_id", ""),
+                "Description": r.get("description", ""),
+                "Total Score": r.get("total_score", 0),
+                "Category": r.get("category", "Unknown"),
+                "Missing Elements": ", ".join(missing_elements) if missing_elements else "None",
+                "Vague Terms": ", ".join(vague_terms) if vague_terms else "None",
+                "WHO Score": normalized_scores.get("WHO", 0),
+                "WHEN Score": normalized_scores.get("WHEN", 0),
+                "WHAT Score": normalized_scores.get("WHAT", 0),
+                "WHY Score": normalized_scores.get("WHY", 0),
+                "ESCALATION Score": normalized_scores.get("ESCALATION", 0),
             }
 
             # Add multi-control indicators
-            if r["multi_control_indicators"]["detected"]:
-                result_dict["Multiple Controls"] = f"Yes ({r['multi_control_indicators']['count']})"
+            if multi_control.get("detected", False):
+                result_dict["Multiple Controls"] = f"Yes ({multi_control.get('count', 0)})"
             else:
                 result_dict["Multiple Controls"] = "No"
 
             # Add validation results if applicable
             if include_frequency:
-                result_dict["Frequency Valid"] = "Yes" if r["validation_results"]["frequency_valid"] else "No"
-                result_dict["Frequency Message"] = r["validation_results"]["frequency_message"]
+                result_dict["Frequency Valid"] = "Yes" if validation.get("frequency_valid", False) else "No"
+                result_dict["Frequency Message"] = validation.get("frequency_message", "")
 
             if include_control_type:
-                result_dict["Control Type Valid"] = "Yes" if r["validation_results"]["control_type_valid"] else "No"
-                result_dict["Control Type Message"] = r["validation_results"]["control_type_message"]
+                result_dict["Control Type Valid"] = "Yes" if validation.get("control_type_valid", False) else "No"
+                result_dict["Control Type Message"] = validation.get("control_type_message", "")
 
             # Add risk alignment if available
-            if include_risk_alignment and "WHY" in r["enhancement_feedback"] and r["enhancement_feedback"]["WHY"]:
+            if include_risk_alignment and "WHY" in r.get("enhancement_feedback", {}) and r["enhancement_feedback"][
+                "WHY"]:
                 result_dict["Risk Alignment Feedback"] = r["enhancement_feedback"]["WHY"]
 
             basic_results.append(result_dict)
@@ -928,14 +935,17 @@ class EnhancedControlAnalyzer:
         # Create keyword match DataFrame
         keyword_results = []
         for r in results:
+            matched_keywords = r.get("matched_keywords", {})
             result_dict = {
-                "Control ID": r["control_id"],
-                "WHO Keywords": ", ".join(r["matched_keywords"]["WHO"]) if r["matched_keywords"]["WHO"] else "None",
-                "WHEN Keywords": ", ".join(r["matched_keywords"]["WHEN"]) if r["matched_keywords"]["WHEN"] else "None",
-                "WHAT Keywords": ", ".join(r["matched_keywords"]["WHAT"]) if r["matched_keywords"]["WHAT"] else "None",
-                "WHY Keywords": ", ".join(r["matched_keywords"]["WHY"]) if r["matched_keywords"]["WHY"] else "None",
-                "ESCALATION Keywords": ", ".join(r["matched_keywords"]["ESCALATION"]) if r["matched_keywords"][
-                    "ESCALATION"] else "None"
+                "Control ID": r.get("control_id", ""),
+                "WHO Keywords": ", ".join(matched_keywords.get("WHO", [])) if matched_keywords.get("WHO") else "None",
+                "WHEN Keywords": ", ".join(matched_keywords.get("WHEN", [])) if matched_keywords.get(
+                    "WHEN") else "None",
+                "WHAT Keywords": ", ".join(matched_keywords.get("WHAT", [])) if matched_keywords.get(
+                    "WHAT") else "None",
+                "WHY Keywords": ", ".join(matched_keywords.get("WHY", [])) if matched_keywords.get("WHY") else "None",
+                "ESCALATION Keywords": ", ".join(matched_keywords.get("ESCALATION", [])) if matched_keywords.get(
+                    "ESCALATION") else "None"
             }
             keyword_results.append(result_dict)
 
@@ -944,11 +954,12 @@ class EnhancedControlAnalyzer:
         # Create enhancement feedback DataFrame
         feedback_results = []
         for r in results:
-            result_dict = {"Control ID": r["control_id"]}
+            enhancement_feedback = r.get("enhancement_feedback", {})
+            result_dict = {"Control ID": r.get("control_id", "")}
 
             # Format each element's feedback
             for element in ["WHO", "WHEN", "WHAT", "WHY", "ESCALATION"]:
-                feedback = r["enhancement_feedback"].get(element)
+                feedback = enhancement_feedback.get(element)
 
                 if isinstance(feedback, list) and feedback:
                     result_dict[f"{element} Feedback"] = "; ".join(feedback)
