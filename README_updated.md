@@ -1,199 +1,172 @@
-# Enhanced Control Description Analyzer
+# Control Description Analyzer
 
-A sophisticated tool for analyzing control descriptions using advanced Natural Language Processing (NLP) techniques. This tool helps identify completeness, clarity, and effectiveness of internal control descriptions by analyzing key control elements and providing detailed feedback.
+An advanced tool for analyzing and improving control descriptions using NLP techniques. The system evaluates control descriptions across five key elements (WHO, WHAT, WHEN, WHY, ESCALATION) to ensure clarity, completeness, and effectiveness.
 
 ## Features
 
-- **Advanced NLP Analysis**: Uses state-of-the-art natural language processing to understand control descriptions beyond simple keyword matching
-- **Key Element Detection**: Analyzes all critical components of good control descriptions:
-  - **WHO**: Identifies who performs the control with role-specific detection
-  - **WHAT**: Analyzes the control actions and verb strength
-  - **WHEN**: Detects timing patterns and frequency information
-  - **WHY**: Evaluates purpose statements and risk alignment
-  - **ESCALATION**: Identifies exception handling and escalation procedures
-- **Smart Detection Capabilities**:
-  - Distinguishes between human and system performers
-  - Identifies passive voice and suggests improvements
-  - Detects vague terms and provides specific alternatives
-  - Recognizes multi-control descriptions that should be separated
-  - Validates consistency with declared frequency and control type
-- **Comprehensive Visualizations**: Generates interactive charts showing analysis results and patterns
-- **Detailed Reporting**: Provides actionable feedback with specific improvement suggestions
-- **Customizable**: Supports extensive configuration via YAML files
+- **Element Analysis**: Detects and scores the presence of five key control elements:
+  - **WHO**: Identifies performers (individuals, teams, or systems)
+  - **WHAT**: Recognizes control actions and their clarity
+  - **WHEN**: Evaluates timing and frequency information
+  - **WHY**: Identifies purpose and alignment with risks
+  - **ESCALATION**: Detects exception handling procedures
+
+- **Enhanced NLP Detection**: Uses dependency parsing, contextual analysis, and specialized detection modules
+- **Batch Processing**: Handles large datasets efficiently with memory management
+- **Excel Reports**: Generates detailed Excel reports with color-coded results
+- **Interactive Visualizations**: Creates HTML visualizations for analytics
+- **GUI Interface**: Easy-to-use graphic interface with drag-and-drop functionality
 
 ## Installation
 
+### Requirements
+
+- Python 3.8 or higher
+- Required packages (install using `pip install -r requirements.txt`)
+- spaCy language model (either `en_core_web_md` [recommended] or `en_core_web_sm`)
+
+### Setup
+
 1. Clone this repository:
-   ```
-   git clone https://github.com/your-username/enhanced-control-analyzer.git
-   cd enhanced-control-analyzer
-   ```
+```bash
+git clone TBD as I don't know how to use github at work.
+cd control-analyzer
+```
 
-2. Install required dependencies:
-   ```
-   pip install -r requirements.txt
-   ```
+2. Install dependencies:
+```bash
+pip install -r requirements.txt
+```
 
-3. Install the required spaCy language model:
-   ```
-   python -m spacy download en_core_web_md
-   ```
+3. Download spaCy language model:
+```bash
+python -m spacy download en_core_web_md
+```
 
 ## Usage
 
-### Basic Usage
+### Command Line Interface
+
+For batch analysis of Excel files:
 
 ```bash
-python integration.py your_controls.xlsx
+python control_analyzer.py your_controls.xlsx --id-column "Control_ID" --desc-column "Control_Description" --output-file "results.xlsx"
 ```
 
-This will analyze the Excel file containing control descriptions and generate both an analysis report and visualizations.
+Additional options:
+```
+--freq-column      Column containing frequency values for validation
+--type-column      Column containing control type values for validation
+--risk-column      Column containing risk descriptions for alignment
+--audit-leader-column  Column containing audit leader information
+--config           Path to YAML configuration file
+--use-batches      Enable batch processing for large files
+--batch-size       Number of controls per batch (default: 500)
+--skip-visualizations  Skip generating visualizations
+```
 
-### Advanced Options
+### Graphical User Interface
+
+To use the GUI for easier interaction:
 
 ```bash
-python integration.py your_controls.xlsx \
-  --id-column Control_ID \
-  --desc-column Control_Description \
-  --freq-column Frequency \
-  --type-column Control_Type \
-  --risk-column Risk_Description \
-  --output-file analysis_results.xlsx \
-  --config your_config.yaml
+python control_analyzer_gui.py
 ```
 
-### Command-line Arguments
+The GUI allows you:
+- Analyze single controls or Excel files
+- View results in real-time
+- Export analysis to Excel
+- Generate and view interactive visualizations
 
-- `file`: Excel file containing control descriptions (required)
-- `--id-column`: Column containing control IDs (default: 'Control_ID')
-- `--desc-column`: Column containing control descriptions (default: 'Control_Description')
-- `--freq-column`: Column containing frequency values for validation
-- `--type-column`: Column containing control type values for validation
-- `--risk-column`: Column containing risk descriptions for alignment
-- `--output-file`: Custom output file path
-- `--config`: Path to YAML configuration file
-- `--disable-enhanced`: Disable enhanced detection modules (use base analysis only)
-- `--skip-visualizations`: Skip generating visualizations
+### Creating Standalone Executable
 
-## Architecture
+To create an executable version of the GUI:
 
-The analyzer is built with a modular design for maintainability and extensibility:
+```bash
+python package.py
+```
 
-- `control_analyzer.py`: Core analyzer with comprehensive scoring logic
-- `config_manager.py`: Handles YAML configuration loading and management
-- `integration.py`: Command-line entry point with file handling
-- `visualization.py`: Chart generation for visual analysis
-- Enhanced modules:
-  - `enhanced_who.py`: Specialized WHO detection with role classification
-  - `enhanced_what.py`: Action analysis with verb strength assessment
-  - `enhanced_when.py`: Timing detection with vague term identification
-  - `enhanced_why.py`: Purpose analysis and risk alignment evaluation
-  - `enhanced_escalation.py`: Exception handling and escalation detection
-
-## Output
-
-The analysis generates multiple artifacts:
-
-### Excel Report
-
-The Excel report includes multiple sheets:
-
-1. **Analysis Results**: Main results with scores for each element and overall rating
-2. **Keyword Matches**: Detected keywords for each element 
-3. **Enhancement Feedback**: Specific suggestions for improving each control
-4. **Multi-Control Candidates**: Potential standalone controls that should be separated
-5. **Executive Summary**: Overall statistics and findings
-6. **Methodology**: Explanation of the analysis approach
-7. **Example Controls**: Examples of good and poor control descriptions
-
-### Visualizations
-
-Interactive visualizations are generated in a separate folder, including:
-
-- Score distribution by category
-- Element radar charts showing strengths and weaknesses
-- Missing elements analysis
-- Vague term frequency charts
-- Audit leader performance comparisons (if metadata provided)
+Options:
+```
+--onefile          Create a single executable file
+--debug            Include debug information
+--icon             Path to icon file (.ico)
+--name             Name of the executable (default: ControlAnalyzerGUI)
+--config           Path to config file (default: control_analyzer_config.yaml)
+```
 
 ## Configuration
 
-You can customize the analyzer behavior using a YAML configuration file. Here's an example structure:
+The application can be customized with a YAML configuration file. You can specify:
 
+- Element weights
+- Keywords for each element
+- Vague terms to detect
+- Column mappings for Excel files
+- Control type keywords
+- Frequency terms
+
+Example configuration section:
 ```yaml
-# Element weights and keywords
+# Element Definitions
 elements:
   WHO:
-    weight: 30
+    weight: 32
     keywords:
-      - controller
+      - manager
       - supervisor
-    append: true
-  WHEN:
-    weight: 20
+      - team
+      # ... more keywords
+  WHAT:
+    weight: 32
     keywords:
-      - daily basis
-      - every two weeks
-    append: true
-  
-# Vague terms to detect
-vague_terms:
-  - unclear
-  - not defined
-  - as appropriate
-  - as needed
-append_vague_terms: true
-
-# Column mapping
-columns:
-  id: Control_ID
-  description: Control_Description
-  frequency: Frequency
-  type: Control_Type
-  risk: Risk_Description
-
-# Feature toggles
-use_enhanced_detection: true
+      - review
+      - approve
+      - verify
+      # ... more keywords
+  # ... other elements
 ```
 
-## Understanding Control Elements
+## Visualization
 
-The analyzer evaluates each control description based on five key elements:
+The tool generates several interactive visualizations:
 
-1. **WHO**: Identifies who performs the control
-   - Good Example: "The Finance Manager reviews..."
-   - Poor Example: "A review is performed..."
+- Score distribution by category
+- Element radar chart showing strengths/weaknesses
+- Missing elements frequency
+- Vague terms frequency
+- Audit leader performance breakdown
+- Interactive dashboard with filters
 
-2. **WHAT**: Describes the actions being performed
-   - Good Example: "...reconciles the accounts and verifies all differences are resolved..."
-   - Poor Example: "...checks the accounts..."
+Visualizations are saved as HTML files and can be viewed in any browser.
 
-3. **WHEN**: Specifies when the control is performed
-   - Good Example: "...on a monthly basis by the 5th business day..."
-   - Poor Example: "...periodically..."
+## Scoring System
 
-4. **WHY**: Explains the purpose or risk being mitigated
-   - Good Example: "...to ensure completeness and accuracy of financial reporting..."
-   - Poor Example: [Missing]
+Controls are scored based on:
+- Presence and quality of each element (weighted by importance)
+- Penalties for vague terms
+- Penalties for multi-control descriptions
+- Alignment with metadata (frequency, control type)
 
-5. **ESCALATION**: Details how exceptions are handled
-   - Good Example: "...discrepancies over $1,000 are escalated to the Controller..."
-   - Poor Example: [Missing]
+Score categories:
+- **Excellent**: 75-100
+- **Good**: 50-74
+- **Needs Improvement**: 0-49
 
 ## Example Controls
 
-### Excellent Control
+### Excellent Example
+```
+The Accounting Manager reviews the monthly reconciliation between the subledger and general ledger by the 5th business day of the following month. The reviewer examines supporting documentation, verifies that all reconciling items have been properly identified and resolved, and ensures compliance with accounting policies. The review is evidenced by electronic sign-off in the financial system. Any discrepancies exceeding $10,000 are escalated to the Controller and documented in the issue tracking system.
+```
 
-"The Accounting Manager reviews the monthly reconciliation between the subledger and general ledger by the 5th business day of the following month. The reviewer examines supporting documentation, verifies that all reconciling items have been properly identified and resolved, and ensures compliance with accounting policies. The review is evidenced by electronic sign-off in the financial system. Any discrepancies exceeding $10,000 are escalated to the Controller and documented in the issue tracking system."
+### Good Example
+```
+The Accounting Supervisor reviews the monthly journal entries prior to posting to ensure accuracy and completeness. The reviewer checks supporting documentation and approves entries by signing the journal entry form. Any errors are returned to the preparer for correction.
+```
 
-### Needs Improvement Control
-
-"Management reviews financial statements periodically and addresses any issues as appropriate."
-
-## Contributing
-
-Contributions are welcome! Please feel free to submit a Pull Request.
-
-## License
-
-This project is licensed under the MIT License - see the LICENSE file for details.
+### Needs Improvement Example
+```
+Management reviews financial statements periodically and addresses any issues as appropriate.
+```
