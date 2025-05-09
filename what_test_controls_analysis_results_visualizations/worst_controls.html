@@ -1,0 +1,208 @@
+
+        <!DOCTYPE html>
+        <html>
+        <head>
+            <meta charset="UTF-8">
+            <title>Controls Missing 3+ Elements</title>
+            <style>
+                body { font-family: Arial, sans-serif; margin: 20px; }
+                h1 { color: #333; }
+                table { border-collapse: collapse; width: 100%; }
+                th, td { border: 1px solid #ddd; padding: 8px; text-align: left; }
+                th { background-color: #f2f2f2; }
+                tr:nth-child(even) { background-color: #f9f9f9; }
+                .dropdown { margin-bottom: 20px; }
+                select { padding: 5px; font-size: 16px; }
+            </style>
+        </head>
+        <body>
+            <h1>Controls Missing 3+ Elements</h1>
+            <div class="dropdown">
+                <label for="leaderFilter">Filter by Audit Leader: </label>
+                <select id="leaderFilter" onchange="filterTable()">
+                    <option value="all">All Leaders</option>
+                    <option value="Unknown">Unknown</option>
+
+                </select>
+            </div>
+            <table id="controlsTable">
+                <thead>
+                    <tr>
+                    <th>Control ID</th>
+            <th>Total Score</th>
+            <th>Category</th>
+            <th>Missing Elements Count</th>
+            <th>WHO Score</th>
+            <th>WHEN Score</th>
+            <th>WHAT Score</th>
+            <th>WHY Score</th>
+            <th>ESCALATION Score</th>
+            <th>Missing Elements</th>
+            <th>Audit Leader</th>
+            <th>vague_terms_found</th>
+
+                    </tr>
+                </thead>
+                <tbody>
+                <tr class="row" data-leader="Unknown">
+            <td>CTRL-008</td>
+            <td>4.500000000000001</td>
+            <td>Needs Improvement</td>
+            <td>5</td>
+            <td>0.0</td>
+            <td>0.0</td>
+            <td>4.500000000000001</td>
+            <td>0.0</td>
+            <td>0.0</td>
+            <td>WHO, WHEN, WHAT, WHY, ESCALATION</td>
+            <td>Unknown</td>
+            <td></td>
+        </tr>
+        <tr class="row" data-leader="Unknown">
+            <td>CTRL-004</td>
+            <td>9.158000000000001</td>
+            <td>Needs Improvement</td>
+            <td>4</td>
+            <td>0.0</td>
+            <td>0.0</td>
+            <td>13.158000000000001</td>
+            <td>0.0</td>
+            <td>0.0</td>
+            <td>WHO, WHEN, WHY, ESCALATION</td>
+            <td>Unknown</td>
+            <td>appropriate, process</td>
+        </tr>
+        <tr class="row" data-leader="Unknown">
+            <td>CTRL-013</td>
+            <td>10.8</td>
+            <td>Needs Improvement</td>
+            <td>4</td>
+            <td>0.0</td>
+            <td>0.0</td>
+            <td>4.500000000000001</td>
+            <td>6.3</td>
+            <td>0.0</td>
+            <td>WHO, WHEN, WHAT, ESCALATION</td>
+            <td>Unknown</td>
+            <td></td>
+        </tr>
+        <tr class="row" data-leader="Unknown">
+            <td>CTRL-014</td>
+            <td>11.5</td>
+            <td>Needs Improvement</td>
+            <td>4</td>
+            <td>0.0</td>
+            <td>0.0</td>
+            <td>4.500000000000001</td>
+            <td>7.0</td>
+            <td>0.0</td>
+            <td>WHO, WHEN, WHAT, ESCALATION</td>
+            <td>Unknown</td>
+            <td></td>
+        </tr>
+        <tr class="row" data-leader="Unknown">
+            <td>CTRL-002</td>
+            <td>12.4</td>
+            <td>Needs Improvement</td>
+            <td>3</td>
+            <td>0.0</td>
+            <td>0.0</td>
+            <td>4.500000000000001</td>
+            <td>6.3</td>
+            <td>3.6</td>
+            <td>WHO, WHEN, WHAT</td>
+            <td>Unknown</td>
+            <td>appropriate</td>
+        </tr>
+        <tr class="row" data-leader="Unknown">
+            <td>CTRL-003</td>
+            <td>12.573418113207548</td>
+            <td>Needs Improvement</td>
+            <td>3</td>
+            <td>0.0</td>
+            <td>0.0</td>
+            <td>17.273418113207548</td>
+            <td>7.0</td>
+            <td>0.3</td>
+            <td>WHO, WHEN, ESCALATION</td>
+            <td>Unknown</td>
+            <td>timely</td>
+        </tr>
+        <tr class="row" data-leader="Unknown">
+            <td>CTRL-010</td>
+            <td>21.84778</td>
+            <td>Needs Improvement</td>
+            <td>3</td>
+            <td>0.0</td>
+            <td>0.0</td>
+            <td>14.847779999999998</td>
+            <td>9.0</td>
+            <td>0.0</td>
+            <td>WHO, WHEN, ESCALATION</td>
+            <td>Unknown</td>
+            <td>timely</td>
+        </tr>
+        <tr class="row" data-leader="Unknown">
+            <td>CTRL-015</td>
+            <td>24.0726</td>
+            <td>Needs Improvement</td>
+            <td>3</td>
+            <td>0.0</td>
+            <td>0.0</td>
+            <td>15.0726</td>
+            <td>9.0</td>
+            <td>0.0</td>
+            <td>WHO, WHEN, ESCALATION</td>
+            <td>Unknown</td>
+            <td></td>
+        </tr>
+        <tr class="row" data-leader="Unknown">
+            <td>CTRL-006</td>
+            <td>42.55</td>
+            <td>Needs Improvement</td>
+            <td>3</td>
+            <td>22.049999999999997</td>
+            <td>0.0</td>
+            <td>22.500000000000004</td>
+            <td>0.0</td>
+            <td>0.0</td>
+            <td>WHEN, WHY, ESCALATION</td>
+            <td>Unknown</td>
+            <td>appropriate</td>
+        </tr>
+        <tr class="row" data-leader="Unknown">
+            <td>CTRL-001</td>
+            <td>47.68</td>
+            <td>Needs Improvement</td>
+            <td>3</td>
+            <td>28.5</td>
+            <td>0.0</td>
+            <td>21.18</td>
+            <td>0.0</td>
+            <td>0.0</td>
+            <td>WHEN, WHY, ESCALATION</td>
+            <td>Unknown</td>
+            <td>process</td>
+        </tr>
+
+                </tbody>
+            </table>
+
+            <script>
+                function filterTable() {
+                    const filter = document.getElementById('leaderFilter').value;
+                    const rows = document.querySelectorAll('#controlsTable tbody tr');
+
+                    rows.forEach(row => {
+                        const leader = row.getAttribute('data-leader');
+                        if (filter === 'all' || filter === leader) {
+                            row.style.display = '';
+                        } else {
+                            row.style.display = 'none';
+                        }
+                    });
+                }
+            </script>
+        </body>
+        </html>
+        

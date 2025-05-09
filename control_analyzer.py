@@ -30,71 +30,25 @@ from enhanced_escalation import enhance_escalation_detection
 class ControlElement:
     """Class representing a single control element with keywords and scoring logic"""
 
-    def __init__(self, config_file=None):
-        # Load config manager
-        self.config_manager = ConfigManager(config_file)
-        self.config = self.config_manager.config if self.config_manager else {}
+    def __init__(self, name=None, weight=0, keywords=None):
+        """
+        Initialize a control element with name, weight and keywords
 
-        # Initialize spaCy with model specified in config
-        self.nlp = self._initialize_spacy_model()
-
-        # Initialize elements with their weights from config
-        self.elements = self._initialize_elements()
-
-        # Set up matchers for each element
-        for element in self.elements.values():
-            element.setup_matchers(self.nlp)
-
-        # Vague terms that should be avoided - loaded from config
-        self.vague_terms = self.config.get('vague_terms', [])
-        self.vague_matcher = PhraseMatcher(self.nlp.vocab, attr="LOWER")
-        vague_phrases = [self.nlp(term) for term in self.vague_terms]
-        if vague_phrases:
-            self.vague_matcher.add("vague_patterns", vague_phrases)
-
-        # Configure enhanced detection - can be overridden via config
-        self.use_enhanced_detection = self.config.get('use_enhanced_detection', True)
-
-        # Get penalty configuration from config
-        self.vague_term_penalty = self.config.get('vague_term_penalty', 2)
-        self.max_vague_penalty = self.config.get('max_vague_penalty', 10)
-
-        # Get multi-control penalty settings from config
-        self.multi_control_penalty = self.config.get('penalties', {}).get('multi_control', {})
-        self.points_per_control = self.multi_control_penalty.get('points_per_control', 5)
-        self.max_multi_control_penalty = self.multi_control_penalty.get('max_penalty', 10)
-
-        # Get domain clusters from config
-        self.domain_clusters = self.config.get('domain_clusters', {})
-
-        # Get thresholds from config
-        self.excellent_threshold = self.config.get('category_thresholds', {}).get('excellent', 75)
-        self.good_threshold = self.config.get('category_thresholds', {}).get('good', 50)
-
-        # Get column mappings from config
-        self.column_mappings = self.config_manager.get_column_defaults()
-
-        # Standard column name mappings with defaults
-        self.default_column_mappings = {
-            "id": "Control_ID",
-            "description": "Control_Description",
-            "frequency": "Frequency",
-            "type": "Control_Type",
-            "risk": "Risk_Description",
-            "audit_leader": "Audit Leader"
-        }
-
-    def _get_column_name(self, column_key, override_value=None):
-        """Get column name from config or use override value or default"""
-        if override_value:
-            return override_value
-
-        # Try from config mappings first
-        if column_key in self.column_mappings:
-            return self.column_mappings[column_key]
-
-        # Fall back to default mapping
-        return self.default_column_mappings.get(column_key)
+        Args:
+            name: The name of the element (WHO, WHAT, etc.)
+            weight: The weight of this element in scoring (0-100)
+            keywords: List of keywords related to this element
+        """
+        self.name = name
+        self.weight = weight
+        self.keywords = keywords or []
+        self.score = 0
+        self.matched_keywords = []
+        self.enhanced_results = {}
+        self.normalized_score = 0
+        self.context_relevance = 0
+        self.matcher = None
+        self.phrases = []
 
     def setup_matchers(self, nlp):
         """Set up phrase matchers for this element's keywords"""
@@ -188,6 +142,7 @@ class ControlElement:
         else:
             # Use base implementation
             return self._base_analyze(text, nlp)
+
     def _base_analyze(self, text, nlp):
         """Original analysis method as fallback"""
         # Create spaCy doc
@@ -230,7 +185,6 @@ class ControlElement:
         # Return weighted score
         self.normalized_score = self.score * 100
         return self.score * self.weight
-
 
     def get_enhancement_feedback(self):
         """Get feedback from enhanced detection if available"""
@@ -407,6 +361,35 @@ class EnhancedControlAnalyzer:
         self.config_manager = ConfigManager(config_file)
         self.config = self.config_manager.config if self.config_manager else {}
 
+        # Get column mappings from config YAML file
+        self.column_mappings = {}
+        if self.config_manager:
+            # This pulls from your YAML config 'columns' section
+            yaml_columns = self.config_manager.get_column_defaults()
+            if yaml_columns:
+                print(f"Loaded column mappings from YAML: {yaml_columns}")
+                self.column_mappings = yaml_columns
+            else:
+                print("No column mappings found in YAML file, using defaults")
+
+        # Standard column name mappings with defaults only used if YAML doesn't have them
+        self.default_column_mappings = {
+            "id": "Control ID",
+            "description": "Control Description",
+            "frequency": "Control Frequency",
+            "type": "Control Type",
+            "risk": "Key Risk Description",
+            "audit_leader": "Audit Leader from AE"
+        }
+
+        # Print the actual mappings being used for debugging
+        print("Using column mappings:")
+        for key, value in self.column_mappings.items():
+            print(f"  {key}: {value}")
+        print("Default column mappings (used as fallback):")
+        for key, value in self.default_column_mappings.items():
+            print(f"  {key}: {value}")
+
         # Initialize spaCy with model specified in config
         self.nlp = self._initialize_spacy_model()
 
@@ -466,6 +449,18 @@ class EnhancedControlAnalyzer:
                 print(f"Downloading spaCy model {fallback_model}...")
                 spacy.cli.download(fallback_model)
                 return spacy.load(fallback_model)
+
+    def _get_column_name(self, column_key, override_value=None):
+        """Get column name from config or use override value or default"""
+        if override_value:
+            return override_value
+
+        # Try from config mappings first
+        if column_key in self.column_mappings:
+            return self.column_mappings[column_key]
+
+        # Fall back to default mapping
+        return self.default_column_mappings.get(column_key)
 
     def _initialize_elements(self):
         """Initialize elements with weights and keywords from configuration"""

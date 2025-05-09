@@ -1,4 +1,3 @@
-
 import yaml
 
 class ConfigManager:
@@ -10,14 +9,27 @@ class ConfigManager:
 
         if config_file:
             self.load_config(config_file)
+            print(f"Loaded configuration from {config_file}")
+            # Print column mapping section for debugging
+            if 'columns' in self.config:
+                print(f"Found 'columns' section in config: {self.config['columns']}")
+            else:
+                print("No 'columns' section found in config file")
 
     def load_config(self, path):
         """Load configuration from YAML file"""
         try:
             with open(path, "r") as f:
                 self.config = yaml.safe_load(f)
+                print(f"Successfully loaded YAML from {path}")
         except Exception as e:
             print(f"Error loading config file: {e}")
+
+    def get_column_defaults(self):
+        """Get column mapping from config"""
+        columns = self.config.get("columns", {})
+        print(f"Retrieved columns from config: {columns}")
+        return columns
 
     def get_element_config(self, name):
         """Get configuration for a specific element"""
@@ -26,10 +38,6 @@ class ConfigManager:
     def get_vague_terms(self):
         """Get list of vague terms from config"""
         return self.config.get("vague_terms", [])
-
-    def get_column_defaults(self):
-        """Get column mapping from config"""
-        return self.config.get("columns", {})
 
     def get_type_keywords(self):
         """Get control type keywords from config"""

@@ -47,7 +47,6 @@ def update_argument_parser(parser):
     parser.add_argument('--resume-from', help='Resume from a checkpoint file')
     parser.add_argument('--skip-visualizations', action='store_true',
                         help='Skip generating visualizations')
-    parser.add_argument('--audit-leader-column', help='Column containing Audit Leader information (overrides config)')
     return parser
 
 
