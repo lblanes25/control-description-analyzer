@@ -940,35 +940,35 @@ def enhance_what_detection(text: str, nlp, existing_keywords: Optional[List[str]
             suggestions.append(
                 "No clear control action detected; add a specific verb describing what the control does")
 
-            # Suggestion for vague objects - FIX THE PROBLEMATIC LINE HERE
-            # Add safety checks for the span index
-            if primary_action and "span" in primary_action and len(primary_action["span"]) > 0:
-                # Ensure the span index is within the document bounds
-                span_idx = primary_action["span"][0]
-                if 0 <= span_idx < len(doc):
-                    # Now it's safe to access the token
-                    if assess_object_specificity(doc[span_idx]) < 0.5:
-                        suggestions.append(
-                            f"Consider clarifying the object of '{primary_action['verb_lemma']}' to be more specific.")
-                else:
-                    # Add a more generic suggestion if we can't access the specific token
+        # Suggestion for vague objects - FIX THE PROBLEMATIC LINE HERE
+        # Add safety checks for the span index
+        if primary_action and "span" in primary_action and len(primary_action["span"]) > 0:
+            # Ensure the span index is within the document bounds
+            span_idx = primary_action["span"][0]
+            if 0 <= span_idx < len(doc):
+                # Now it's safe to access the token
+                if assess_object_specificity(doc[span_idx]) < 0.5:
                     suggestions.append(
                         f"Consider clarifying the object of '{primary_action['verb_lemma']}' to be more specific.")
-
-            if passive_voice_detected:
+            else:
+                # Add a more generic suggestion if we can't access the specific token
                 suggestions.append(
-                    "Consider using active voice to clearly indicate responsibility for control activities.")
+                    f"Consider clarifying the object of '{primary_action['verb_lemma']}' to be more specific.")
 
-            return {
-                "actions": actions,
-                "primary_action": primary_action,
-                "secondary_actions": secondary_actions,
-                "score": final_score,
-                "verb_strength": avg_verb_strength,
-                "is_process": is_process,
-                "voice": dominant_voice,
-                "suggestions": suggestions
-            }
+        if passive_voice_detected:
+            suggestions.append(
+                "Consider using active voice to clearly indicate responsibility for control activities.")
+
+        return {
+            "actions": actions,
+            "primary_action": primary_action,
+            "secondary_actions": secondary_actions,
+            "score": final_score,
+            "verb_strength": avg_verb_strength,
+            "is_process": is_process,
+            "voice": dominant_voice,
+            "suggestions": suggestions
+        }
 
     except IndexError as e:
         print(f"IndexError in WHAT detection: {e}")
