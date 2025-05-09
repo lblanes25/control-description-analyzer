@@ -338,6 +338,21 @@ def enhance_what_detection(text: str, nlp, existing_keywords: Optional[List[str]
                         ctx in full_phrase for ctx in ["access", "approval", "review"]):
                     continue
 
+                # Convert character span to token span for spaCy
+                char_start, char_end = match.start(), match.end()
+                token_start = token_end = None
+
+                for token in doc:
+                    if token.idx <= char_start < token.idx + len(token):
+                        token_start = token.i
+                    if token.idx < char_end <= token.idx + len(token):
+                        token_end = token.i + 1  # exclusive
+                        break
+
+                if token_start is None or token_end is None:
+                    # Skip if we can't properly identify token spans
+                    continue
+
                 fallback_actions.append({
                     "verb": verb,
                     "verb_lemma": verb,
@@ -365,7 +380,23 @@ def enhance_what_detection(text: str, nlp, existing_keywords: Optional[List[str]
         ]
 
         for pattern, replacement, confidence in special_cases:
-            if re.search(pattern, text):
+            match = re.search(pattern, text)
+            if match:
+                char_start, char_end = match.start(), match.end()
+                token_start = token_end = None
+
+                for token in doc:
+                    if token.idx <= char_start < token.idx + len(token):
+                        token_start = token.i
+                    if token.idx < char_end <= token.idx + len(token):
+                        token_end = token.i + 1  # exclusive
+                        break
+
+                # Handle cases where span was not found properly
+                if token_start is None or token_end is None:
+                    # Default to first token as a safe fallback
+                    token_start, token_end = (0, 1) if len(doc) > 0 else (None, None)
+
                 fallback_actions.append({
                     "verb": replacement.split()[0],
                     "verb_lemma": replacement.split()[0],
@@ -375,7 +406,7 @@ def enhance_what_detection(text: str, nlp, existing_keywords: Optional[List[str]
                     "strength": confidence,
                     "strength_category": "medium",
                     "confidence": confidence,
-                    "span": [0, 1],  # Dummy span
+                    "span": [token_start, token_end] if token_start is not None else None,
                     "sentence": "Extracted special case",
                     "is_core_action": True,
                     "completeness": 0.9
@@ -909,30 +940,50 @@ def enhance_what_detection(text: str, nlp, existing_keywords: Optional[List[str]
             suggestions.append(
                 "No clear control action detected; add a specific verb describing what the control does")
 
-        # Suggestion for vague objects
-        if primary_action and assess_object_specificity(doc[primary_action["span"][0]]) < 0.5:
-            suggestions.append(
-                f"Consider clarifying the object of '{primary_action['verb_lemma']}' to be more specific.")
+            # Suggestion for vague objects - FIX THE PROBLEMATIC LINE HERE
+            # Add safety checks for the span index
+            if primary_action and "span" in primary_action and len(primary_action["span"]) > 0:
+                # Ensure the span index is within the document bounds
+                span_idx = primary_action["span"][0]
+                if 0 <= span_idx < len(doc):
+                    # Now it's safe to access the token
+                    if assess_object_specificity(doc[span_idx]) < 0.5:
+                        suggestions.append(
+                            f"Consider clarifying the object of '{primary_action['verb_lemma']}' to be more specific.")
+                else:
+                    # Add a more generic suggestion if we can't access the specific token
+                    suggestions.append(
+                        f"Consider clarifying the object of '{primary_action['verb_lemma']}' to be more specific.")
 
-        if passive_voice_detected:
-            suggestions.append("Consider using active voice to clearly indicate responsibility for control activities.")
+            if passive_voice_detected:
+                suggestions.append(
+                    "Consider using active voice to clearly indicate responsibility for control activities.")
 
-        return {
-            "actions": actions,
-            "primary_action": primary_action,
-            "secondary_actions": secondary_actions,
-            "score": final_score,
-            "verb_strength": avg_verb_strength,
-            "is_process": is_process,
-            "voice": dominant_voice,
-            "suggestions": suggestions
-        }
+            return {
+                "actions": actions,
+                "primary_action": primary_action,
+                "secondary_actions": secondary_actions,
+                "score": final_score,
+                "verb_strength": avg_verb_strength,
+                "is_process": is_process,
+                "voice": dominant_voice,
+                "suggestions": suggestions
+            }
 
     except IndexError as e:
         print(f"IndexError in WHAT detection: {e}")
         print(f"Problematic text: '{text}'")
-        # Re-raise the error to allow deeper debugging if necessary
-        raise
+        # Return a valid result instead of re-raising the error
+        return {
+            "actions": actions if 'actions' in locals() else [],
+            "primary_action": primary_action if 'primary_action' in locals() else None,
+            "secondary_actions": secondary_actions if 'secondary_actions' in locals() else [],
+            "score": final_score if 'final_score' in locals() else 0.0,
+            "verb_strength": avg_verb_strength if 'avg_verb_strength' in locals() else 0.0,
+            "is_process": is_process if 'is_process' in locals() else False,
+            "voice": dominant_voice if 'dominant_voice' in locals() else "unknown",
+            "suggestions": ["Error analyzing control action. Please check the control description format."]
+        }
 
     except Exception as e:
         print(f"Error in WHAT detection: {str(e)}")
