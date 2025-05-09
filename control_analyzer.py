@@ -882,263 +882,490 @@ class EnhancedControlAnalyzer:
 
     def _generate_enhanced_report(self, results, output_file, include_frequency=False,
                                   include_control_type=False, include_risk_alignment=False):
-        """Generate a detailed Excel report with the enhanced analysis results"""
-        # Create results DataFrame with basic elements
-        basic_results = []
-        for r in results:
-            # Safely access nested dictionaries with defaults
-            normalized_scores = r.get("normalized_scores", {})
-            weighted_scores = r.get("weighted_scores", {})
-            missing_elements = r.get("missing_elements", [])
-            vague_terms = r.get("vague_terms_found", [])
-            multi_control = r.get("multi_control_indicators", {})
-            validation = r.get("validation_results", {})
+        """
+        Generate a detailed Excel report with the enhanced analysis results - improved version
+        that prevents Excel corruption issues and handles errors gracefully.
 
-            result_dict = {
-                "Control ID": r.get("control_id", ""),
-                "Description": r.get("description", ""),
-                "Total Score": r.get("total_score", 0),
-                "Category": r.get("category", "Unknown"),
-                "Missing Elements": ", ".join(missing_elements) if missing_elements else "None",
-                "Vague Terms": ", ".join(vague_terms) if vague_terms else "None",
-                "WHO Score": normalized_scores.get("WHO", 0),
-                "WHEN Score": normalized_scores.get("WHEN", 0),
-                "WHAT Score": normalized_scores.get("WHAT", 0),
-                "WHY Score": normalized_scores.get("WHY", 0),
-                "ESCALATION Score": normalized_scores.get("ESCALATION", 0),
-            }
+        Args:
+            results: List of control analysis results
+            output_file: Path to save the Excel report
+            include_frequency: Whether to include frequency validation
+            include_control_type: Whether to include control type validation
+            include_risk_alignment: Whether to include risk alignment analysis
+        """
+        try:
+            # ========== STEP 1: PREPARE DATA FRAMES ==========
 
-            # Add multi-control indicators
-            if multi_control.get("detected", False):
-                result_dict["Multiple Controls"] = f"Yes ({multi_control.get('count', 0)})"
-            else:
-                result_dict["Multiple Controls"] = "No"
+            # Analysis Results DataFrame
+            basic_results = []
+            for r in results:
+                # Get basic data with defaults for safety
+                result_dict = {
+                    "Control ID": self._safe_get(r, "control_id", ""),
+                    "Description": self._safe_text(self._safe_get(r, "description", ""), 2000),
+                    "Total Score": self._safe_get(r, "total_score", 0),
+                    "Category": self._safe_get(r, "category", "Unknown"),
+                    "Missing Elements": self._safe_text(", ".join(self._safe_get(r, "missing_elements", []))
+                                                        if self._safe_get(r, "missing_elements") else "None"),
+                    "Vague Terms": self._safe_text(", ".join(self._safe_get(r, "vague_terms_found", []))
+                                                   if self._safe_get(r, "vague_terms_found") else "None"),
+                    "WHO Score": self._safe_get(r, ["normalized_scores", "WHO"], 0),
+                    "WHEN Score": self._safe_get(r, ["normalized_scores", "WHEN"], 0),
+                    "WHAT Score": self._safe_get(r, ["normalized_scores", "WHAT"], 0),
+                    "WHY Score": self._safe_get(r, ["normalized_scores", "WHY"], 0),
+                    "ESCALATION Score": self._safe_get(r, ["normalized_scores", "ESCALATION"], 0),
+                }
 
-            # Add validation results if applicable
+                # Add multi-control indicators
+                multi_detected = self._safe_get(r, ["multi_control_indicators", "detected"], False)
+                multi_count = self._safe_get(r, ["multi_control_indicators", "count"], 0)
+                result_dict["Multiple Controls"] = f"Yes ({multi_count})" if multi_detected else "No"
+
+                # Add validation results if applicable
+                if include_frequency:
+                    freq_valid = self._safe_get(r, ["validation_results", "frequency_valid"], False)
+                    freq_message = self._safe_get(r, ["validation_results", "frequency_message"], "")
+                    result_dict["Frequency Valid"] = "Yes" if freq_valid else "No"
+                    result_dict["Frequency Message"] = self._safe_text(freq_message)
+
+                if include_control_type:
+                    type_valid = self._safe_get(r, ["validation_results", "control_type_valid"], False)
+                    type_message = self._safe_get(r, ["validation_results", "control_type_message"], "")
+                    result_dict["Control Type Valid"] = "Yes" if type_valid else "No"
+                    result_dict["Control Type Message"] = self._safe_text(type_message)
+
+                # Add risk alignment feedback if available
+                if include_risk_alignment:
+                    why_feedback = self._safe_get(r, ["enhancement_feedback", "WHY"], None)
+                    if why_feedback:
+                        result_dict["Risk Alignment Feedback"] = self._safe_text(why_feedback)
+
+                basic_results.append(result_dict)
+
+            df_results = pd.DataFrame(basic_results)
+
+            # Keywords DataFrame
+            keyword_results = []
+            for r in results:
+                kw_dict = {
+                    "Control ID": self._safe_get(r, "control_id", ""),
+                    "WHO Keywords": self._safe_text(
+                        self._join_keywords(self._safe_get(r, ["matched_keywords", "WHO"], []))),
+                    "WHEN Keywords": self._safe_text(
+                        self._join_keywords(self._safe_get(r, ["matched_keywords", "WHEN"], []))),
+                    "WHAT Keywords": self._safe_text(
+                        self._join_keywords(self._safe_get(r, ["matched_keywords", "WHAT"], []))),
+                    "WHY Keywords": self._safe_text(
+                        self._join_keywords(self._safe_get(r, ["matched_keywords", "WHY"], []))),
+                    "ESCALATION Keywords": self._safe_text(
+                        self._join_keywords(self._safe_get(r, ["matched_keywords", "ESCALATION"], [])))
+                }
+                keyword_results.append(kw_dict)
+
+            df_keywords = pd.DataFrame(keyword_results)
+
+            # Enhancement Feedback DataFrame - the problematic one
+            feedback_results = []
+            for r in results:
+                fb_dict = {"Control ID": self._safe_get(r, "control_id", "")}
+
+                # Process each element's feedback carefully
+                for element in ["WHO", "WHEN", "WHAT", "WHY", "ESCALATION"]:
+                    feedback = self._safe_get(r, ["enhancement_feedback", element], None)
+
+                    # Format based on type, with extra safety
+                    if isinstance(feedback, list):
+                        # Join list items with semicolons, max length 500
+                        fb_dict[f"{element} Feedback"] = self._safe_text("; ".join(str(item) for item in feedback), 500)
+                    elif isinstance(feedback, str):
+                        # Limit string length to 500
+                        fb_dict[f"{element} Feedback"] = self._safe_text(feedback, 500)
+                    else:
+                        fb_dict[f"{element} Feedback"] = "None"
+
+                feedback_results.append(fb_dict)
+
+            df_feedback = pd.DataFrame(feedback_results)
+
+            # ========== STEP 2: CALCULATE SUMMARY STATISTICS ==========
+
+            # Basic counts
+            total_controls = len(results)
+            excellent_count = sum(1 for r in results if self._safe_get(r, "category") == "Excellent")
+            good_count = sum(1 for r in results if self._safe_get(r, "category") == "Good")
+            needs_improvement_count = sum(1 for r in results if self._safe_get(r, "category") == "Needs Improvement")
+
+            # Average score
+            scores = [self._safe_get(r, "total_score", 0) for r in results]
+            avg_score = sum(scores) / max(len(scores), 1)
+
+            # Missing elements counts
+            missing_elements_counts = {element: 0 for element in self.elements}
+            for r in results:
+                for element in self._safe_get(r, "missing_elements", []):
+                    if element in missing_elements_counts:
+                        missing_elements_counts[element] += 1
+
+            # Vague terms frequency
+            vague_terms_freq = {}
+            for r in results:
+                for term in self._safe_get(r, "vague_terms_found", []):
+                    vague_terms_freq[term] = vague_terms_freq.get(term, 0) + 1
+
+            # Multi-control statistics
+            multi_control_count = sum(
+                1 for r in results if self._safe_get(r, ["multi_control_indicators", "detected"], False))
+
+            # Validation statistics
+            freq_validation_stats = None
+            control_type_validation_stats = None
+
             if include_frequency:
-                result_dict["Frequency Valid"] = "Yes" if validation.get("frequency_valid", False) else "No"
-                result_dict["Frequency Message"] = validation.get("frequency_message", "")
+                valid_freq_count = sum(
+                    1 for r in results if self._safe_get(r, ["validation_results", "frequency_valid"], False))
+                freq_validation_stats = {
+                    "Valid": valid_freq_count,
+                    "Invalid": total_controls - valid_freq_count,
+                    "Percent Valid": (valid_freq_count / total_controls * 100) if total_controls > 0 else 0
+                }
 
             if include_control_type:
-                result_dict["Control Type Valid"] = "Yes" if validation.get("control_type_valid", False) else "No"
-                result_dict["Control Type Message"] = validation.get("control_type_message", "")
+                valid_type_count = sum(
+                    1 for r in results if self._safe_get(r, ["validation_results", "control_type_valid"], False))
+                control_type_validation_stats = {
+                    "Valid": valid_type_count,
+                    "Invalid": total_controls - valid_type_count,
+                    "Percent Valid": (valid_type_count / total_controls * 100) if total_controls > 0 else 0
+                }
 
-            # Add risk alignment if available
-            if include_risk_alignment and "WHY" in r.get("enhancement_feedback", {}) and r["enhancement_feedback"][
-                "WHY"]:
-                result_dict["Risk Alignment Feedback"] = r["enhancement_feedback"]["WHY"]
+            # ========== STEP 3: CREATE WORKBOOK AND SHEETS ==========
 
-            basic_results.append(result_dict)
+            # Create workbook
+            wb = Workbook()
 
-        df_results = pd.DataFrame(basic_results)
+            # Analysis Results sheet
+            ws_results = wb.active
+            ws_results.title = "Analysis Results"
 
-        # Create keyword match DataFrame
-        keyword_results = []
-        for r in results:
-            matched_keywords = r.get("matched_keywords", {})
-            result_dict = {
-                "Control ID": r.get("control_id", ""),
-                "WHO Keywords": ", ".join(matched_keywords.get("WHO", [])) if matched_keywords.get("WHO") else "None",
-                "WHEN Keywords": ", ".join(matched_keywords.get("WHEN", [])) if matched_keywords.get(
-                    "WHEN") else "None",
-                "WHAT Keywords": ", ".join(matched_keywords.get("WHAT", [])) if matched_keywords.get(
-                    "WHAT") else "None",
-                "WHY Keywords": ", ".join(matched_keywords.get("WHY", [])) if matched_keywords.get("WHY") else "None",
-                "ESCALATION Keywords": ", ".join(matched_keywords.get("ESCALATION", [])) if matched_keywords.get(
-                    "ESCALATION") else "None"
-            }
-            keyword_results.append(result_dict)
+            for r_idx, row in enumerate(dataframe_to_rows(df_results, index=False, header=True), 1):
+                for c_idx, value in enumerate(row, 1):
+                    ws_results.cell(row=r_idx, column=c_idx, value=value)
 
-        df_keywords = pd.DataFrame(keyword_results)
+            # Keywords sheet
+            ws_keywords = wb.create_sheet(title="Keyword Matches")
 
-        # Create enhancement feedback DataFrame
-        feedback_results = []
-        for r in results:
-            enhancement_feedback = r.get("enhancement_feedback", {})
-            result_dict = {"Control ID": r.get("control_id", "")}
+            for r_idx, row in enumerate(dataframe_to_rows(df_keywords, index=False, header=True), 1):
+                for c_idx, value in enumerate(row, 1):
+                    ws_keywords.cell(row=r_idx, column=c_idx, value=value)
 
-            # Format each element's feedback
-            for element in ["WHO", "WHEN", "WHAT", "WHY", "ESCALATION"]:
-                feedback = enhancement_feedback.get(element)
+            # Feedback sheet (potentially problematic)
+            ws_feedback = wb.create_sheet(title="Enhancement Feedback")
 
-                if isinstance(feedback, list) and feedback:
-                    result_dict[f"{element} Feedback"] = "; ".join(feedback)
-                elif isinstance(feedback, str) and feedback:
-                    result_dict[f"{element} Feedback"] = feedback
+            # Use a simplified approach to write feedback data
+            # First, write the headers
+            for c_idx, header in enumerate(df_feedback.columns, 1):
+                ws_feedback.cell(row=1, column=c_idx, value=header)
+
+            # Then write each row carefully
+            for r_idx, record in enumerate(df_feedback.to_dict('records'), 2):
+                for c_idx, (column, value) in enumerate(record.items(), 1):
+                    # Extra safety for each cell
+                    if column == "Control ID":
+                        # Don't sanitize control IDs
+                        ws_feedback.cell(row=r_idx, column=c_idx, value=value)
+                    else:
+                        # Sanitize all other values
+                        safe_value = self._safe_text(value, 1000)
+                        ws_feedback.cell(row=r_idx, column=c_idx, value=safe_value)
+
+            # Multi-Control Candidates sheet (if any detected)
+            if multi_control_count > 0:
+                ws_multi = wb.create_sheet(title="Multi-Control Candidates")
+
+                # Headers
+                headers = ["Control ID", "Potential Control", "Score", "Action"]
+                for c_idx, header in enumerate(headers, 1):
+                    cell = ws_multi.cell(row=1, column=c_idx, value=header)
+                    cell.font = Font(bold=True)
+                    cell.fill = PatternFill(start_color="DDEBF7", end_color="DDEBF7", fill_type="solid")
+
+                # Data
+                r_idx = 2
+                for r in results:
+                    if self._safe_get(r, ["multi_control_indicators", "detected"], False):
+                        control_id = self._safe_get(r, "control_id", "")
+                        candidates = self._safe_get(r, ["multi_control_indicators", "candidates"], [])
+
+                        for i, candidate in enumerate(candidates):
+                            ws_multi.cell(row=r_idx, column=1, value=f"{control_id}-{i + 1}")
+                            ws_multi.cell(row=r_idx, column=2,
+                                          value=self._safe_text(self._safe_get(candidate, "text", ""), 1000))
+                            ws_multi.cell(row=r_idx, column=3, value=f"{self._safe_get(candidate, 'score', 0):.2f}")
+                            ws_multi.cell(row=r_idx, column=4, value=self._safe_get(candidate, "action", "Unknown"))
+                            r_idx += 1
+
+                # Set column widths
+                ws_multi.column_dimensions['A'].width = 15
+                ws_multi.column_dimensions['B'].width = 60
+                ws_multi.column_dimensions['C'].width = 10
+                ws_multi.column_dimensions['D'].width = 30
+
+            # Executive Summary sheet
+            ws_summary = wb.create_sheet(title="Executive Summary")
+
+            # Summary data
+            summary_data = [
+                ["Control Description Analysis - Executive Summary", ""],
+                ["", ""],
+                ["Total Controls Analyzed", total_controls],
+                ["Average Score", f"{avg_score:.1f}"],
+                ["", ""],
+                ["Category Breakdown", ""],
+                [f"Excellent ({self.excellent_threshold}-100)", excellent_count],
+                [f"Good ({self.good_threshold}-{self.excellent_threshold - 1})", good_count],
+                [f"Needs Improvement (0-{self.good_threshold - 1})", needs_improvement_count],
+                ["", ""],
+                ["Multi-Control Descriptions", multi_control_count],
+                ["", ""],
+                ["Missing Elements", ""],
+            ]
+
+            # Add missing elements stats
+            for element, count in missing_elements_counts.items():
+                percentage = (count / total_controls) * 100 if total_controls > 0 else 0
+                summary_data.append([f"Missing {element}", f"{count} ({percentage:.1f}%)"])
+
+            summary_data.append(["", ""])
+            summary_data.append(["Top Vague Terms", ""])
+
+            # Add top vague terms
+            sorted_vague_terms = sorted(vague_terms_freq.items(), key=lambda x: x[1], reverse=True)
+            for term, count in sorted_vague_terms[:10]:  # Top 10 vague terms
+                percentage = (count / total_controls) * 100 if total_controls > 0 else 0
+                summary_data.append([term, f"{count} ({percentage:.1f}%)"])
+
+            # Add validation stats
+            if freq_validation_stats:
+                summary_data.append(["", ""])
+                summary_data.append(["Frequency Validation", ""])
+                summary_data.append(["Valid Frequency",
+                                     f"{freq_validation_stats['Valid']} ({freq_validation_stats['Percent Valid']:.1f}%)"])
+                summary_data.append(["Invalid Frequency",
+                                     f"{freq_validation_stats['Invalid']} ({100 - freq_validation_stats['Percent Valid']:.1f}%)"])
+
+            if control_type_validation_stats:
+                summary_data.append(["", ""])
+                summary_data.append(["Control Type Validation", ""])
+                summary_data.append(["Valid Control Type",
+                                     f"{control_type_validation_stats['Valid']} ({control_type_validation_stats['Percent Valid']:.1f}%)"])
+                summary_data.append(["Invalid Control Type",
+                                     f"{control_type_validation_stats['Invalid']} ({100 - control_type_validation_stats['Percent Valid']:.1f}%)"])
+
+            # Write summary data
+            for r_idx, row in enumerate(summary_data, 1):
+                for c_idx, value in enumerate(row, 1):
+                    ws_summary.cell(row=r_idx, column=c_idx, value=value)
+
+            # Methodology sheet
+            ws_method = wb.create_sheet(title="Methodology")
+
+            # Prepare methodology text
+            methodology_text = self._get_methodology_text(include_frequency, include_control_type,
+                                                          include_risk_alignment)
+
+            # Write methodology data
+            for r_idx, row in enumerate(methodology_text, 1):
+                for c_idx, value in enumerate(row, 1):
+                    ws_method.cell(row=r_idx, column=c_idx, value=value)
+
+            # Example Controls sheet
+            ws_examples = wb.create_sheet(title="Example Controls")
+
+            # Prepare examples text
+            examples_text = self._get_examples_text()
+
+            # Write examples data
+            for r_idx, row in enumerate(examples_text, 1):
+                for c_idx, value in enumerate(row, 1):
+                    ws_examples.cell(row=r_idx, column=c_idx, value=value)
+
+            # ========== STEP 4: FORMAT WORKBOOK ==========
+
+            # Apply formatting to all sheets
+            self._format_workbook_sheets(wb)
+
+            # ========== STEP 5: SAVE WORKBOOK ==========
+
+            # First try to save normally
+            try:
+                wb.save(output_file)
+                print(f"Successfully saved report to {output_file}")
+                return True
+            except Exception as e:
+                print(f"Error saving workbook: {str(e)}")
+
+                # Try with a backup name
+                try:
+                    backup_file = os.path.splitext(output_file)[0] + "_backup.xlsx"
+                    wb.save(backup_file)
+                    print(f"Saved backup report to {backup_file}")
+                    return True
+                except Exception as backup_error:
+                    print(f"Error saving backup: {str(backup_error)}")
+
+                    # Last resort: save just the results as CSV
+                    try:
+                        csv_file = os.path.splitext(output_file)[0] + "_results.csv"
+                        df_results.to_csv(csv_file, index=False)
+                        print(f"Saved results as CSV to {csv_file}")
+                        return False
+                    except Exception as csv_error:
+                        print(f"Failed to save even as CSV: {str(csv_error)}")
+                        return False
+
+        except Exception as e:
+            print(f"Critical error generating report: {str(e)}")
+            import traceback
+            traceback.print_exc()
+            return False
+
+    # Helper methods for the report generator
+    def _safe_get(self, obj, key, default=None):
+        """Safely get a value from an object, handling nested keys and various error conditions"""
+        if obj is None:
+            return default
+
+        # Handle list of keys for nested access
+        if isinstance(key, list):
+            current = obj
+            for k in key:
+                if isinstance(current, dict) and k in current:
+                    current = current[k]
                 else:
-                    result_dict[f"{element} Feedback"] = "None"
+                    return default
+            return current
 
-            feedback_results.append(result_dict)
+        # Simple key access
+        if isinstance(obj, dict) and key in obj:
+            return obj[key]
 
-        df_feedback = pd.DataFrame(feedback_results)
+        return default
 
-        # Calculate summary statistics
-        total_controls = len(results)
-        excellent_count = sum(1 for r in results if r["category"] == "Excellent")
-        good_count = sum(1 for r in results if r["category"] == "Good")
-        needs_improvement_count = sum(1 for r in results if r["category"] == "Needs Improvement")
+    def _safe_text(self, text, max_length=255):
+        """Make text safe for Excel by handling various issues"""
+        if text is None:
+            return ""
 
-        avg_score = np.mean([r["total_score"] for r in results])
+        # Convert to string
+        if not isinstance(text, str):
+            text = str(text)
 
-        # Missing elements counts
-        missing_elements_counts = {element: 0 for element in self.elements}
-        for r in results:
-            for element in r["missing_elements"]:
-                missing_elements_counts[element] += 1
+        # Truncate if too long
+        if len(text) > max_length:
+            text = text[:max_length - 3] + "..."
 
-        # Vague terms frequency
-        vague_terms_freq = {}
-        for r in results:
-            for term in r["vague_terms_found"]:
-                vague_terms_freq[term] = vague_terms_freq.get(term, 0) + 1
+        # Prevent formula injection
+        if text and text[0] in ['=', '+', '-', '@']:
+            text = "'" + text
 
-        # Multi-control statistics
-        multi_control_count = sum(1 for r in results if r["multi_control_indicators"]["detected"])
+        # Remove problematic characters
+        bad_chars = ['\0', '\x1a', '\r', '\x03']  # NULL, EOF, CR, etc.
+        for char in bad_chars:
+            text = text.replace(char, '')
 
-        # Validation statistics if applicable
-        freq_validation_stats = None
-        control_type_validation_stats = None
+        # Replace newlines with spaces to prevent XML issues
+        text = text.replace('\n', ' ')
 
-        if include_frequency:
-            valid_freq_count = sum(1 for r in results if r["validation_results"]["frequency_valid"])
-            freq_validation_stats = {
-                "Valid": valid_freq_count,
-                "Invalid": total_controls - valid_freq_count,
-                "Percent Valid": (valid_freq_count / total_controls * 100) if total_controls > 0 else 0
-            }
+        return text
 
-        if include_control_type:
-            valid_type_count = sum(1 for r in results if r["validation_results"]["control_type_valid"])
-            control_type_validation_stats = {
-                "Valid": valid_type_count,
-                "Invalid": total_controls - valid_type_count,
-                "Percent Valid": (valid_type_count / total_controls * 100) if total_controls > 0 else 0
-            }
+    def _join_keywords(self, keywords, separator=", "):
+        """Safely join keywords into a string"""
+        if not keywords:
+            return "None"
+        return separator.join(str(kw) for kw in keywords)
 
-        # Create workbook
-        wb = Workbook()
+    def _format_workbook_sheets(self, wb):
+        """Apply consistent formatting to all sheets in the workbook"""
+        from openpyxl.styles import Font, PatternFill
 
-        # Create Analysis Results sheet
-        ws_results = wb.active
-        ws_results.title = "Analysis Results"
+        # Get sheet references
+        ws_results = wb["Analysis Results"]
+        ws_keywords = wb["Keyword Matches"]
+        ws_feedback = wb["Enhancement Feedback"]
+        ws_summary = wb["Executive Summary"]
+        ws_method = wb["Methodology"]
+        ws_examples = wb["Example Controls"]
 
-        # Add data to Results sheet
-        for r_idx, row in enumerate(dataframe_to_rows(df_results, index=False, header=True), 1):
-            for c_idx, value in enumerate(row, 1):
-                ws_results.cell(row=r_idx, column=c_idx, value=value)
+        # Format headers for data sheets
+        for ws in [ws_results, ws_keywords, ws_feedback]:
+            header_fill = PatternFill(start_color="DDEBF7", end_color="DDEBF7", fill_type="solid")
+            header_font = Font(bold=True)
 
-        # Create Keyword Matches sheet
-        ws_keywords = wb.create_sheet(title="Keyword Matches")
+            for col in range(1, ws.max_column + 1):
+                cell = ws.cell(row=1, column=col)
+                cell.fill = header_fill
+                cell.font = header_font
 
-        # Add data to Keywords sheet
-        for r_idx, row in enumerate(dataframe_to_rows(df_keywords, index=False, header=True), 1):
-            for c_idx, value in enumerate(row, 1):
-                ws_keywords.cell(row=r_idx, column=c_idx, value=value)
+        # Set reasonable column widths for all sheets
+        for ws in wb.worksheets:
+            for column in ws.columns:
+                max_length = 0
+                column_letter = column[0].column_letter
 
-        # Create Enhancement Feedback sheet
-        ws_feedback = wb.create_sheet(title="Enhancement Feedback")
+                for cell in column:
+                    if cell.value:
+                        try:
+                            max_length = max(max_length, min(len(str(cell.value)), 50))
+                        except (TypeError, ValueError):
+                            pass
 
-        # Add data to Feedback sheet
-        for r_idx, row in enumerate(dataframe_to_rows(df_feedback, index=False, header=True), 1):
-            for c_idx, value in enumerate(row, 1):
-                ws_feedback.cell(row=r_idx, column=c_idx, value=value)
+                # Cap width at 50
+                adjusted_width = min((max_length + 2) * 1.1, 50)
+                ws.column_dimensions[column_letter].width = adjusted_width
 
-        # Create Multi-Control Candidates sheet if any detected
-        if multi_control_count > 0:
-            ws_multi = wb.create_sheet(title="Multi-Control Candidates")
+        # Additional formatting for summary sheet
+        ws_summary.column_dimensions['A'].width = 35
+        ws_summary.column_dimensions['B'].width = 20
 
-            # Write headers
-            headers = ["Control ID", "Potential Control", "Score", "Action"]
-            for c_idx, header in enumerate(headers, 1):
-                ws_multi.cell(row=1, column=c_idx, value=header)
-                ws_multi.cell(row=1, column=c_idx).font = Font(bold=True)
-                ws_multi.cell(row=1, column=c_idx).fill = PatternFill(start_color="DDEBF7", end_color="DDEBF7",
-                                                                      fill_type="solid")
+        # Set fonts for various sections
+        title_font = Font(bold=True, size=14)
+        section_font = Font(bold=True)
 
-            # Write data
-            r_idx = 2
-            for result in results:
-                if result["multi_control_indicators"]["detected"]:
-                    control_id = result["control_id"]
+        # Format summary sheet titles
+        ws_summary.cell(row=1, column=1).font = title_font
 
-                    for i, candidate in enumerate(result["multi_control_indicators"]["candidates"]):
-                        ws_multi.cell(row=r_idx, column=1, value=f"{control_id}-{i + 1}")
-                        ws_multi.cell(row=r_idx, column=2, value=candidate["text"])
-                        ws_multi.cell(row=r_idx, column=3, value=f"{candidate['score']:.2f}")
-                        ws_multi.cell(row=r_idx, column=4, value=candidate.get("action", "Unknown"))
-                        r_idx += 1
+        # Format methodology sheet title
+        ws_method.column_dimensions['A'].width = 60
+        ws_method.cell(row=1, column=1).font = title_font
 
-            # Set column widths
-            ws_multi.column_dimensions['A'].width = 15
-            ws_multi.column_dimensions['B'].width = 60
-            ws_multi.column_dimensions['C'].width = 10
-            ws_multi.column_dimensions['D'].width = 30
+        # Format examples sheet title
+        ws_examples.column_dimensions['A'].width = 70
+        ws_examples.cell(row=1, column=1).font = title_font
 
-        # Create Executive Summary sheet
-        ws_summary = wb.create_sheet(title="Executive Summary")
+        # Format section headers in summary
+        section_rows = [6, 11, 13]  # Key section start rows
+        for row in section_rows:
+            if row <= ws_summary.max_row:
+                ws_summary.cell(row=row, column=1).font = section_font
 
-        # Add summary statistics
-        summary_data = [
-            ["Control Description Analysis - Executive Summary", ""],
-            ["", ""],
-            ["Total Controls Analyzed", total_controls],
-            ["Average Score", f"{avg_score:.1f}"],
-            ["", ""],
-            ["Category Breakdown", ""],
-            [f"Excellent ({self.excellent_threshold}-100)", excellent_count],
-            [f"Good ({self.good_threshold}-{self.excellent_threshold - 1})", good_count],
-            [f"Needs Improvement (0-{self.good_threshold - 1})", needs_improvement_count],
-            ["", ""],
-            ["Multi-Control Descriptions", multi_control_count],
-            ["", ""],
-            ["Missing Elements", ""],
-        ]
+        # Format section headers in methodology
+        method_section_rows = [3, 14, 24, 39]  # Key section start rows
+        for row in method_section_rows:
+            if row <= ws_method.max_row:
+                ws_method.cell(row=row, column=1).font = section_font
 
-        # Add missing elements statistics
-        for element, count in missing_elements_counts.items():
-            percentage = (count / total_controls) * 100 if total_controls > 0 else 0
-            summary_data.append([f"Missing {element}", f"{count} ({percentage:.1f}%)"])
+        # Format section headers in examples
+        for row in [3, 6, 9, 12]:  # Key section start rows
+            ws_examples.cell(row=row, column=1).font = section_font
 
-        summary_data.append(["", ""])
-        summary_data.append(["Top Vague Terms", ""])
-
-        # Add top vague terms
-        sorted_vague_terms = sorted(vague_terms_freq.items(), key=lambda x: x[1], reverse=True)
-        for term, count in sorted_vague_terms[:10]:  # Top 10 vague terms
-            percentage = (count / total_controls) * 100 if total_controls > 0 else 0
-            summary_data.append([term, f"{count} ({percentage:.1f}%)"])
-
-        # Add validation statistics if applicable
-        if freq_validation_stats:
-            summary_data.append(["", ""])
-            summary_data.append(["Frequency Validation", ""])
-            summary_data.append(["Valid Frequency",
-                                 f"{freq_validation_stats['Valid']} ({freq_validation_stats['Percent Valid']:.1f}%)"])
-            summary_data.append(["Invalid Frequency",
-                                 f"{freq_validation_stats['Invalid']} ({100 - freq_validation_stats['Percent Valid']:.1f}%)"])
-
-        if control_type_validation_stats:
-            summary_data.append(["", ""])
-            summary_data.append(["Control Type Validation", ""])
-            summary_data.append(["Valid Control Type",
-                                 f"{control_type_validation_stats['Valid']} ({control_type_validation_stats['Percent Valid']:.1f}%)"])
-            summary_data.append(["Invalid Control Type",
-                                 f"{control_type_validation_stats['Invalid']} ({100 - control_type_validation_stats['Percent Valid']:.1f}%)"])
-
-        # Write summary data
-        for r_idx, row in enumerate(summary_data, 1):
-            for c_idx, value in enumerate(row, 1):
-                ws_summary.cell(row=r_idx, column=c_idx, value=value)
-
-        # Create Methodology sheet
-        ws_method = wb.create_sheet(title="Methodology")
-
+    def _get_methodology_text(self, include_frequency, include_control_type, include_risk_alignment):
+        """Generate the methodology text for the report"""
         methodology_text = [
             ["Enhanced Control Description Analysis Methodology", ""],
             ["", ""],
             ["Overview", ""],
             [
-                "This analysis evaluates control descriptions based on seven key elements that should be present in a well-written control description:",
+                "This analysis evaluates control descriptions based on five key elements that should be present in a well-written control description:",
                 ""],
             ["", ""],
             ["1. WHO performs the control", ""],
@@ -1204,15 +1431,11 @@ class EnhancedControlAnalyzer:
             methodology_text.append(["Evaluates how well the control's purpose aligns with the mapped risk.", ""])
             methodology_text.append(["Identifies both explicit and implicit WHY statements and their strength.", ""])
 
-        # Write methodology data
-        for r_idx, row in enumerate(methodology_text, 1):
-            for c_idx, value in enumerate(row, 1):
-                ws_method.cell(row=r_idx, column=c_idx, value=value)
+        return methodology_text
 
-        # Create Example Controls sheet
-        ws_examples = wb.create_sheet(title="Example Controls")
-
-        examples_text = [
+    def _get_examples_text(self):
+        """Generate the examples text for the report"""
+        return [
             ["Example Controls", ""],
             ["", ""],
             ["Excellent Control Example", ""],
@@ -1237,88 +1460,6 @@ class EnhancedControlAnalyzer:
             ["6. Avoid vague terms like 'appropriate', 'timely', 'periodically'", ""],
             ["7. Separate multiple controls into individual control descriptions", ""]
         ]
-
-        # Write examples data
-        for r_idx, row in enumerate(examples_text, 1):
-            for c_idx, value in enumerate(row, 1):
-                ws_examples.cell(row=r_idx, column=c_idx, value=value)
-
-        # Apply formatting to all sheets
-        for ws in [ws_results, ws_keywords, ws_feedback, ws_summary, ws_method, ws_examples]:
-            # Format headers
-            if ws in [ws_results, ws_keywords, ws_feedback]:
-                header_fill = PatternFill(start_color="DDEBF7", end_color="DDEBF7", fill_type="solid")
-                header_font = Font(bold=True)
-
-                for col in range(1, ws.max_column + 1):
-                    cell = ws.cell(row=1, column=col)
-                    cell.fill = header_fill
-                    cell.font = header_font
-
-            # Set column widths
-            for column in ws.columns:
-                max_length = 0
-                column_letter = column[0].column_letter
-
-                for cell in column:
-                    if cell.value:
-                        try:
-                            if len(str(cell.value)) > max_length:
-                                max_length = len(str(cell.value))
-                        except (TypeError, ValueError):
-                            pass
-
-                adjusted_width = (max_length + 2) * 1.1
-                ws.column_dimensions[column_letter].width = min(adjusted_width, 50)
-
-        # Additional formatting for summary sheet
-        ws_summary.column_dimensions['A'].width = 35
-        ws_summary.column_dimensions['B'].width = 20
-
-        title_font = Font(bold=True, size=14)
-        section_font = Font(bold=True)
-
-        ws_summary.cell(row=1, column=1).font = title_font
-
-        # Format section headers in summary
-        section_rows = [6, 11, 13]
-        section_rows.append(section_rows[-1] + len(missing_elements_counts.items()) + 2)  # Vague terms section
-
-        if freq_validation_stats:
-            section_rows.append(section_rows[-1] + len(sorted_vague_terms[:10]) + 2)  # Frequency validation section
-
-        if control_type_validation_stats and freq_validation_stats:
-            section_rows.append(section_rows[-1] + 3)  # Control type validation section
-
-        for row in section_rows:
-            if row <= ws_summary.max_row:
-                ws_summary.cell(row=row, column=1).font = section_font
-
-        # Format methodology sheet
-        ws_method.column_dimensions['A'].width = 60
-
-        ws_method.cell(row=1, column=1).font = title_font
-
-        method_section_rows = [3, 14, 24, 39]
-
-        if include_frequency or include_control_type or include_risk_alignment:
-            method_section_rows.append(method_section_rows[-1] + 3)  # Validation section
-
-        for row in method_section_rows:
-            if row <= ws_method.max_row:
-                ws_method.cell(row=row, column=1).font = section_font
-
-        # Format examples sheet
-        ws_examples.column_dimensions['A'].width = 70
-
-        ws_examples.cell(row=1, column=1).font = title_font
-
-        for row in [3, 6, 9, 12]:  # Section headers in examples
-            ws_examples.cell(row=row, column=1).font = section_font
-
-        # Save workbook
-        wb.save(output_file)
-
 
 def analyze_file_with_batches(self, file_path, id_column=None, desc_column=None, freq_column=None,
                               type_column=None, risk_column=None, audit_leader_column=None,

@@ -928,6 +928,12 @@ def enhance_what_detection(text: str, nlp, existing_keywords: Optional[List[str]
             "suggestions": suggestions
         }
 
+    except IndexError as e:
+        print(f"IndexError in WHAT detection: {e}")
+        print(f"Problematic text: '{text}'")
+        # Re-raise the error to allow deeper debugging if necessary
+        raise
+
     except Exception as e:
         print(f"Error in WHAT detection: {str(e)}")
         # Return default empty results on error
