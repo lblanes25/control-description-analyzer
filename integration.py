@@ -1,5 +1,8 @@
 #!/usr/bin/env python3
-# Enhanced integration script with batch processing for control analysis
+"""
+Enhanced integration script with batch processing for control analysis
+This script preserves all original functionality while adding fixes for column mapping
+"""
 
 import argparse
 import os
@@ -14,7 +17,7 @@ from datetime import datetime
 from typing import cast, BinaryIO, Any, List, Dict, Optional
 
 from control_analyzer import EnhancedControlAnalyzer
-from control_analyzer import ConfigManager
+from config_manager import ConfigManager
 from visualization import generate_core_visualizations
 from spacy.matcher import PhraseMatcher  # Required for apply_config_to_analyzer
 
@@ -47,27 +50,35 @@ def update_argument_parser(parser):
     parser.add_argument('--resume-from', help='Resume from a checkpoint file')
     parser.add_argument('--skip-visualizations', action='store_true',
                         help='Skip generating visualizations')
+    parser.add_argument('--audit-leader-column', help='Column containing Audit Leader information (overrides config)')
+    parser.add_argument('--debug', action='store_true',
+                        help='Print additional debug information')
     return parser
 
 
-def analyze_file_with_batches(self, file_path, id_column, desc_column, freq_column=None,
-                              type_column=None, risk_column=None, output_file=None,
+def analyze_file_with_batches(analyzer, file_path, id_column, desc_column, freq_column=None,
+                              type_column=None, risk_column=None, audit_leader_column=None, output_file=None,
                               batch_size=500, temp_dir=None):
     """
     Analyze controls from an Excel file in batches and generate a detailed report
 
     Args:
+        analyzer: The EnhancedControlAnalyzer instance
         file_path: Path to Excel file containing controls
         id_column: Column containing control IDs
         desc_column: Column containing control descriptions
         freq_column: Optional column containing frequency values
         type_column: Optional column containing control type values
         risk_column: Optional column containing risk descriptions
+        audit_leader_column: Optional column containing audit leader information
         output_file: Optional path for output Excel report
         batch_size: Number of controls to process in each batch
         temp_dir: Directory to store temporary batch results
     """
     print(f"Reading file: {file_path}")
+    print(f"Using columns: ID={id_column}, Description={desc_column}, Frequency={freq_column}, " +
+          f"Type={type_column}, Risk={risk_column}, Audit Leader={audit_leader_column}")
+    print(f"Using batch size: {batch_size}")
 
     # Create temp directory if specified
     if temp_dir:
@@ -80,6 +91,57 @@ def analyze_file_with_batches(self, file_path, id_column, desc_column, freq_colu
         # Read the Excel file
         df = pd.read_excel(file_path, engine='openpyxl')
 
+        # Print actual columns for debugging
+        print(f"Actual Excel columns: {df.columns.tolist()}")
+
+        # Define a flexible column matching function
+        def find_column(target, columns):
+            # Exact match first
+            if target in columns:
+                return target
+
+            # Try case-insensitive match
+            for col in columns:
+                if col.lower() == target.lower():
+                    print(f"Case-insensitive match: '{target}' → '{col}'")
+                    return col
+
+            # Try partial match (e.g., "Audit Leader from AE" vs "Audit Leader From AE")
+            for col in columns:
+                if target.lower().replace(" ", "") == col.lower().replace(" ", ""):
+                    print(f"Spacing/case match: '{target}' → '{col}'")
+                    return col
+
+            # Try matching key parts
+            for col in columns:
+                key_parts = target.split()
+                if len(key_parts) > 1 and all(part.lower() in col.lower() for part in key_parts):
+                    print(f"Partial match: '{target}' → '{col}'")
+                    return col
+
+            return None
+
+        # Apply flexible matching to column names
+        columns = df.columns.tolist()
+        id_column = find_column(id_column, columns) or id_column
+        desc_column = find_column(desc_column, columns) or desc_column
+        if freq_column:
+            freq_column = find_column(freq_column, columns) or freq_column
+        if type_column:
+            type_column = find_column(type_column, columns) or type_column
+        if risk_column:
+            risk_column = find_column(risk_column, columns) or risk_column
+        if audit_leader_column:
+            audit_leader_column = find_column(audit_leader_column, columns) or audit_leader_column
+
+        print(f"Final column mapping:")
+        print(f"  ID: {id_column}")
+        print(f"  Description: {desc_column}")
+        print(f"  Frequency: {freq_column}")
+        print(f"  Type: {type_column}")
+        print(f"  Risk: {risk_column}")
+        print(f"  Audit Leader: {audit_leader_column}")
+
         # Ensure required columns exist
         if id_column not in df.columns:
             raise ValueError(f"ID column '{id_column}' not found in file")
@@ -89,7 +151,8 @@ def analyze_file_with_batches(self, file_path, id_column, desc_column, freq_colu
 
         # Check optional columns
         if freq_column and freq_column not in df.columns:
-            print(f"Warning: Frequency column '{freq_column}' not found in file. Frequency validation will be skipped.")
+            print(
+                f"Warning: Frequency column '{freq_column}' not found in file. Frequency validation will be skipped.")
             freq_column = None
 
         if type_column and type_column not in df.columns:
@@ -101,6 +164,21 @@ def analyze_file_with_batches(self, file_path, id_column, desc_column, freq_colu
             print(
                 f"Warning: Risk description column '{risk_column}' not found in file. Risk alignment will be skipped.")
             risk_column = None
+
+        if audit_leader_column and audit_leader_column not in df.columns:
+            print(f"Warning: Audit Leader column '{audit_leader_column}' not found in file.")
+
+            # Try to automatically detect Audit Leader column
+            potential_columns = ["Audit Leader", "audit leader", "Audit_Leader", "audit_leader",
+                                 "AuditLeader", "auditLeader", "Auditor", "Lead Auditor"]
+
+            for col in potential_columns:
+                if col in df.columns:
+                    audit_leader_column = col
+                    print(f"Automatically detected Audit Leader column: '{col}'")
+                    break
+            else:
+                audit_leader_column = None
 
         # Initialize results and tracking variables
         all_results = []
@@ -136,10 +214,17 @@ def analyze_file_with_batches(self, file_path, id_column, desc_column, freq_colu
                 frequency = row[freq_column] if freq_column and freq_column in row else None
                 control_type = row[type_column] if type_column and type_column in row else None
                 risk_description = row[risk_column] if risk_column and risk_column in row else None
+                audit_leader = row[audit_leader_column] if audit_leader_column and audit_leader_column in row else None
 
                 try:
                     # Analyze control
-                    result = self.analyze_control(control_id, description, frequency, control_type, risk_description)
+                    result = analyzer.analyze_control(control_id, description, frequency, control_type,
+                                                      risk_description)
+
+                    # Add Audit Leader if available
+                    if audit_leader and not pd.isna(audit_leader):
+                        result["Audit Leader"] = audit_leader
+
                     batch_results.append(result)
                 except Exception as e:
                     # Log error but continue processing
@@ -199,8 +284,8 @@ def analyze_file_with_batches(self, file_path, id_column, desc_column, freq_colu
             # Optional: Clear the NLP model's cache to free memory
             try:
                 # Get all pipelines and clear their caches
-                for pipe_name in self.nlp.pipe_names:
-                    pipe = self.nlp.get_pipe(pipe_name)
+                for pipe_name in analyzer.nlp.pipe_names:
+                    pipe = analyzer.nlp.get_pipe(pipe_name)
                     if hasattr(pipe, "vocab") and hasattr(pipe.vocab, "strings"):
                         pipe.vocab.strings.clean_up()
             except Exception:
@@ -210,7 +295,7 @@ def analyze_file_with_batches(self, file_path, id_column, desc_column, freq_colu
         # Create output file if specified
         if output_file:
             try:
-                self._generate_enhanced_report(
+                analyzer._generate_enhanced_report(
                     all_results,
                     output_file,
                     freq_column is not None,
@@ -236,69 +321,11 @@ def analyze_file_with_batches(self, file_path, id_column, desc_column, freq_colu
 
     except Exception as e:
         print(f"Error analyzing file: {e}")
-        raise
-    finally:
-        # Save any results we have even if an error occurred
-        if 'all_results' in locals() and all_results:
-            emergency_file = os.path.join(temp_dir, f"emergency_results_{datetime.now().strftime('%Y%m%d_%H%M%S')}.pkl")
-            try:
-                safe_pickle_dump(all_results, emergency_file)
-                print(f"Emergency results saved to {emergency_file}")
-            except Exception as e:
-                print(f"Failed to save emergency results: {e}")
-
-
-def process_with_batch_option(analyzer, args):
-    """Process controls using batch processing if requested"""
-    try:
-        if args.use_batches:
-            print(f"Using batch processing with batch size of {args.batch_size}")
-            print(f"Using columns: ID={args.id_column}, Description={args.desc_column}, "
-                  f"Frequency={args.freq_column}, Type={args.type_column}, "
-                  f"Risk={args.risk_column}, Audit Leader={args.audit_leader_column}")
-
-            results = analyzer.analyze_file_with_batches(
-                args.file,
-                args.id_column,
-                args.desc_column,
-                args.freq_column,
-                args.type_column,
-                args.risk_column,
-                args.audit_leader_column,  # Add audit leader column
-                args.output_file,
-                args.batch_size,
-                args.temp_dir
-            )
-        else:
-            # Original non-batch processing
-            results = analyzer.analyze_file(
-                args.file,
-                args.id_column,
-                args.desc_column,
-                args.freq_column,
-                args.type_column,
-                args.risk_column,
-                args.audit_leader_column,  # Add audit leader column
-                args.output_file
-            )
-
-        # Generate visualizations unless skipped
-        if not args.skip_visualizations and results:
-            print("Generating visualizations...")
-            vis_dir = os.path.splitext(args.output_file)[0] + "_visualizations"
-
-            # Generate visualizations
-            generate_core_visualizations(results, vis_dir)
-            print(f"Visualizations saved to {vis_dir}")
-
-        return 0
-    except Exception as e:
-        print(f"Error: {e}")
         traceback.print_exc()
-        return 1
+        raise
 
 
-def resume_from_checkpoint(checkpoint_file, analyzer, args):
+def resume_from_checkpoint(analyzer, checkpoint_file, args):
     """Resume analysis from a saved checkpoint"""
     print(f"Resuming from checkpoint: {checkpoint_file}")
 
@@ -381,14 +408,16 @@ def resume_from_checkpoint(checkpoint_file, analyzer, args):
         temp_output = os.path.splitext(args.output_file)[0] + "_remaining.xlsx"
 
         remaining_results = []
-        if hasattr(analyzer, 'analyze_file_with_batches') and args.use_batches:
-            remaining_results = analyzer.analyze_file_with_batches(
+        if args.use_batches:
+            remaining_results = analyze_file_with_batches(
+                analyzer,
                 temp_path,
                 args.id_column,
                 args.desc_column,
                 args.freq_column,
                 args.type_column,
                 args.risk_column,
+                args.audit_leader_column,
                 temp_output,
                 args.batch_size,
                 args.temp_dir
@@ -401,6 +430,7 @@ def resume_from_checkpoint(checkpoint_file, analyzer, args):
                 args.freq_column,
                 args.type_column,
                 args.risk_column,
+                args.audit_leader_column,
                 temp_output
             )
 
@@ -532,17 +562,69 @@ def apply_config_to_analyzer(analyzer, config):
     return analyzer
 
 
+def process_with_batch_option(analyzer, args):
+    """Process controls using batch processing if requested"""
+    try:
+        if args.use_batches:
+            print(f"Using batch processing with batch size of {args.batch_size}")
+            print(f"Using columns: ID={args.id_column}, Description={args.desc_column}, "
+                  f"Frequency={args.freq_column}, Type={args.type_column}, "
+                  f"Risk={args.risk_column}, Audit Leader={args.audit_leader_column}")
+
+            results = analyze_file_with_batches(
+                analyzer,
+                args.file,
+                args.id_column,
+                args.desc_column,
+                args.freq_column,
+                args.type_column,
+                args.risk_column,
+                args.audit_leader_column,
+                args.output_file,
+                args.batch_size,
+                args.temp_dir
+            )
+        else:
+            # Original non-batch processing
+            results = analyzer.analyze_file(
+                args.file,
+                args.id_column,
+                args.desc_column,
+                args.freq_column,
+                args.type_column,
+                args.risk_column,
+                args.audit_leader_column,
+                args.output_file
+            )
+
+        # Generate visualizations unless skipped
+        if not args.skip_visualizations and results:
+            print("Generating visualizations...")
+            vis_dir = os.path.splitext(args.output_file)[0] + "_visualizations"
+
+            # Generate visualizations
+            generate_core_visualizations(results, vis_dir)
+            print(f"Visualizations saved to {vis_dir}")
+
+        return 0
+    except Exception as e:
+        print(f"Error: {e}")
+        traceback.print_exc()
+        return 1
+
+
 def main():
     """Main function to run control analysis with batch processing support"""
-    parser = argparse.ArgumentParser(
-        description='Enhanced Control Description Analyzer with batch processing support')
+    print("Control Analyzer Integration Script")
+    print("===================================")
+
+    parser = argparse.ArgumentParser(description='Enhanced Control Description Analyzer with batch processing support')
     parser.add_argument('file', nargs='?', help='Excel file with control descriptions')
-    parser.add_argument('--id-column', default='Control_ID', help='Column containing control IDs')
-    parser.add_argument('--desc-column', default='Control_Description', help='Column containing control descriptions')
+    parser.add_argument('--id-column', default=None, help='Column containing control IDs')
+    parser.add_argument('--desc-column', default=None, help='Column containing control descriptions')
     parser.add_argument('--freq-column', help='Column containing frequency values for validation')
     parser.add_argument('--type-column', help='Column containing control type values for validation')
     parser.add_argument('--risk-column', help='Column containing risk descriptions for alignment')
-    parser.add_argument('--audit-leader-column', help='Column containing Audit Leader information')
     parser.add_argument('--output-file', help='Output Excel file path')
     parser.add_argument('--config', help='Path to configuration file (YAML)')
     parser.add_argument('--open-dashboard', action='store_true',
@@ -555,46 +637,48 @@ def main():
 
     args = parser.parse_args()
 
-    config_manager = ConfigManager(args.config)
-    config = config_manager.config
-    column_map = config.get('columns', {})
-
-    # Use YAML config column mapping as defaults if not provided by CLI
-    args.id_column = column_map.get("id", "Control ID")
-    args.desc_column = column_map.get("description", "Control Description")
-    args.freq_column = column_map.get("frequency")
-    args.type_column = column_map.get("type", "Control Classification")
-    args.risk_column = column_map.get("risk", "Risk Description")
-
-    # Add audit_leader_column from config if not provided in CLI
-    if not args.audit_leader_column:
-        args.audit_leader_column = column_map.get("audit_leader", "Audit Leader")
-
-    if not args.file and not args.resume_from:
-        parser.print_help()
-        return 1
+    if args.debug:
+        print(f"Arguments: {args}")
 
     # Set default output filename if not provided
     if args.file and not args.output_file:
         base_name = os.path.splitext(args.file)[0]
         args.output_file = f"{base_name}_analysis_results.xlsx"
+        if args.debug:
+            print(f"Setting default output file to {args.output_file}")
+
+    if not args.file and not args.resume_from:
+        parser.print_help()
+        return 1
 
     try:
         # Create analyzer instance
+        if args.debug:
+            print(f"Creating analyzer with config file: {args.config}")
+
         analyzer = EnhancedControlAnalyzer(args.config)
+
+        if args.debug:
+            print(f"Analyzer created successfully")
+            if hasattr(analyzer, 'column_mappings'):
+                print("Column mappings from config:")
+                for key, value in analyzer.column_mappings.items():
+                    if not isinstance(value, dict):  # Skip complex nested objects
+                        print(f"  {key}: {value}")
 
         # Apply command-line flags
         if args.disable_enhanced:
             analyzer.use_enhanced_detection = False
             print("Enhanced detection modules disabled. Using base analysis only.")
 
-        # Add batch processing method to analyzer
-        from types import MethodType
-        analyzer.analyze_file_with_batches = MethodType(analyze_file_with_batches, analyzer)
+        # Add batch processing method to analyzer if not present
+        if not hasattr(analyzer, 'analyze_file_with_batches'):
+            from types import MethodType
+            analyzer.analyze_file_with_batches = MethodType(analyze_file_with_batches, analyzer)
 
         # Handle resume from checkpoint if specified
         if args.resume_from:
-            return resume_from_checkpoint(args.resume_from, analyzer, args)[1]
+            return resume_from_checkpoint(analyzer, args.resume_from, args)[1]
 
         # Process with batch option if specified
         if args.use_batches:
@@ -602,9 +686,19 @@ def main():
 
         # Standard processing workflow
         print(f"Analyzing controls from {args.file}...")
-        print(f"Using columns: ID={args.id_column}, Description={args.desc_column}, "
-              f"Frequency={args.freq_column}, Type={args.type_column}, "
-              f"Risk={args.risk_column}, Audit Leader={args.audit_leader_column}")
+
+        # Check if Excel file exists
+        if not os.path.exists(args.file):
+            print(f"Error: Excel file '{args.file}' not found")
+            return 1
+
+        # Read Excel file to show columns if in debug mode
+        if args.debug:
+            try:
+                df = pd.read_excel(args.file)
+                print(f"Excel file columns: {df.columns.tolist()}")
+            except Exception as e:
+                print(f"Error reading Excel file: {e}")
 
         results = analyzer.analyze_file(
             args.file,
@@ -613,7 +707,7 @@ def main():
             args.freq_column,
             args.type_column,
             args.risk_column,
-            args.audit_leader_column,  # Pass audit leader column to analyze_file
+            args.audit_leader_column,
             args.output_file
         )
 
@@ -643,3 +737,7 @@ def main():
         print(f"Error: {str(e)}")
         traceback.print_exc()
         return 1
+
+
+if __name__ == "__main__":
+    sys.exit(main())

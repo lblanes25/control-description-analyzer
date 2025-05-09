@@ -834,10 +834,23 @@ class EnhancedControlAnalyzer:
                 control_id = row[id_column]
                 description = row[desc_column]
 
-                # Optional metadata
-                frequency = row[freq_column] if freq_column and freq_column in row else None
-                control_type = row[type_column] if type_column and type_column in row else None
-                risk_description = row[risk_column] if risk_column and risk_column in row else None
+                frequency = None
+                if freq_column and freq_column in row:
+                    freq_value = row[freq_column]
+                    if pd.notna(freq_value):  # Check if not NaN
+                        frequency = str(freq_value) if not isinstance(freq_value, str) else freq_value
+
+                control_type = None
+                if type_column and type_column in row:
+                    type_value = row[type_column]
+                    if pd.notna(type_value):  # Check if not NaN
+                        control_type = str(type_value) if not isinstance(type_value, str) else type_value
+
+                risk_description = None
+                if risk_column and risk_column in row:
+                    risk_value = row[risk_column]
+                    if pd.notna(risk_value):  # Check if not NaN
+                        risk_description = str(risk_value) if not isinstance(risk_value, str) else risk_value
 
                 # Analyze control
                 result = self.analyze_control(control_id, description, frequency, control_type, risk_description)
