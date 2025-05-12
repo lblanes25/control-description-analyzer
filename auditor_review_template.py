@@ -53,9 +53,9 @@ def create_auditor_review_template(input_file, output_file, add_instructions=Tru
         print(f"Found {len(sheet_names)} sheets: {', '.join(sheet_names)}")
 
         # Initialize variables to hold data from different sheets
-        control_data = {}  # Will hold main control info like ID, Description, Scores
-        keyword_data = {}  # Will hold keyword info for each element
-        feedback_data = {}  # Will hold enhancement feedback for each element
+        control_data = pd.DataFrame()  # Will hold main control info like ID, Description, Scores
+        keyword_data = pd.DataFrame()  # Will hold keyword info for each element
+        feedback_data = pd.DataFrame()  # Will hold enhancement feedback for each element
 
         # Check for expected sheets and read their data
         for sheet_name in sheet_names:
@@ -83,14 +83,14 @@ def create_auditor_review_template(input_file, output_file, add_instructions=Tru
                 print(f"Found feedback data in sheet: {sheet_name}")
 
         # If we don't have main control data, we can't proceed
-        if not control_data:
+        if control_data.empty:
             raise ValueError("Could not find a sheet with 'Control ID' and 'Description' columns")
 
         # Create a combined DataFrame starting with control data
         review_df = control_data.copy()
 
         # If keyword data is in a separate sheet, add it
-        if keyword_data:
+        if not keyword_data.empty:
             # Get only the keyword columns
             keyword_cols = [col for col in keyword_data.columns if "Keywords" in col]
             if keyword_cols and "Control ID" in keyword_data.columns:
