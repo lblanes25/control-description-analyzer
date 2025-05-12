@@ -46,115 +46,125 @@ def create_auditor_review_template(input_file, output_file, add_instructions=Tru
     print(f"Reading analyzer results from: {input_file}")
 
     try:
-        # Get the sheet names from the Excel file
-        excel_file = pd.ExcelFile(input_file)
-        sheet_names = excel_file.sheet_names
+        # Read the first sheet as a fallback
+        try:
+            df = pd.read_excel(input_file)
+            sheet_name = "Default"
+            print(f"Successfully read data from first sheet with {len(df)} rows and {len(df.columns)} columns")
+            print(f"Columns found: {', '.join(df.columns.tolist())}")
+        except Exception as e:
+            print(f"Error reading first sheet: {e}")
+            raise ValueError(f"Could not read Excel file: {str(e)}")
 
-        print(f"Found {len(sheet_names)} sheets: {', '.join(sheet_names)}")
+        # Verify that required columns exist
+        required_columns = ["Control ID", "Description"]
+        missing_columns = [col for col in required_columns if col not in df.columns]
 
-        # Initialize variables to hold data from different sheets
-        control_data = pd.DataFrame()  # Will hold main control info like ID, Description, Scores
-        keyword_data = pd.DataFrame()  # Will hold keyword info for each element
-        feedback_data = pd.DataFrame()  # Will hold enhancement feedback for each element
+        if missing_columns:
+            print(f"Warning: Missing required columns: {', '.join(missing_columns)}")
 
-        # Check for expected sheets and read their data
-        for sheet_name in sheet_names:
-            # Read the sheet as a DataFrame
-            df = pd.read_excel(input_file, sheet_name=sheet_name)
+            # Try to use columns with similar names
+            if "Control ID" in missing_columns:
+                # Try to find a column that might contain control IDs
+                id_candidates = [col for col in df.columns if "id" in col.lower() or "control" in col.lower()]
+                if id_candidates:
+                    print(f"Using '{id_candidates[0]}' as Control ID column")
+                    df = df.rename(columns={id_candidates[0]: "Control ID"})
+                    missing_columns.remove("Control ID")
 
-            # Skip empty sheets
-            if df.empty:
-                continue
+            if "Description" in missing_columns:
+                # Try to find a column that might contain descriptions
+                desc_candidates = [col for col in df.columns if "desc" in col.lower() or "text" in col.lower()]
+                if desc_candidates:
+                    print(f"Using '{desc_candidates[0]}' as Description column")
+                    df = df.rename(columns={desc_candidates[0]: "Description"})
+                    missing_columns.remove("Description")
 
-            # Check if this is the main results sheet
-            if "Control ID" in df.columns and "Description" in df.columns:
-                # This is likely the main results sheet - get control info
-                control_data = df
-                print(f"Found main results data in sheet: {sheet_name}")
+            # Check again after attempting to fix
+            if missing_columns:
+                raise ValueError(f"Required columns still missing: {', '.join(missing_columns)}")
 
-            # Check if this is a keywords sheet
-            elif "Control ID" in df.columns and any("Keywords" in col for col in df.columns):
-                keyword_data = df
-                print(f"Found keyword data in sheet: {sheet_name}")
+        # Create a review template with simplified columns
+        print("Creating review template DataFrame...")
 
-            # Check if this is a feedback/enhancement sheet
-            elif "Control ID" in df.columns and any("Feedback" in col for col in df.columns):
-                feedback_data = df
-                print(f"Found feedback data in sheet: {sheet_name}")
+        # Start with essential columns
+        try:
+            # Safely get columns that we know exist
+            review_df = df[["Control ID"]].copy()
+            if "Description" in df.columns:
+                review_df["Description"] = df["Description"]
 
-        # If we don't have main control data, we can't proceed
-        if control_data.empty:
-            raise ValueError("Could not find a sheet with 'Control ID' and 'Description' columns")
+            print(f"Created base review template with {len(review_df)} rows")
+        except Exception as e:
+            print(f"Error creating base review template: {e}")
+            raise
 
-        # Create a combined DataFrame starting with control data
-        review_df = control_data.copy()
+        # Add other available columns
+        available_cols = [
+            "Total Score", "Category", "Missing Elements", "Multiple Controls", "Audit Leader"
+        ]
 
-        # If keyword data is in a separate sheet, add it
-        if not keyword_data.empty:
-            # Get only the keyword columns
-            keyword_cols = [col for col in keyword_data.columns if "Keywords" in col]
-            if keyword_cols and "Control ID" in keyword_data.columns:
-                # Add each keyword column to the review_df
-                for col in keyword_cols:
-                    if col not in review_df.columns:
-                        # Create a dictionary mapping Control IDs to Keywords
-                        keyword_map = dict(zip(keyword_data["Control ID"], keyword_data[col]))
-                        # Add the column to review_df
-                        review_df[col] = review_df["Control ID"].map(keyword_map)
+        for col in available_cols:
+            if col in df.columns:
+                try:
+                    review_df[col] = df[col]
+                    print(f"Added column: {col}")
+                except Exception as e:
+                    print(f"Error adding column {col}: {e}")
 
         # Elements to process
         elements = ["WHO", "WHAT", "WHEN", "WHY", "ESCALATION"]
 
-        # Ensure essential columns are present
-        essential_cols = ["Control ID", "Description"]
-        for col in essential_cols:
-            if col not in review_df.columns:
-                raise ValueError(f"Required column '{col}' not found in any sheet")
-
-        # Start building the actual review template
-        review_template = review_df[["Control ID"]].copy()
-
-        # Add essential columns when available
-        available_cols = [
-            "Description", "Total Score", "Category", "Missing Elements",
-            "Multiple Controls", "Audit Leader"
-        ]
-
-        for col in available_cols:
-            if col in review_df.columns:
-                review_template[col] = review_df[col]
-
         # Add element-specific columns
         for element in elements:
-            # Add score column if available
-            if f"{element} Score" in review_df.columns:
-                review_template[f"{element} Score"] = review_df[f"{element} Score"]
+            try:
+                # Add score column if available
+                if f"{element} Score" in df.columns:
+                    review_df[f"{element} Score"] = df[f"{element} Score"]
+                    print(f"Added column: {element} Score")
 
-            # Add keywords column if available
-            if f"{element} Keywords" in review_df.columns:
-                # Clean up "None" values
-                review_template[f"{element} Keywords"] = review_df[f"{element} Keywords"].apply(
-                    lambda x: "" if pd.isna(x) or x == "None" else x
-                )
+                # Add keywords column if available
+                if f"{element} Keywords" in df.columns:
+                    # Clean up "None" values
+                    review_df[f"{element} Keywords"] = df[f"{element} Keywords"].apply(
+                        lambda x: "" if pd.isna(x) or str(x).strip() == "None" else str(x)
+                    )
+                    print(f"Added column: {element} Keywords")
 
-            # Add validation columns for auditor input
-            review_template[f"{element} Correct?"] = ""  # Yes/No/Partial column
-            review_template[f"{element} Comments"] = ""  # For auditor feedback
+                # Add validation columns for auditor input
+                review_df[f"{element} Correct?"] = ""  # Yes/No/Partial column
+                review_df[f"{element} Comments"] = ""  # For auditor feedback
+            except Exception as e:
+                print(f"Error processing {element} columns: {e}")
 
         # Add overall validation columns
-        review_template["Overall Score Correct?"] = ""
-        review_template["Category Correct?"] = ""
-        review_template["Additional Comments"] = ""
+        try:
+            review_df["Overall Score Correct?"] = ""
+            review_df["Category Correct?"] = ""
+            review_df["Additional Comments"] = ""
 
-        # Add auditor info columns
-        review_template["Reviewed By"] = ""
-        review_template["Review Date"] = ""
+            # Add auditor info columns
+            review_df["Reviewed By"] = ""
+            review_df["Review Date"] = ""
+        except Exception as e:
+            print(f"Error adding validation columns: {e}")
+
+        print(f"Final review template has {len(review_df.columns)} columns")
 
         # Save to Excel
-        review_template.to_excel(output_file, index=False, sheet_name="Controls Review")
+        try:
+            review_df.to_excel(output_file, index=False, sheet_name="Controls Review")
+            print(f"Saved review template to {output_file}")
+        except Exception as e:
+            print(f"Error saving Excel file: {e}")
+            raise
 
         # Format the Excel file for better readability
-        format_review_template(output_file, elements, add_instructions)
+        try:
+            format_review_template(output_file, elements, add_instructions)
+            print("Successfully formatted review template")
+        except Exception as e:
+            print(f"Error formatting Excel file: {e} (template was saved but not formatted)")
 
         print(f"Auditor review template created successfully: {output_file}")
         return output_file
