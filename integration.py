@@ -545,18 +545,19 @@ def resume_from_checkpoint(
         remaining_results = []
         if args.use_batches:
             remaining_results = analyze_file_with_batches(
-                analyzer,
-                temp_path,
-                args.id_column,
-                args.desc_column,
-                args.freq_column,
-                args.type_column,
-                args.risk_column,
-                args.audit_leader_column,
-                temp_output,
-                args.batch_size,
-                args.temp_dir,
-                args.skip_visualizations
+                analyzer=analyzer,
+                file_path=temp_path,
+                id_column=args.id_column,
+                desc_column=args.desc_column,
+                freq_column=args.freq_column,
+                type_column=args.type_column,
+                risk_column=args.risk_column,
+                audit_leader_column=args.audit_leader_column,
+                audit_entity_column=args.audit_entity_column,
+                output_file=temp_output,
+                batch_size=args.batch_size,
+                temp_dir=args.temp_dir,
+                skip_visualizations=args.skip_visualizations
             )
         else:
             remaining_results = analyzer.analyze_file(
@@ -708,30 +709,33 @@ def process_with_batch_option(
                         f"Risk={args.risk_column}, Audit Leader={args.audit_leader_column}")
 
             analyze_file_with_batches(
-                analyzer,
-                args.file,
-                args.id_column,
-                args.desc_column,
-                args.freq_column,
-                args.type_column,
-                args.risk_column,
-                args.audit_leader_column,
-                args.output_file,
-                args.batch_size,
-                args.temp_dir,
-                args.skip_visualizations
+                analyzer=analyzer,
+                file_path=args.file,
+                id_column=args.id_column,
+                desc_column=args.desc_column,
+                freq_column=args.freq_column,
+                type_column=args.type_column,
+                risk_column=args.risk_column,
+                audit_leader_column=args.audit_leader_column,
+                audit_entity_column=args.audit_entity_column,
+                output_file=args.output_file,
+                batch_size=args.batch_size,
+                temp_dir=args.temp_dir,
+                skip_visualizations=args.skip_visualizations
             )
+
         else:
             # Original non-batch processing
             results = analyzer.analyze_file(
-                args.file,
-                args.id_column,
-                args.desc_column,
-                args.freq_column,
-                args.type_column,
-                args.risk_column,
-                args.audit_leader_column,
-                args.output_file
+                file_path=args.file,
+                id_column=args.id_column,
+                desc_column=args.desc_column,
+                freq_column=args.freq_column,
+                type_column=args.type_column,
+                risk_column=args.risk_column,
+                audit_leader_column=args.audit_leader_column,
+                audit_entity_column=args.audit_entity_column,
+                output_file=args.output_file
             )
 
             # Generate visualizations unless skipped
@@ -896,14 +900,15 @@ def main() -> int:
                 logger.error(f"Error reading Excel file: {e}")
 
         results = analyzer.analyze_file(
-            args.file,
-            args.id_column,
-            args.desc_column,
-            args.freq_column,
-            args.type_column,
-            args.risk_column,
-            args.audit_leader_column,
-            args.output_file
+            file_path=args.file,
+            id_column=args.id_column,
+            desc_column=args.desc_column,
+            freq_column=args.freq_column,
+            type_column=args.type_column,
+            risk_column=args.risk_column,
+            audit_leader_column=args.audit_leader_column,
+            audit_entity_column=args.audit_entity_column,
+            output_file=args.output_file
         )
 
         # Generate visualizations if not skipped

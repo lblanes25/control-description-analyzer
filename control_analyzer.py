@@ -43,6 +43,7 @@ from enhanced_multi_control import detect_multi_control
 # Set up logging
 logger = logging.getLogger("control_analyzer")
 
+logging.basicConfig(level=logging.DEBUG)
 
 class ControlElement:
     """
@@ -2195,7 +2196,7 @@ class EnhancedControlAnalyzer:
 
     def _save_workbook(self, wb: Workbook, output_file: str) -> bool:
         """
-        Save workbook with error handling.
+        Save workbook with error handling and diagnostics.
 
         Args:
             wb: Excel workbook to save
@@ -2204,51 +2205,40 @@ class EnhancedControlAnalyzer:
         Returns:
             Boolean indicating success
         """
-        # First try to save normally
-        try:
-            wb.save(output_file)
-            logger.info(f"Successfully saved report to {output_file}")
-            return True
-        except Exception as e:
-            logger.error(f"Error saving workbook: {str(e)}")
+        import traceback
 
-            # Try with a backup name
+        try:
+            print(f"🔄 Attempting to save Excel file to: {output_file}")
+            logger.info(f"Attempting to save workbook to: {output_file}")
+
+            # Check for dangerous content length in cells
+            for ws in wb.worksheets:
+                for row in ws.iter_rows():
+                    for cell in row:
+                        if isinstance(cell.value, str) and len(cell.value) > 32000:
+                            logger.warning(
+                                f"⚠️ Truncating long string in sheet '{ws.title}' at row {cell.row}, col {cell.column}"
+                            )
+                            cell.value = cell.value[:32000] + "..."
+
+            wb.save(output_file)
+            logger.info(f"✅ Successfully saved workbook to: {output_file}")
+            return True
+
+        except Exception as e:
+            logger.error(f"❌ Failed to save workbook to {output_file}: {e}")
+            traceback.print_exc()
+
+            # Try saving with a backup filename
             try:
                 backup_file = os.path.splitext(output_file)[0] + "_backup.xlsx"
                 wb.save(backup_file)
-                logger.info(f"Saved backup report to {backup_file}")
+                logger.info(f"📁 Saved backup workbook to: {backup_file}")
                 return True
             except Exception as backup_error:
-                logger.error(f"Error saving backup: {str(backup_error)}")
-
-                # Last resort: try to extract data from the workbook and save as CSV
-                try:
-                    csv_file = os.path.splitext(output_file)[0] + "_results.csv"
-                    # Get data from the first sheet
-                    ws = wb.active
-                    data = []
-                    headers = []
-
-                    # Extract headers
-                    for cell in ws[1]:
-                        headers.append(cell.value)
-
-                    # Extract data rows
-                    for row in ws.iter_rows(min_row=2):
-                        row_data = [cell.value for cell in row]
-                        data.append(row_data)
-
-                    # Create DataFrame and save as CSV
-                    if headers and data:
-                        df = pd.DataFrame(data, columns=headers)
-                        df.to_csv(csv_file, index=False)
-                        logger.info(f"Saved results as CSV to {csv_file}")
-                    else:
-                        logger.error("Failed to extract data from workbook")
-                    return False
-                except Exception as csv_error:
-                    logger.error(f"Failed to save even as CSV: {str(csv_error)}")
-                    return False
+                logger.error(f"❌ Failed to save backup workbook: {backup_error}")
+                traceback.print_exc()
+                return False
 
     # Helper methods for the report generator
     def _safe_get(self, obj: Dict, key: Union[str, List[str]], default: Any = None) -> Any:

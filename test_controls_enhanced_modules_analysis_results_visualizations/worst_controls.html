@@ -44,6 +44,13 @@
             <option value="Nelson">Nelson</option>
 
                 </select>
+                &nbsp;&nbsp;&nbsp;
+                <label for="entityFilter">Filter by Audit Entity: </label>
+                <select id="entityFilter" onchange="filterTable()">
+                    <option value="all">All Entities</option>
+                    <option value="Unknown">Unknown</option>
+
+                </select>
             </div>
             <table id="controlsTable">
                 <thead>
@@ -59,12 +66,13 @@
             <th>ESCALATION Score</th>
             <th>Missing Elements</th>
             <th>Audit Leader</th>
+            <th>Audit Entity</th>
             <th>vague_terms_found</th>
 
                     </tr>
                 </thead>
                 <tbody>
-                <tr class="row" data-leader="Martinez">
+                <tr class="row" data-leader="Martinez" data-entity="Unknown">
             <td>WHAT-002</td>
             <td>0.0</td>
             <td>Needs Improvement</td>
@@ -76,9 +84,10 @@
             <td>0.0</td>
             <td>WHO, WHEN, WHAT, WHY, ESCALATION</td>
             <td>Martinez</td>
+            <td>Unknown</td>
             <td></td>
         </tr>
-        <tr class="row" data-leader="Clark">
+        <tr class="row" data-leader="Clark" data-entity="Unknown">
             <td>WHAT-004</td>
             <td>0.0</td>
             <td>Needs Improvement</td>
@@ -90,9 +99,10 @@
             <td>0.0</td>
             <td>WHO, WHEN, WHAT, WHY, ESCALATION</td>
             <td>Clark</td>
+            <td>Unknown</td>
             <td></td>
         </tr>
-        <tr class="row" data-leader="Davis">
+        <tr class="row" data-leader="Davis" data-entity="Unknown">
             <td>WHAT-003</td>
             <td>3.0799999999999996</td>
             <td>Needs Improvement</td>
@@ -104,9 +114,10 @@
             <td>0.0</td>
             <td>WHO, WHEN, WHAT, ESCALATION</td>
             <td>Davis</td>
+            <td>Unknown</td>
             <td></td>
         </tr>
-        <tr class="row" data-leader="Baker">
+        <tr class="row" data-leader="Baker" data-entity="Unknown">
             <td>ESC-004</td>
             <td>8.05</td>
             <td>Needs Improvement</td>
@@ -118,9 +129,10 @@
             <td>3.6500000000000004</td>
             <td>WHO, WHEN, WHAT</td>
             <td>Baker</td>
+            <td>Unknown</td>
             <td></td>
         </tr>
-        <tr class="row" data-leader="Nguyen">
+        <tr class="row" data-leader="Nguyen" data-entity="Unknown">
             <td>WHY-005</td>
             <td>8.47</td>
             <td>Needs Improvement</td>
@@ -132,9 +144,10 @@
             <td>0.0</td>
             <td>WHO, WHEN, WHAT, ESCALATION</td>
             <td>Nguyen</td>
+            <td>Unknown</td>
             <td></td>
         </tr>
-        <tr class="row" data-leader="Torres">
+        <tr class="row" data-leader="Torres" data-entity="Unknown">
             <td>WHY-004</td>
             <td>9.075</td>
             <td>Needs Improvement</td>
@@ -146,9 +159,10 @@
             <td>0.0</td>
             <td>WHO, WHEN, WHAT, ESCALATION</td>
             <td>Torres</td>
+            <td>Unknown</td>
             <td></td>
         </tr>
-        <tr class="row" data-leader="Wright">
+        <tr class="row" data-leader="Wright" data-entity="Unknown">
             <td>WHY-002</td>
             <td>9.9</td>
             <td>Needs Improvement</td>
@@ -160,9 +174,10 @@
             <td>0.0</td>
             <td>WHO, WHEN, WHAT, ESCALATION</td>
             <td>Wright</td>
+            <td>Unknown</td>
             <td></td>
         </tr>
-        <tr class="row" data-leader="Scott">
+        <tr class="row" data-leader="Scott" data-entity="Unknown">
             <td>WHY-003</td>
             <td>10.45</td>
             <td>Needs Improvement</td>
@@ -174,9 +189,10 @@
             <td>0.0</td>
             <td>WHO, WHEN, WHAT, ESCALATION</td>
             <td>Scott</td>
+            <td>Unknown</td>
             <td></td>
         </tr>
-        <tr class="row" data-leader="Adams">
+        <tr class="row" data-leader="Adams" data-entity="Unknown">
             <td>ESC-003</td>
             <td>23.020000000000003</td>
             <td>Needs Improvement</td>
@@ -188,9 +204,10 @@
             <td>5.1</td>
             <td>WHO, WHEN, WHY</td>
             <td>Adams</td>
+            <td>Unknown</td>
             <td></td>
         </tr>
-        <tr class="row" data-leader="Allen">
+        <tr class="row" data-leader="Allen" data-entity="Unknown">
             <td>WHEN-004</td>
             <td>23.6</td>
             <td>Needs Improvement</td>
@@ -202,9 +219,10 @@
             <td>0.0</td>
             <td>WHEN, WHAT, WHY, ESCALATION</td>
             <td>Allen</td>
+            <td>Unknown</td>
             <td>as needed</td>
         </tr>
-        <tr class="row" data-leader="Lee">
+        <tr class="row" data-leader="Lee" data-entity="Unknown">
             <td>WHO-005</td>
             <td>25.6</td>
             <td>Needs Improvement</td>
@@ -216,9 +234,10 @@
             <td>0.0</td>
             <td>WHEN, WHAT, WHY, ESCALATION</td>
             <td>Lee</td>
+            <td>Unknown</td>
             <td></td>
         </tr>
-        <tr class="row" data-leader="Lewis">
+        <tr class="row" data-leader="Lewis" data-entity="Unknown">
             <td>WHEN-001</td>
             <td>28.74544</td>
             <td>Needs Improvement</td>
@@ -230,9 +249,10 @@
             <td>0.0</td>
             <td>WHO, WHY, ESCALATION</td>
             <td>Lewis</td>
+            <td>Unknown</td>
             <td></td>
         </tr>
-        <tr class="row" data-leader="Taylor">
+        <tr class="row" data-leader="Taylor" data-entity="Unknown">
             <td>WHO-004</td>
             <td>28.8</td>
             <td>Needs Improvement</td>
@@ -244,9 +264,10 @@
             <td>0.0</td>
             <td>WHEN, WHAT, WHY, ESCALATION</td>
             <td>Taylor</td>
+            <td>Unknown</td>
             <td></td>
         </tr>
-        <tr class="row" data-leader="Hill">
+        <tr class="row" data-leader="Hill" data-entity="Unknown">
             <td>ESC-001</td>
             <td>30.35</td>
             <td>Needs Improvement</td>
@@ -258,9 +279,10 @@
             <td>4.749999999999999</td>
             <td>WHEN, WHAT, WHY</td>
             <td>Hill</td>
+            <td>Unknown</td>
             <td></td>
         </tr>
-        <tr class="row" data-leader="King">
+        <tr class="row" data-leader="King" data-entity="Unknown">
             <td>WHY-001</td>
             <td>31.646799999999992</td>
             <td>Needs Improvement</td>
@@ -272,9 +294,10 @@
             <td>0.0</td>
             <td>WHO, WHEN, ESCALATION</td>
             <td>King</td>
+            <td>Unknown</td>
             <td></td>
         </tr>
-        <tr class="row" data-leader="Brown">
+        <tr class="row" data-leader="Brown" data-entity="Unknown">
             <td>WHO-003</td>
             <td>33.2</td>
             <td>Needs Improvement</td>
@@ -286,9 +309,10 @@
             <td>0.0</td>
             <td>WHEN, WHAT, ESCALATION</td>
             <td>Brown</td>
+            <td>Unknown</td>
             <td></td>
         </tr>
-        <tr class="row" data-leader="Young">
+        <tr class="row" data-leader="Young" data-entity="Unknown">
             <td>WHEN-005</td>
             <td>33.465</td>
             <td>Needs Improvement</td>
@@ -300,9 +324,10 @@
             <td>0.0</td>
             <td>WHAT, WHY, ESCALATION</td>
             <td>Young</td>
+            <td>Unknown</td>
             <td></td>
         </tr>
-        <tr class="row" data-leader="Rodriguez">
+        <tr class="row" data-leader="Rodriguez" data-entity="Unknown">
             <td>WHAT-005</td>
             <td>40.08203636363637</td>
             <td>Needs Improvement</td>
@@ -314,9 +339,10 @@
             <td>0.0</td>
             <td>WHEN, WHY, ESCALATION</td>
             <td>Rodriguez</td>
+            <td>Unknown</td>
             <td></td>
         </tr>
-        <tr class="row" data-leader="Walker">
+        <tr class="row" data-leader="Walker" data-entity="Unknown">
             <td>WHEN-002</td>
             <td>45.58</td>
             <td>Needs Improvement</td>
@@ -328,9 +354,10 @@
             <td>0.0</td>
             <td>WHAT, WHY, ESCALATION</td>
             <td>Walker</td>
+            <td>Unknown</td>
             <td></td>
         </tr>
-        <tr class="row" data-leader="Hall">
+        <tr class="row" data-leader="Hall" data-entity="Unknown">
             <td>WHEN-003</td>
             <td>47.545</td>
             <td>Needs Improvement</td>
@@ -342,9 +369,10 @@
             <td>0.0</td>
             <td>WHAT, WHY, ESCALATION</td>
             <td>Hall</td>
+            <td>Unknown</td>
             <td></td>
         </tr>
-        <tr class="row" data-leader="Nelson">
+        <tr class="row" data-leader="Nelson" data-entity="Unknown">
             <td>ESC-005</td>
             <td>59.461631999999994</td>
             <td>Good</td>
@@ -356,6 +384,7 @@
             <td>0.0</td>
             <td>WHEN, WHY, ESCALATION</td>
             <td>Nelson</td>
+            <td>Unknown</td>
             <td></td>
         </tr>
 
@@ -364,12 +393,18 @@
 
             <script>
                 function filterTable() {
-                    const filter = document.getElementById('leaderFilter').value;
+                    const leaderFilter = document.getElementById('leaderFilter').value;
+                    const entityFilter = document.getElementById('entityFilter').value;
                     const rows = document.querySelectorAll('#controlsTable tbody tr');
 
                     rows.forEach(row => {
                         const leader = row.getAttribute('data-leader');
-                        if (filter === 'all' || filter === leader) {
+                        const entity = row.getAttribute('data-entity');
+
+                        const leaderMatch = leaderFilter === 'all' || leaderFilter === leader;
+                        const entityMatch = entityFilter === 'all' || entityFilter === entity;
+
+                        if (leaderMatch && entityMatch) {
                             row.style.display = '';
                         } else {
                             row.style.display = 'none';
