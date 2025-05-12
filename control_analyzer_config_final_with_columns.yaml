@@ -264,6 +264,820 @@ elements:
       - blocks
     append: false
 
+  WHEN:
+    weight: 22
+    keywords:
+      # Frequencies
+      - daily
+      - weekly
+      - biweekly
+      - monthly
+      - quarterly
+      - annually
+      - yearly
+      - semi-annually
+      - biannually
+      - periodically
+      - semi-monthly
+      - bi-monthly
+      - bi-annual
+      - hourly
+      - intraday
+
+      # Specific timing
+      - every
+      - each
+      - after
+      - before
+      - prior to
+      - following
+      - upon
+      - when
+      - whenever
+      - as soon as
+      - immediately
+      - subsequently
+      - once
+      - twice
+      - frequency
+      - schedule
+      - upon
+      - during
+      - within
+      - by
+      - deadline
+      - due date
+      - time frame
+      - period
+      - day
+      - week
+      - month
+      - year
+
+      # Months and quarters
+      - january
+      - february
+      - march
+      - april
+      - may
+      - june
+      - july
+      - august
+      - september
+      - october
+      - november
+      - december
+      - q1
+      - q2
+      - q3
+      - q4
+
+      # Time periods
+      - month end
+      - quarter end
+      - year end
+      - period end
+      - fiscal
+      - calendar
+      - date
+      - schedule
+      - interval
+      - regular
+      - periodic
+      - scheduled
+      - ongoing
+      - continuous
+      - real-time
+      - triggered
+      - event-driven
+      - basis
+      - times
+      - hours
+      - minutes
+      - immediately
+      - upon receipt
+      - end of
+      - beginning of
+      - start of
+      - close of
+      - completion of
+      - cycle
+      - interval
+
+      # Time sequence
+      - first
+      - second
+      - third
+      - fourth
+      - subsequent
+      - next
+      - previous
+      - initial
+      - final
+      - prior
+      - post
+      - mid
+
+      # Time of day
+      - morning
+      - afternoon
+      - evening
+      - weekend
+      - business day
+      - workday
+      - timeframe
+
+      # Other timing patterns
+      - recurring
+      - ad hoc
+      - as needed
+      - per
+      - routinely
+      - intermittent
+      - on-demand
+      - rolling
+      - cadence
+      - seasonal
+      - interim
+
+      # Time-based triggers
+      - triggered
+      - event
+      - occurrence
+      - instance
+      - transaction
+      - processing
+      - closing
+      - reconciliation
+      - review cycle
+    append: false
+
+    # Added configurations for enhanced_when.py
+    temporal_indicators:
+      - time
+      - moment
+      - instance
+      - point
+      - period
+      - interval
+      - date
+      - cycle
+      - phase
+      - stage
+
+    context_exclusions:
+      following:
+        - lines
+        - business
+        - areas
+        - items
+        - steps
+        - fields
+        - sections
+      time:
+        - real-time
+        - one time
+        - first time
+        - last time
+      period:
+        - reporting period
+        - accounting period
+        - time period
+
+    vague_patterns:
+      - "^exceptions are (?:addressed|resolved|reviewed|handled) (when|as|if) (needed|appropriate|required)"
+      - "^(as|when|if) (appropriate|needed|required)"
+      - "^on an (as needed|when needed|if needed) basis"
+      - "performed (periodically|occasionally|regularly|as necessary)"
+
+    complex_patterns:
+      # Basic timeframe patterns
+      - ["within\\s+(\\d+)\\s+(day|week|month|business day|working day)s?", "timeframe", 0.95]
+      - ["after\\s+([\\w\\s]+?)\\s+(is|are|has been|have been)", "sequential", 0.85]
+      - ["prior\\s+to\\s+([\\w\\s]+)", "precondition", 0.85]
+      - ["following\\s+(completion|finalization|approval|review)\\s+of", "sequential", 0.85]
+      - ["upon\\s+([\\w\\s]+)", "trigger", 0.85]
+      - ["by\\s+the\\s+(\\d+)(?:st|nd|rd|th)\\s+(day|week|month)", "deadline", 0.95]
+
+      # Financial cycle patterns
+      - ["before\\s+(?:each|every)\\s+(?:financial|month[- ]end|quarter[- ]end|year[- ]end)\\s+close", "financial_cycle", 0.95]
+      - ["after\\s+(?:each|every|the)\\s+(?:financial|month[- ]end|quarter[- ]end|year[- ]end)\\s+close", "financial_cycle", 0.95]
+      - ["during\\s+(?:the|each|every)\\s+(?:financial|month[- ]end|quarter[- ]end|year[- ]end)\\s+close", "financial_cycle", 0.95]
+      - ["at\\s+(?:the|each|every)\\s+(?:financial|month[- ]end|quarter[- ]end|year[- ]end)\\s+close", "financial_cycle", 0.95]
+
+      # Day of week/month patterns
+      - ["(?i)every\\s+(?:monday|tuesday|wednesday|thursday|friday|saturday|sunday)", "weekly_schedule", 0.95]
+      - ["(?i)each\\s+(?:monday|tuesday|wednesday|thursday|friday|saturday|sunday)", "weekly_schedule", 0.95]
+      - ["(?i)on\\s+(?:monday|tuesday|wednesday|thursday|friday|saturday|sunday)s?", "weekly_schedule", 0.95]
+
+      # Day of month patterns
+      - ["(?:on|by)\\s+(?:the\\s+)?(\\d+)(?:st|nd|rd|th)(?:\\s+day)?(?:\\s+of\\s+(?:each|every|the)\\s+month)?", "day_of_month", 0.95]
+
+    event_patterns:
+      # Business cycle patterns
+      - ["(?:during|after|before|at)\\s+(?:the|each|every)\\s+(?:audit|review|assessment|reporting)\\s+(?:cycle|period|process)", "business_cycle", 0.8]
+      - ["(?:upon|after|following)\\s+(?:completion|finalization)\\s+of\\s+(?:the|each|every)\\s+(?:audit|review|assessment|reporting)", "business_cycle", 0.8]
+
+      # Event-based triggers
+      - ["(?:upon|after|when|following)\\s+(?:receipt|notification|identification|detection)\\s+of", "event_trigger", 0.9]
+      - ["(?:immediately|promptly)\\s+(?:upon|after|following)\\s+(?:detection|identification|discovery)", "event_trigger", 0.9]
+
+      # Exception handling
+      - ["when\\s+(?:exceptions|anomalies|discrepancies|errors)\\s+(?:are|have been)\\s+(?:identified|detected|found)", "exception_handling", 0.9]
+      - ["if\\s+(?:exceptions|anomalies|discrepancies|errors)\\s+(?:are|have been)\\s+(?:identified|detected|found)", "exception_handling", 0.9]
+
+    vague_timing_terms:
+      - periodically
+      - regularly
+      - as needed
+      - when necessary
+      - as appropriate
+      - as required
+      - on a regular basis
+      - timely
+      - promptly
+      - from time to time
+      - when appropriate
+      - where appropriate
+      - if needed
+      - if necessary
+      - occasionally
+      - sometimes
+      - at times
+      - now and then
+      - intermittently
+      - at intervals
+      - frequently
+      - infrequently
+      - as applicable
+      - as deemed necessary
+      - when needed
+      - if appropriate
+      - where necessary
+      - as necessary
+
+    procedure_patterns:
+      - "defined in (procedure|policy|document|standard)"
+      - "outlined in (procedure|policy|document|standard)"
+      - "described in (procedure|policy|document|standard)"
+      - "according to (procedure|policy|document|standard)"
+      - "per (procedure|policy|document|standard)"
+      - "as per (procedure|policy|document|standard)"
+      - "based on (procedure|policy|document|standard)"
+      - "in accordance with (procedure|policy|document|standard)"
+
+  WHAT:
+    weight: 32
+    keywords:
+      # Action verbs
+      - review
+      - verify
+      - check
+      - validate
+      - ensure
+      - confirm
+      - examine
+      - analyze
+      - evaluate
+      - assess
+      - monitor
+      - track
+      - compare
+      - reconcile
+      - match
+      - approve
+      - authorize
+      - sign
+      - document
+      - record
+      - log
+      - maintain
+      - update
+      - generate
+      - prepare
+      - create
+      - establish
+      - implement
+      - execute
+      - perform
+
+      # Compound activities
+      - conduct review
+      - perform check
+      - carry out
+      - run report
+      - generate report
+      - prepare documentation
+      - maintain record
+      - ensure compliance
+      - verify accuracy
+      - validate completeness
+      - cross-check
+      - double-check
+      - sign off
+      - follow up
+      - identify discrepancies
+      - resolve issues
+      - address exceptions
+      - match transactions
+      - approve documents
+      - authorize access
+    append: false
+
+    # Control type validation settings
+    control_type_indicators:
+      preventive:
+        - prevent
+        - block
+        - restrict
+        - limit
+        - prohibit
+        - stop
+        - validate before
+        - approve before
+        - check before
+        - authorize
+        - authenticate
+        - gate
+        - control access
+        - deny
+        - reject
+        - screen
+        - filter
+        - segregate
+        - separate
+      detective:
+        - detect
+        - identify
+        - discover
+        - find
+        - review
+        - monitor
+        - check
+        - validate
+        - verify
+        - reconcile
+        - compare
+        - inspect
+        - examine
+        - audit
+        - analyze
+        - assess
+        - observe
+        - scan
+        - look for
+        - test
+      corrective:
+        - correct
+        - remediate
+        - fix
+        - resolve
+        - address
+        - adjust
+        - update
+        - change
+        - modify
+        - repair
+        - rectify
+        - restore
+        - mitigate
+        - handle
+        - process
+        - respond
+        - revise
+
+    # Enhanced verb alternatives with control type context
+    verb_alternatives:
+      perform:
+        preventive: "'prevent', 'block', or 'restrict'"
+        detective: "'detect', 'identify', or 'monitor'"
+        corrective: "'correct', 'remediate', or 'fix'"
+      do:
+        preventive: "'restrict', 'limit', or 'authorize'"
+        detective: "'verify', 'check', or 'compare'"
+        corrective: "'resolve', 'fix', or 'update'"
+      handle:
+        preventive: "'approve', 'authorize', or 'validate'"
+        detective: "'review', 'examine', or 'analyze'"
+        corrective: "'fix', 'correct', or 'resolve'"
+      manage:
+        preventive: "'control', 'limit', or 'authorize'"
+        detective: "'monitor', 'oversee', or 'review'"
+        corrective: "'remediate', 'correct', or 'adjust'"
+      address:
+        preventive: "'prevent', 'block', or 'control'"
+        detective: "'identify', 'discover', or 'detect'"
+        corrective: "'resolve', 'remediate', or 'correct'"
+
+    # Technical terms for object specificity
+    technical_terms:
+      - system
+      - application
+      - database
+      - server
+      - protocol
+      - interface
+      - module
+      - component
+      - api
+      - configuration
+      - parameter
+      - threshold
+      - workflow
+      - rule set
+      - algorithm
+      - transaction
+      - record
+      - document
+      - account
+      - entity
+      - report
+      - dashboard
+
+    # Vague object terms to penalize
+    vague_object_terms:
+      - item
+      - thing
+      - stuff
+      - issue
+      - matter
+      - situation
+      - exception
+      - information
+      - data
+      - content
+      - material
+      - object
+      - appropriate
+      - proper
+      - necessary
+      - adequate
+
+    # Where detection components
+    where_systems:
+      - system
+      - application
+      - database
+      - server
+      - platform
+      - sharepoint
+      - erp
+      - sap
+      - oracle
+      - repository
+      - file
+      - folder
+      - directory
+      - dashboard
+      - module
+      - portal
+      - service
+      - cloud
+
+    where_locations:
+      - site
+      - location
+      - storage
+      - share
+      - repository
+      - archive
+      - folder
+      - directory
+      - office
+      - facility
+      - warehouse
+      - department
+
+    # Enable debug mode for detailed scoring traces
+    debug_mode: false
+
+  WHY:
+    weight: 11
+    keywords:
+      # Purpose indicators
+      - to ensure
+      - in order to
+      - for the purpose of
+      - designed to
+      - intended to
+      - so that
+      - purpose
+      - objective
+      - goal
+
+      # Risk-related terms
+      - prevent
+      - detect
+      - mitigate
+      - risk
+      - error
+      - fraud
+      - misstatement
+      - compliance
+      - regulatory
+      - requirement
+      - policy
+      - procedure
+      - standard
+      - guideline
+      - regulation
+      - law
+      - mandate
+      - obligation
+      - safeguard
+      - protect
+
+      # Benefit terms
+      - accuracy
+      - completeness
+      - validity
+      - integrity
+      - reliability
+      - consistency
+      - efficiency
+      - effectiveness
+      - quality
+      - improvement
+      - enhancement
+      - optimization
+      - assurance
+    append: false
+
+    # New WHY configuration sections for the enhanced module
+    purpose_patterns:
+      - 'to\s+(ensure|verify|confirm|validate|prevent|detect|mitigate|comply|adhere|demonstrate|maintain|support|achieve|provide)\s+([^\.;,]{5,50})'
+      - 'in\s+order\s+to\s+([^\.;,]{5,50})'
+      - 'for\s+the\s+purpose\s+of\s+([^\.;,]{5,50})'
+      - 'designed\s+to\s+([^\.;,]{5,50})'
+      - 'intended\s+to\s+([^\.;,]{5,50})'
+      - 'so\s+that\s+([^\.;,]{5,50})'
+      - 'the\s+purpose\s+(?:of\s+this\s+control\s+is|is)\s+to\s+([^\.;,]{5,50})'
+      - 'this\s+control\s+(?:is\s+designed|exists)\s+to\s+([^\.;,]{5,50})'
+
+    vague_terms:
+      - "proper functioning"
+      - "appropriate"
+      - "adequately"
+      - "properly"
+      - "as needed"
+      - "as required"
+      - "as appropriate"
+      - "correct functioning"
+      - "effective"
+      - "efficient"
+      - "functioning"
+      - "operational"
+      - "successful"
+      - "appropriate action"
+      - "necessary action"
+      - "properly functioning"
+
+    intent_verbs:
+      preventive:
+        - prevent
+        - avoid
+        - stop
+        - block
+        - prohibit
+        - restrict
+        - limit
+      detective:
+        - detect
+        - identify
+        - discover
+        - find
+        - monitor
+        - review
+        - reconcile
+      corrective:
+        - correct
+        - resolve
+        - address
+        - fix
+        - remediate
+        - rectify
+      compliance:
+        - comply
+        - adhere
+        - conform
+        - follow
+        - meet
+        - satisfy
+        - fulfill
+
+    mitigation_verbs:
+      - resolve
+      - correct
+      - address
+      - remediate
+      - fix
+      - prevent
+      - block
+      - stop
+      - deny
+      - restrict
+      - escalate
+      - alert
+      - notify
+      - disable
+      - lockout
+      - report
+
+    verb_purpose_mapping:
+      review:
+        default: "to ensure accuracy and completeness"
+        approval: "to ensure proper authorization"
+        changes: "to prevent unauthorized changes"
+        access: "to ensure appropriate access"
+      approve:
+        default: "to ensure proper authorization"
+        changes: "to prevent unauthorized changes"
+        transactions: "to ensure authorized transactions"
+        documents: "to ensure document validity"
+      reconcile:
+        default: "to ensure data integrity and accuracy"
+      verify:
+        default: "to confirm accuracy and validity"
+        approval: "to ensure proper authorization"
+      validate:
+        default: "to ensure compliance and accuracy"
+        approval: "to validate authorization"
+      monitor:
+        default: "to detect anomalies or non-compliance"
+        changes: "to identify unauthorized changes"
+      check:
+        default: "to identify errors or inconsistencies"
+        approval: "to verify authorization"
+
+    categories:
+      risk_mitigation:
+        - risk
+        - prevent
+        - mitigate
+        - reduce
+        - avoid
+        - minimize
+      compliance:
+        - comply
+        - compliance
+        - regulatory
+        - regulation
+        - requirement
+        - policy
+        - standard
+      accuracy:
+        - accuracy
+        - accurate
+        - correct
+        - error-free
+        - integrity
+        - reliable
+      completeness:
+        - complete
+        - completeness
+        - all
+        - comprehensive
+      authorization:
+        - authorize
+        - approval
+        - permission
+        - authorization
+
+    # Risk alignment settings
+    alignment_thresholds:
+      strong: 0.7
+      moderate: 0.4
+      weak: 0.1
+
+    # Flag to enable diagnostic output
+    debug_mode: false
+
+  ESCALATION:
+    weight: 3
+    keywords:
+      # Escalation terms
+      - escalate
+      - escalation
+      - escalated to
+      - reported to
+      - elevated to
+      - notify
+      - notification
+      - alert
+      - inform
+      - communicate
+      - report
+      - elevated
+      - elevation
+      - raised
+      - raising
+      - communicate
+      - communication
+      - reported
+      - reporting
+      - highlight
+      - highlighted
+      - inform
+      - informed
+      - contact
+      - contacted
+      - route
+      - routed
+      - forward
+      - forwarded
+      - submitted
+      - submission
+
+      # Issue handling
+      - exception
+      - exceptions
+      - failure
+      - failures
+      - issue
+      - issues
+      - resolution
+      - remediate
+      - remediation
+      - handle
+      - handling
+      - address
+      - resolve
+      - resolution
+      - respond
+      - response
+      - breach
+      - violation
+      - discrepancy
+      - unauthorized
+      - inappropriate
+      - incomplete
+      - error
+      - problem
+      - concern
+      - risk
+      - incident
+      - trigger
+      - flag
+      - flagged
+      - immediate
+      - urgent
+      - priority
+      - corrective
+      - correction
+      - fix
+      - follow-up
+      - follow up
+      - revoke
+      - disable
+      - addressed
+      - addressing
+      - managed
+      - managing
+      - coordinated
+      - coordination
+      - documented
+      - documentation
+      - tracked
+      - tracking
+      - updated
+      - updating
+      - monitored
+      - monitoring
+      - warning
+      - action
+      - deviation
+      - anomaly
+      - finding
+
+      # Conditional phrases
+      - if necessary
+      - as necessary
+      - if needed
+      - if required
+      - when needed
+      - if identified
+      - when identified
+
+      # Escalation targets
+      - management
+      - supervisor
+      - manager
+      - senior
+      - executive
+      - leadership
+      - committee
+      - board
+      - higher level
+      - appropriate
+      - cfo
+      - director
+      - manager
+      - supervisor
+      - head
+      - chief
+      - executive
+    append: false
+
 # Vague Terms
 vague_terms:
   # Ambiguous terms
@@ -461,14 +1275,67 @@ domain_clusters:
     - month-end
     - monthly cycle
 
+# Multi-control detection configuration
+multi_control:
+  # Escalation markers that indicate conditional paths rather than separate controls
+  escalation_markers:
+    - "if "
+    - "when "
+    - "exception"
+    - "discrepan"
+    - "error"
+    - "issue"
+    - "escalate"
+    - "notify"
+    - "alert"
+    - "report to"
+    - "exceed"
+    - "threshold"
+    - "not match"
+    - "fails"
+    - "failure"
+    - "variance"
+
+  # Ad-hoc timing indicators
+  adhoc_terms:
+    - "ad hoc"
+    - "adhoc"
+    - "as needed"
+    - "when needed"
+    - "if needed"
+    - "on-demand"
+    - "on demand"
+    - "as required"
+    - "when necessary"
+
+  # Sequence markers that might indicate multiple steps
+  sequence_markers:
+    - "then"
+    - "after"
+    - "subsequently"
+    - "next"
+    - "following"
+    - "afterward"
+    - "first"
+    - "second"
+    - "third"
+    - "finally"
+    - "lastly"
+
+  # Score penalties for multi-control descriptions
+  points_per_control: 5
+  max_penalty: 10
+
 # Column Mapping
 columns:
   id: Control ID
   description: Control Description
-  frequency: Frequency
+  frequency: Control Frequency
   type: Control Type
-  risk: Risk_Description
+  automation: Control Automation Level
+  risk: Key Risk Description
   audit_leader: Audit Leader From AE
+  audit_entity: Audit Entity
 
   portfolio_metadata:
     audits:
@@ -478,387 +1345,3 @@ columns:
       "AUDIT-2023-002":
         name: "IT Department Audit 2023"
         leader: "John Doe"
-
-  WHEN:
-    weight: 22
-    keywords:
-      # Frequencies
-      - daily
-      - weekly
-      - biweekly
-      - monthly
-      - quarterly
-      - annually
-      - yearly
-      - semi-annually
-      - biannually
-      - periodically
-      - semi-monthly
-      - bi-monthly
-      - bi-annual
-      - hourly
-      - intraday
-
-      # Specific timing
-      - every
-      - each
-      - after
-      - before
-      - prior to
-      - following
-      - upon
-      - when
-      - whenever
-      - as soon as
-      - immediately
-      - subsequently
-      - once
-      - twice
-      - frequency
-      - schedule
-      - upon
-      - during
-      - within
-      - by
-      - deadline
-      - due date
-      - time frame
-      - period
-      - day
-      - week
-      - month
-      - year
-
-      # Months and quarters
-      - january
-      - february
-      - march
-      - april
-      - may
-      - june
-      - july
-      - august
-      - september
-      - october
-      - november
-      - december
-      - q1
-      - q2
-      - q3
-      - q4
-
-      # Time periods
-      - month end
-      - quarter end
-      - year end
-      - period end
-      - fiscal
-      - calendar
-      - date
-      - schedule
-      - interval
-      - regular
-      - periodic
-      - scheduled
-      - ongoing
-      - continuous
-      - real-time
-      - triggered
-      - event-driven
-      - basis
-      - times
-      - hours
-      - minutes
-      - immediately
-      - upon receipt
-      - end of
-      - beginning of
-      - start of
-      - close of
-      - completion of
-      - cycle
-      - interval
-
-      # Time sequence
-      - first
-      - second
-      - third
-      - fourth
-      - subsequent
-      - next
-      - previous
-      - initial
-      - final
-      - prior
-      - post
-      - mid
-
-      # Time of day
-      - morning
-      - afternoon
-      - evening
-      - weekend
-      - business day
-      - workday
-      - timeframe
-
-      # Other timing patterns
-      - recurring
-      - ad hoc
-      - as needed
-      - per
-      - routinely
-      - intermittent
-      - on-demand
-      - rolling
-      - cadence
-      - seasonal
-      - interim
-
-      # Time-based triggers
-      - triggered
-      - event
-      - occurrence
-      - instance
-      - transaction
-      - processing
-      - closing
-      - reconciliation
-      - review cycle
-    append: false
-
-  WHAT:
-    weight: 32
-    keywords:
-      # Action verbs
-      - review
-      - verify
-      - check
-      - validate
-      - ensure
-      - confirm
-      - examine
-      - analyze
-      - evaluate
-      - assess
-      - monitor
-      - track
-      - compare
-      - reconcile
-      - match
-      - approve
-      - authorize
-      - sign
-      - document
-      - record
-      - log
-      - maintain
-      - update
-      - generate
-      - prepare
-      - create
-      - establish
-      - implement
-      - execute
-      - perform
-
-      # Compound activities
-      - conduct review
-      - perform check
-      - carry out
-      - run report
-      - generate report
-      - prepare documentation
-      - maintain record
-      - ensure compliance
-      - verify accuracy
-      - validate completeness
-      - cross-check
-      - double-check
-      - sign off
-      - follow up
-      - identify discrepancies
-      - resolve issues
-      - address exceptions
-      - match transactions
-      - approve documents
-      - authorize access
-    append: false
-
-  WHY:
-    weight: 11
-    keywords:
-      # Purpose indicators
-      - to ensure
-      - in order to
-      - for the purpose of
-      - designed to
-      - intended to
-      - so that
-      - purpose
-      - objective
-      - goal
-
-      # Risk-related terms
-      - prevent
-      - detect
-      - mitigate
-      - risk
-      - error
-      - fraud
-      - misstatement
-      - compliance
-      - regulatory
-      - requirement
-      - policy
-      - procedure
-      - standard
-      - guideline
-      - regulation
-      - law
-      - mandate
-      - obligation
-      - safeguard
-      - protect
-
-      # Benefit terms
-      - accuracy
-      - completeness
-      - validity
-      - integrity
-      - reliability
-      - consistency
-      - efficiency
-      - effectiveness
-      - quality
-      - improvement
-      - enhancement
-      - optimization
-      - assurance
-    append: false
-
-  ESCALATION:
-    weight: 3
-    keywords:
-      # Escalation terms
-      - escalate
-      - escalation
-      - escalated to
-      - reported to
-      - elevated to
-      - notify
-      - notification
-      - alert
-      - inform
-      - communicate
-      - report
-      - elevated
-      - elevation
-      - raised
-      - raising
-      - communicate
-      - communication
-      - reported
-      - reporting
-      - highlight
-      - highlighted
-      - inform
-      - informed
-      - contact
-      - contacted
-      - route
-      - routed
-      - forward
-      - forwarded
-      - submitted
-      - submission
-
-      # Issue handling
-      - exception
-      - exceptions
-      - failure
-      - failures
-      - issue
-      - issues
-      - resolution
-      - remediate
-      - remediation
-      - handle
-      - handling
-      - address
-      - resolve
-      - resolution
-      - respond
-      - response
-      - breach
-      - violation
-      - discrepancy
-      - unauthorized
-      - inappropriate
-      - incomplete
-      - error
-      - problem
-      - concern
-      - risk
-      - incident
-      - trigger
-      - flag
-      - flagged
-      - immediate
-      - urgent
-      - priority
-      - corrective
-      - correction
-      - fix
-      - follow-up
-      - follow up
-      - revoke
-      - disable
-      - addressed
-      - addressing
-      - managed
-      - managing
-      - coordinated
-      - coordination
-      - documented
-      - documentation
-      - tracked
-      - tracking
-      - updated
-      - updating
-      - monitored
-      - monitoring
-      - warning
-      - action
-      - deviation
-      - anomaly
-      - finding
-
-      # Conditional phrases
-      - if necessary
-      - as necessary
-      - if needed
-      - if required
-      - when needed
-      - if identified
-      - when identified
-
-      # Escalation targets
-      - management
-      - supervisor
-      - manager
-      - senior
-      - executive
-      - leadership
-      - committee
-      - board
-      - higher level
-      - appropriate
-      - cfo
-      - director
-      - manager
-      - supervisor
-      - head
-      - chief
-      - executive
-    append: false

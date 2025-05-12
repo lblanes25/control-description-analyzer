@@ -5,7 +5,6 @@ import os
 from collections import Counter, defaultdict
 
 
-
 def generate_core_visualizations(results, output_dir):
     """
     Generate enhanced visualizations with dropdown filters for control description analysis results
@@ -31,19 +30,25 @@ def generate_core_visualizations(results, output_dir):
         "WHY Score": r["weighted_scores"]["WHY"],
         "ESCALATION Score": r["weighted_scores"]["ESCALATION"],
         "Missing Elements": ", ".join(r["missing_elements"]) if r["missing_elements"] else "None",
-        # Directly get "Audit Leader" - it's now consistently set in the result dictionary
+        # Get Audit Leader - it's now consistently set in the result dictionary
         "Audit Leader": r.get("Audit Leader", "Unknown"),
+        # Get Audit Entity - similarly to Audit Leader
+        "Audit Entity": r.get("Audit Entity", "Unknown"),
         "vague_terms_found": r.get("vague_terms_found", [])
     } for r in results])
 
     output_files = {}
 
-    # ========== SCORE DISTRIBUTION WITH AUDIT LEADER FILTER ==========
-    # Create dropdown options from unique audit leaders
+    # Create dropdown options from unique audit leaders and entities
     audit_leaders = df["Audit Leader"].unique().tolist()
     audit_leaders.insert(0, "All Leaders")  # Add "All" option at beginning
 
-    # Create figure with dropdown menu for Audit Leader
+    # Add unique audit entities
+    audit_entities = df["Audit Entity"].unique().tolist()
+    audit_entities.insert(0, "All Entities")  # Add "All" option at beginning
+
+    # ========== SCORE DISTRIBUTION WITH AUDIT LEADER AND AUDIT ENTITY FILTERS ==========
+    # Create figure with dropdown menu for both filters
     fig_score_dist = px.histogram(df, x="Total Score", color="Category", nbins=20,
                                   title="Distribution of Control Description Scores",
                                   labels={"Total Score": "Score (0-100)", "count": "Number of Controls"},
@@ -51,10 +56,10 @@ def generate_core_visualizations(results, output_dir):
                                                       "Needs Improvement": "#dc3545"})
 
     # Create dropdown menu buttons for each audit leader
-    dropdown_buttons = []
+    leader_dropdown_buttons = []
 
     # Add "All Leaders" button
-    dropdown_buttons.append(dict(
+    leader_dropdown_buttons.append(dict(
         method="update",
         label="All Leaders",
         args=[{"visible": [True] * len(df["Category"].unique())}]
@@ -84,34 +89,92 @@ def generate_core_visualizations(results, output_dir):
                 {"title": f"Distribution of Control Description Scores - {leader}"}
             ]
         )
-        dropdown_buttons.append(button)
+        leader_dropdown_buttons.append(button)
 
-    # Update layout to include dropdown menu
+    # Create dropdown menu buttons for each audit entity
+    entity_dropdown_buttons = []
+
+    # Add "All Entities" button
+    entity_dropdown_buttons.append(dict(
+        method="update",
+        label="All Entities",
+        args=[{"visible": [True] * len(df["Category"].unique())}]
+    ))
+
+    # Add filter buttons for each audit entity
+    for entity in audit_entities[1:]:  # Skip "All Entities"
+        # Create a filter mask for this entity
+        entity_data = df[df["Audit Entity"] == entity]
+
+        # Create button for this entity
+        button = dict(
+            method="update",
+            label=entity,
+            args=[
+                {"data": [
+                    go.Histogram(
+                        x=entity_data[entity_data["Category"] == cat]["Total Score"],
+                        name=cat,
+                        marker_color=color
+                    )
+                    for cat, color in zip(
+                        ["Excellent", "Good", "Needs Improvement"],
+                        ["#28a745", "#ffc107", "#dc3545"]
+                    )
+                ]},
+                {"title": f"Distribution of Control Description Scores - {entity}"}
+            ]
+        )
+        entity_dropdown_buttons.append(button)
+
+    # Update layout to include both dropdown menus
     fig_score_dist.update_layout(
-        updatemenus=[dict(
-            buttons=dropdown_buttons,
-            direction="down",
-            showactive=True,
-            x=1.0,
-            xanchor="right",
-            y=1.15,
-            yanchor="top"
-        )],
-        annotations=[dict(
-            text="Audit Leader:",
-            showarrow=False,
-            x=1.0,
-            y=1.2,
-            xref="paper",
-            yref="paper",
-            align="right"
-        )]
+        updatemenus=[
+            dict(
+                buttons=leader_dropdown_buttons,
+                direction="down",
+                showactive=True,
+                x=1.0,
+                xanchor="right",
+                y=1.15,
+                yanchor="top"
+            ),
+            dict(
+                buttons=entity_dropdown_buttons,
+                direction="down",
+                showactive=True,
+                x=0.7,  # Position it to the left of the first dropdown
+                xanchor="right",
+                y=1.15,
+                yanchor="top"
+            )
+        ],
+        annotations=[
+            dict(
+                text="Audit Leader:",
+                showarrow=False,
+                x=1.0,
+                y=1.2,
+                xref="paper",
+                yref="paper",
+                align="right"
+            ),
+            dict(
+                text="Audit Entity:",
+                showarrow=False,
+                x=0.7,  # Position it to the left of the first label
+                y=1.2,
+                xref="paper",
+                yref="paper",
+                align="right"
+            )
+        ]
     )
 
     fig_score_dist.write_html(os.path.join(output_dir, "score_distribution.html"))
     output_files["score_distribution"] = os.path.join(output_dir, "score_distribution.html")
 
-    # ========== ELEMENT RADAR CHART WITH AUDIT LEADER FILTER ==========
+    # ========== ELEMENT RADAR CHART WITH AUDIT LEADER AND AUDIT ENTITY FILTERS ==========
     elements = ["WHO", "WHEN", "WHAT", "WHY", "ESCALATION"]
 
     # Create figure
@@ -129,11 +192,11 @@ def generate_core_visualizations(results, output_dir):
             name=f"{category} (All Leaders)"
         ))
 
-    # Create dropdown menu buttons for each audit leader
-    dropdown_buttons = []
+    # Create dropdown menu buttons for audit leader
+    radar_leader_buttons = []
 
-    # Add "All Leaders" button showing the original traces (already added)
-    dropdown_buttons.append(dict(
+    # Add "All Leaders" button
+    radar_leader_buttons.append(dict(
         method="update",
         label="All Leaders",
         args=[{"visible": [True] * len(category_avg["Category"])}]
@@ -176,36 +239,106 @@ def generate_core_visualizations(results, output_dir):
                     {"title": f"Average Element Scores by Category - {leader}"}
                 ]
             )
-            dropdown_buttons.append(button)
+            radar_leader_buttons.append(button)
 
-    # Update layout to include dropdown menu
+    # Create dropdown menu buttons for audit entity
+    radar_entity_buttons = []
+
+    # Add "All Entities" button
+    radar_entity_buttons.append(dict(
+        method="update",
+        label="All Entities",
+        args=[{"visible": [True] * len(category_avg["Category"])}]
+    ))
+
+    # Add filter buttons for each audit entity
+    for entity in audit_entities[1:]:  # Skip "All Entities"
+        # Calculate averages for this entity
+        entity_data = df[df["Audit Entity"] == entity]
+        if len(entity_data) > 0:
+            entity_category_avg = entity_data.groupby("Category")[[f"{e} Score" for e in elements]].mean().reset_index()
+
+            # Generate data for each category this entity has
+            entity_traces = []
+            for category in entity_category_avg["Category"]:
+                values = [entity_category_avg.loc[entity_category_avg["Category"] == category, f"{e} Score"].values[0]
+                          for e in elements]
+                values.append(values[0])  # Close the loop
+                entity_traces.append(go.Scatterpolar(
+                    r=values,
+                    theta=elements + [elements[0]],
+                    fill='toself',
+                    name=f"{category} ({entity})"
+                ))
+
+            # Create update data for this entity's button
+            visible_list = [False] * len(category_avg["Category"])
+            update_data = []
+
+            for trace in entity_traces:
+                update_data.append(trace)
+
+            # Create button for this entity
+            button = dict(
+                method="update",
+                label=entity,
+                args=[
+                    {"data": update_data},
+                    {"title": f"Average Element Scores by Category - {entity}"}
+                ]
+            )
+            radar_entity_buttons.append(button)
+
+    # Update layout to include both dropdown menus
     fig_radar.update_layout(
         polar=dict(radialaxis=dict(visible=True, range=[0, 30])),
         title="Average Element Scores by Category",
-        updatemenus=[dict(
-            buttons=dropdown_buttons,
-            direction="down",
-            showactive=True,
-            x=1.0,
-            xanchor="right",
-            y=1.15,
-            yanchor="top"
-        )],
-        annotations=[dict(
-            text="Audit Leader:",
-            showarrow=False,
-            x=1.0,
-            y=1.2,
-            xref="paper",
-            yref="paper",
-            align="right"
-        )]
+        updatemenus=[
+            dict(
+                buttons=radar_leader_buttons,
+                direction="down",
+                showactive=True,
+                x=1.0,
+                xanchor="right",
+                y=1.15,
+                yanchor="top"
+            ),
+            dict(
+                buttons=radar_entity_buttons,
+                direction="down",
+                showactive=True,
+                x=0.7,  # Position to the left of leader dropdown
+                xanchor="right",
+                y=1.15,
+                yanchor="top"
+            )
+        ],
+        annotations=[
+            dict(
+                text="Audit Leader:",
+                showarrow=False,
+                x=1.0,
+                y=1.2,
+                xref="paper",
+                yref="paper",
+                align="right"
+            ),
+            dict(
+                text="Audit Entity:",
+                showarrow=False,
+                x=0.7,
+                y=1.2,
+                xref="paper",
+                yref="paper",
+                align="right"
+            )
+        ]
     )
 
     fig_radar.write_html(os.path.join(output_dir, "element_radar.html"))
     output_files["element_radar"] = os.path.join(output_dir, "element_radar.html")
 
-    # ========== MISSING ELEMENTS WITH AUDIT LEADER FILTER ==========
+    # ========== MISSING ELEMENTS WITH AUDIT LEADER AND AUDIT ENTITY FILTERS ==========
     elements = ["WHO", "WHEN", "WHAT", "WHY", "ESCALATION"]
 
     # Function to count missing elements for specific data
@@ -224,17 +357,17 @@ def generate_core_visualizations(results, output_dir):
     # Count missing elements for all data
     missing_df = count_missing_elements(df, elements)
 
-    # Create figure with dropdown menu for Audit Leader
+    # Create figure with dropdown menus for Audit Leader and Audit Entity
     fig_missing = px.bar(missing_df, x="Element", y="Missing Count",
                          title="Frequency of Missing Elements",
                          labels={"Element": "Control Element", "Missing Count": "Number of Controls Missing Element"},
                          color="Missing Count", color_continuous_scale=px.colors.sequential.Reds)
 
     # Create dropdown menu buttons for each audit leader
-    dropdown_buttons = []
+    missing_leader_buttons = []
 
     # Add "All Leaders" button
-    dropdown_buttons.append(dict(
+    missing_leader_buttons.append(dict(
         method="update",
         label="All Leaders",
         args=[
@@ -272,34 +405,100 @@ def generate_core_visualizations(results, output_dir):
                 {"title": f"Frequency of Missing Elements - {leader}"}
             ]
         )
-        dropdown_buttons.append(button)
+        missing_leader_buttons.append(button)
 
-    # Update layout to include dropdown menu
+    # Create dropdown menu buttons for each audit entity
+    missing_entity_buttons = []
+
+    # Add "All Entities" button
+    missing_entity_buttons.append(dict(
+        method="update",
+        label="All Entities",
+        args=[
+            {"data": [go.Bar(
+                x=missing_df["Element"],
+                y=missing_df["Missing Count"],
+                marker=dict(
+                    color=missing_df["Missing Count"],
+                    colorscale="Reds"
+                )
+            )]},
+            {"title": "Frequency of Missing Elements"}
+        ]
+    ))
+
+    # Add filter buttons for each audit entity
+    for entity in audit_entities[1:]:  # Skip "All Entities"
+        # Count missing elements for this entity
+        entity_data = df[df["Audit Entity"] == entity]
+        entity_missing_df = count_missing_elements(entity_data, elements)
+
+        # Create button for this entity
+        button = dict(
+            method="update",
+            label=entity,
+            args=[
+                {"data": [go.Bar(
+                    x=entity_missing_df["Element"],
+                    y=entity_missing_df["Missing Count"],
+                    marker=dict(
+                        color=entity_missing_df["Missing Count"],
+                        colorscale="Reds"
+                    )
+                )]},
+                {"title": f"Frequency of Missing Elements - {entity}"}
+            ]
+        )
+        missing_entity_buttons.append(button)
+
+    # Update layout to include both dropdown menus
     fig_missing.update_layout(
-        updatemenus=[dict(
-            buttons=dropdown_buttons,
-            direction="down",
-            showactive=True,
-            x=1.0,
-            xanchor="right",
-            y=1.15,
-            yanchor="top"
-        )],
-        annotations=[dict(
-            text="Audit Leader:",
-            showarrow=False,
-            x=1.0,
-            y=1.2,
-            xref="paper",
-            yref="paper",
-            align="right"
-        )]
+        updatemenus=[
+            dict(
+                buttons=missing_leader_buttons,
+                direction="down",
+                showactive=True,
+                x=1.0,
+                xanchor="right",
+                y=1.15,
+                yanchor="top"
+            ),
+            dict(
+                buttons=missing_entity_buttons,
+                direction="down",
+                showactive=True,
+                x=0.7,
+                xanchor="right",
+                y=1.15,
+                yanchor="top"
+            )
+        ],
+        annotations=[
+            dict(
+                text="Audit Leader:",
+                showarrow=False,
+                x=1.0,
+                y=1.2,
+                xref="paper",
+                yref="paper",
+                align="right"
+            ),
+            dict(
+                text="Audit Entity:",
+                showarrow=False,
+                x=0.7,
+                y=1.2,
+                xref="paper",
+                yref="paper",
+                align="right"
+            )
+        ]
     )
 
     fig_missing.write_html(os.path.join(output_dir, "missing_elements.html"))
     output_files["missing_elements"] = os.path.join(output_dir, "missing_elements.html")
 
-    # ========== VAGUE TERM FREQUENCY WITH AUDIT LEADER FILTER ==========
+    # ========== VAGUE TERM FREQUENCY WITH AUDIT LEADER AND AUDIT ENTITY FILTERS ==========
     # Function to count vague terms for specific data
     def count_vague_terms(data_frame):
         vague_terms = sum(data_frame["vague_terms_found"], [])
@@ -312,17 +511,17 @@ def generate_core_visualizations(results, output_dir):
     vague_df = count_vague_terms(df)
 
     if not vague_df.empty:
-        # Create figure with dropdown menu for Audit Leader
+        # Create figure with dropdown menus for Audit Leader and Audit Entity
         fig_vague = px.bar(vague_df, x="Term", y="Count",
                            title="Frequency of Vague Terms",
                            labels={"Term": "Vague Term", "Count": "Occurrences"},
                            color="Count", color_continuous_scale=px.colors.sequential.Oranges)
 
         # Create dropdown menu buttons for each audit leader
-        dropdown_buttons = []
+        vague_leader_buttons = []
 
         # Add "All Leaders" button
-        dropdown_buttons.append(dict(
+        vague_leader_buttons.append(dict(
             method="update",
             label="All Leaders",
             args=[
@@ -361,32 +560,163 @@ def generate_core_visualizations(results, output_dir):
                         {"title": f"Frequency of Vague Terms - {leader}"}
                     ]
                 )
-                dropdown_buttons.append(button)
+                vague_leader_buttons.append(button)
 
-        # Update layout to include dropdown menu
+        # Create dropdown menu buttons for each audit entity
+        vague_entity_buttons = []
+
+        # Add "All Entities" button
+        vague_entity_buttons.append(dict(
+            method="update",
+            label="All Entities",
+            args=[
+                {"data": [go.Bar(
+                    x=vague_df["Term"],
+                    y=vague_df["Count"],
+                    marker=dict(
+                        color=vague_df["Count"],
+                        colorscale="Oranges"
+                    )
+                )]},
+                {"title": "Frequency of Vague Terms"}
+            ]
+        ))
+
+        # Add filter buttons for each audit entity
+        for entity in audit_entities[1:]:  # Skip "All Entities"
+            # Count vague terms for this entity
+            entity_data = df[df["Audit Entity"] == entity]
+            entity_vague_df = count_vague_terms(entity_data)
+
+            if not entity_vague_df.empty:
+                # Create button for this entity
+                button = dict(
+                    method="update",
+                    label=entity,
+                    args=[
+                        {"data": [go.Bar(
+                            x=entity_vague_df["Term"],
+                            y=entity_vague_df["Count"],
+                            marker=dict(
+                                color=entity_vague_df["Count"],
+                                colorscale="Oranges"
+                            )
+                        )]},
+                        {"title": f"Frequency of Vague Terms - {entity}"}
+                    ]
+                )
+                vague_entity_buttons.append(button)
+
+        # Update layout to include both dropdown menus
         fig_vague.update_layout(
-            updatemenus=[dict(
-                buttons=dropdown_buttons,
-                direction="down",
-                showactive=True,
-                x=1.0,
-                xanchor="right",
-                y=1.15,
-                yanchor="top"
-            )],
-            annotations=[dict(
-                text="Audit Leader:",
-                showarrow=False,
-                x=1.0,
-                y=1.2,
-                xref="paper",
-                yref="paper",
-                align="right"
-            )]
+            updatemenus=[
+                dict(
+                    buttons=vague_leader_buttons,
+                    direction="down",
+                    showactive=True,
+                    x=1.0,
+                    xanchor="right",
+                    y=1.15,
+                    yanchor="top"
+                ),
+                dict(
+                    buttons=vague_entity_buttons,
+                    direction="down",
+                    showactive=True,
+                    x=0.7,
+                    xanchor="right",
+                    y=1.15,
+                    yanchor="top"
+                )
+            ],
+            annotations=[
+                dict(
+                    text="Audit Leader:",
+                    showarrow=False,
+                    x=1.0,
+                    y=1.2,
+                    xref="paper",
+                    yref="paper",
+                    align="right"
+                ),
+                dict(
+                    text="Audit Entity:",
+                    showarrow=False,
+                    x=0.7,
+                    y=1.2,
+                    xref="paper",
+                    yref="paper",
+                    align="right"
+                )
+            ]
         )
 
         fig_vague.write_html(os.path.join(output_dir, "vague_terms.html"))
         output_files["vague_terms"] = os.path.join(output_dir, "vague_terms.html")
+
+    # ========== AUDIT LEADER BREAKDOWN ==========
+    if "Audit Leader" in df.columns:
+        # Average score by audit leader (already filtered by nature)
+        leader_avg = df.groupby("Audit Leader")["Total Score"].mean().reset_index().sort_values("Total Score",
+                                                                                                ascending=False)
+        fig_leader_avg = px.bar(leader_avg, x="Audit Leader", y="Total Score",
+                                title="Average Control Score by Audit Leader",
+                                labels={"Total Score": "Avg Score"},
+                                color="Total Score",
+                                color_continuous_scale=px.colors.sequential.Blues)
+
+        fig_leader_avg.write_html(os.path.join(output_dir, "leader_avg_score.html"))
+        output_files["leader_avg_score"] = os.path.join(output_dir, "leader_avg_score.html")
+
+        # Create missing elements by leader chart (stacked bar)
+        missing_data = []
+        for _, row in df.iterrows():
+            leader = row["Audit Leader"]
+            if row["Missing Elements"] != "None":
+                for elem in row["Missing Elements"].split(", "):
+                    missing_data.append((leader, elem))
+
+        if missing_data:
+            missing_df = pd.DataFrame(missing_data, columns=["Audit Leader", "Element"])
+            missing_counts = missing_df.groupby(["Audit Leader", "Element"]).size().reset_index(name="Count")
+
+            fig_missing_stack = px.bar(missing_counts, x="Audit Leader", y="Count", color="Element",
+                                       title="Missing Elements by Audit Leader", barmode="stack")
+
+            fig_missing_stack.write_html(os.path.join(output_dir, "leader_missing_elements.html"))
+            output_files["leader_missing_elements"] = os.path.join(output_dir, "leader_missing_elements.html")
+
+    # ========== AUDIT ENTITY BREAKDOWN ==========
+    if "Audit Entity" in df.columns and len(df["Audit Entity"].unique()) > 1:
+        # Average score by audit entity (already filtered by nature)
+        entity_avg = df.groupby("Audit Entity")["Total Score"].mean().reset_index().sort_values("Total Score",
+                                                                                                ascending=False)
+        fig_entity_avg = px.bar(entity_avg, x="Audit Entity", y="Total Score",
+                                title="Average Control Score by Audit Entity",
+                                labels={"Total Score": "Avg Score"},
+                                color="Total Score",
+                                color_continuous_scale=px.colors.sequential.Greens)
+
+        fig_entity_avg.write_html(os.path.join(output_dir, "entity_avg_score.html"))
+        output_files["entity_avg_score"] = os.path.join(output_dir, "entity_avg_score.html")
+
+        # Create missing elements by entity chart (stacked bar)
+        missing_data = []
+        for _, row in df.iterrows():
+            entity = row["Audit Entity"]
+            if row["Missing Elements"] != "None":
+                for elem in row["Missing Elements"].split(", "):
+                    missing_data.append((entity, elem))
+
+        if missing_data:
+            missing_df = pd.DataFrame(missing_data, columns=["Audit Entity", "Element"])
+            missing_counts = missing_df.groupby(["Audit Entity", "Element"]).size().reset_index(name="Count")
+
+            fig_missing_stack = px.bar(missing_counts, x="Audit Entity", y="Count", color="Element",
+                                       title="Missing Elements by Audit Entity", barmode="stack")
+
+            fig_missing_stack.write_html(os.path.join(output_dir, "entity_missing_elements.html"))
+            output_files["entity_missing_elements"] = os.path.join(output_dir, "entity_missing_elements.html")
 
     # Controls missing 3+ elements
     worst_controls = df[df["Missing Elements Count"] >= 3]
@@ -423,6 +753,20 @@ def generate_core_visualizations(results, output_dir):
             if leader in worst_controls["Audit Leader"].values:
                 html_string += f'            <option value="{leader}">{leader}</option>\n'
 
+        # Add audit entity filter dropdown
+        html_string += """
+                </select>
+                &nbsp;&nbsp;&nbsp;
+                <label for="entityFilter">Filter by Audit Entity: </label>
+                <select id="entityFilter" onchange="filterTable()">
+                    <option value="all">All Entities</option>
+        """
+
+        # Add options for each audit entity
+        for entity in audit_entities[1:]:
+            if entity in worst_controls["Audit Entity"].values:
+                html_string += f'            <option value="{entity}">{entity}</option>\n'
+
         html_string += """
                 </select>
             </div>
@@ -443,7 +787,7 @@ def generate_core_visualizations(results, output_dir):
 
         # Add table rows
         for _, row in worst_controls.iterrows():
-            html_string += f'        <tr class="row" data-leader="{row["Audit Leader"]}">\n'
+            html_string += f'        <tr class="row" data-leader="{row["Audit Leader"]}" data-entity="{row["Audit Entity"]}">\n'
             for column in worst_controls.columns:
                 cell_value = row[column]
                 if isinstance(cell_value, list):
@@ -457,12 +801,18 @@ def generate_core_visualizations(results, output_dir):
 
             <script>
                 function filterTable() {
-                    const filter = document.getElementById('leaderFilter').value;
+                    const leaderFilter = document.getElementById('leaderFilter').value;
+                    const entityFilter = document.getElementById('entityFilter').value;
                     const rows = document.querySelectorAll('#controlsTable tbody tr');
 
                     rows.forEach(row => {
                         const leader = row.getAttribute('data-leader');
-                        if (filter === 'all' || filter === leader) {
+                        const entity = row.getAttribute('data-entity');
+
+                        const leaderMatch = leaderFilter === 'all' || leaderFilter === leader;
+                        const entityMatch = entityFilter === 'all' || entityFilter === entity;
+
+                        if (leaderMatch && entityMatch) {
                             row.style.display = '';
                         } else {
                             row.style.display = 'none';
@@ -479,38 +829,6 @@ def generate_core_visualizations(results, output_dir):
             f.write(html_string)
 
         output_files["worst_controls"] = os.path.join(output_dir, "worst_controls.html")
-
-    # ========== AUDIT LEADER BREAKDOWN ==========
-    if "Audit Leader" in df.columns:
-        # Average score by audit leader (already filtered by nature)
-        leader_avg = df.groupby("Audit Leader")["Total Score"].mean().reset_index().sort_values("Total Score",
-                                                                                                ascending=False)
-        fig_leader_avg = px.bar(leader_avg, x="Audit Leader", y="Total Score",
-                                title="Average Control Score by Audit Leader",
-                                labels={"Total Score": "Avg Score"},
-                                color="Total Score",
-                                color_continuous_scale=px.colors.sequential.Blues)
-
-        fig_leader_avg.write_html(os.path.join(output_dir, "leader_avg_score.html"))
-        output_files["leader_avg_score"] = os.path.join(output_dir, "leader_avg_score.html")
-
-        # Create missing elements by leader chart (stacked bar)
-        missing_data = []
-        for _, row in df.iterrows():
-            leader = row["Audit Leader"]
-            if row["Missing Elements"] != "None":
-                for elem in row["Missing Elements"].split(", "):
-                    missing_data.append((leader, elem))
-
-        if missing_data:
-            missing_df = pd.DataFrame(missing_data, columns=["Audit Leader", "Element"])
-            missing_counts = missing_df.groupby(["Audit Leader", "Element"]).size().reset_index(name="Count")
-
-            fig_missing_stack = px.bar(missing_counts, x="Audit Leader", y="Count", color="Element",
-                                       title="Missing Elements by Audit Leader", barmode="stack")
-
-            fig_missing_stack.write_html(os.path.join(output_dir, "leader_missing_elements.html"))
-            output_files["leader_missing_elements"] = os.path.join(output_dir, "leader_missing_elements.html")
 
     # ========== COMBINED DASHBOARD WITH FILTERS ==========
     # Create a comprehensive dashboard with multiple charts and filters
@@ -555,6 +873,12 @@ def generate_core_visualizations(results, output_dir):
                     <select id="leaderFilter" onchange="applyFilters()">
                         <option value="all">All Leaders</option>
                         <!-- Leader options will be filled by JavaScript -->
+                    </select>
+
+                    <label for="entityFilter">Audit Entity:</label>
+                    <select id="entityFilter" onchange="applyFilters()">
+                        <option value="all">All Entities</option>
+                        <!-- Entity options will be filled by JavaScript -->
                     </select>
 
                     <label for="categoryFilter">Category:</label>
@@ -615,6 +939,7 @@ def generate_core_visualizations(results, output_dir):
             // Initialize filters
             function initializeFilters() {
                 const leaderFilter = document.getElementById('leaderFilter');
+                const entityFilter = document.getElementById('entityFilter');
 
                 // Add audit leaders
                 dashboardData.auditLeaders.forEach(leader => {
@@ -622,6 +947,14 @@ def generate_core_visualizations(results, output_dir):
                     option.value = leader;
                     option.textContent = leader;
                     leaderFilter.appendChild(option);
+                });
+
+                // Add audit entities
+                dashboardData.auditEntities.forEach(entity => {
+                    const option = document.createElement('option');
+                    option.value = entity;
+                    option.textContent = entity;
+                    entityFilter.appendChild(option);
                 });
 
                 // Update date
@@ -687,12 +1020,14 @@ def generate_core_visualizations(results, output_dir):
             // Apply filters to data
             function filterData() {
                 const leaderFilter = document.getElementById('leaderFilter').value;
+                const entityFilter = document.getElementById('entityFilter').value;
                 const categoryFilter = document.getElementById('categoryFilter').value;
 
                 return dashboardData.records.filter(record => {
                     const leaderMatch = leaderFilter === 'all' || record['Audit Leader'] === leaderFilter;
+                    const entityMatch = entityFilter === 'all' || record['Audit Entity'] === entityFilter;
                     const categoryMatch = categoryFilter === 'all' || record.Category === categoryFilter;
-                    return leaderMatch && categoryMatch;
+                    return leaderMatch && entityMatch && categoryMatch;
                 });
             }
 
@@ -921,6 +1256,7 @@ def generate_core_visualizations(results, output_dir):
             // Reset all filters
             function resetFilters() {
                 document.getElementById('leaderFilter').value = 'all';
+                document.getElementById('entityFilter').value = 'all';
                 document.getElementById('categoryFilter').value = 'all';
                 applyFilters();
             }
@@ -941,6 +1277,7 @@ def generate_core_visualizations(results, output_dir):
     # Create JSON-serializable data for the dashboard
     dashboard_data = {
         "auditLeaders": audit_leaders[1:],  # Skip "All Leaders"
+        "auditEntities": audit_entities[1:],  # Skip "All Entities"
         "records": df.to_dict(orient="records")
     }
 
@@ -955,4 +1292,3 @@ def generate_core_visualizations(results, output_dir):
     output_files["dashboard"] = os.path.join(output_dir, "dashboard.html")
 
     return output_files
-

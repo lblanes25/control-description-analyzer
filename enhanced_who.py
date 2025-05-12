@@ -39,6 +39,44 @@ def enhanced_who_detection_v2(text: str, nlp, control_type: Optional[str] = None
         # Initialize candidates list
         who_candidates = []
 
+        # Step 0: Direct search for configuration-provided keywords (do this before other steps)
+        if existing_keywords:
+            config_candidates = []
+            for keyword in existing_keywords:
+                # Look for this specific keyword in the text, case-insensitively
+                # Use regex with word boundaries
+                pattern = r'\b' + re.escape(keyword) + r'\b'
+                for match in re.finditer(pattern, text, re.IGNORECASE):
+                    # Found a direct match from config
+                    entity_text = match.group(0)  # Preserve original capitalization
+
+                    # Try to determine if this is a main part of the control
+                    surrounding_context = text[max(0, match.start() - 30):min(len(text), match.end() + 30)]
+
+                    # Check if a control verb appears near the keyword
+                    has_nearby_verb = any(verb in surrounding_context.lower() for verb in [
+                        "review", "approve", "verify", "check", "validate", "reconcile",
+                        "monitor", "responsible", "perform", "conduct"
+                    ])
+
+                    # Give a strong confidence score, especially if near a verb
+                    base_confidence = 0.8  # Already quite high
+                    if has_nearby_verb:
+                        base_confidence = 0.9  # Even higher with a verb
+
+                    config_candidates.append({
+                        "text": entity_text,
+                        "verb": "config_match",
+                        "type": "human",  # Assume human for config keywords
+                        "score": base_confidence,
+                        "position": match.start(),
+                        "role": "primary",
+                        "detection_method": "direct_config_match"
+                    })
+
+            # If we found direct config matches, add them to candidates
+            who_candidates.extend(config_candidates)
+
         # Step 1: Find all control verbs in the text
         # Start with default verbs
         control_verbs = [

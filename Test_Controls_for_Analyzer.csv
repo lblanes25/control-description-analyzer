@@ -1,0 +1,31 @@
+Control ID,Control Description,Control Frequency,Control Type,Key Risk Description,Audit Leader,Expected Score,Expected Category,Multi-Control Expected?,Expected Missing Elements
+WHO-001,The Accounting Manager reviews the reconciliation report monthly.,Monthly,Manual,Reconciliation errors,Smith,85,Excellent,No,WHEN
+WHO-002,"Monthly, the Risk Committee approves the updated risk profile.",Monthly,Manual,Incorrect risk profile,Jones,71,Good,No,WHEN
+WHO-003,The Compliance Officer is responsible for verifying documentation.,Monthly,Manual,Noncompliance with documentation,Brown,77,Excellent,No,WHEN
+WHO-004,System-generated alerts are reviewed by the InfoSec team.,Ongoing,Automated,Security alerts missed,Taylor,78,Excellent,No,WHEN
+WHO-005,Approvals are completed by the finance team before payment processing.,Daily,Manual,Unapproved payments,Lee,87,Excellent,No,WHEN
+WHAT-001,The team reconciles account balances and flags anomalies.,Monthly,Manual,Financial misstatements,Garcia,65,Good,No,WHY
+WHAT-002,All user access is reviewed and deactivated if not in use.,As needed,Manual,Excessive access,Martinez,82,Excellent,No,WHY
+WHAT-003,Controls are tested for design and operating effectiveness.,Quarterly,Manual,Ineffective controls,Davis,86,Excellent,No,WHY
+WHAT-004,"Transactions are logged, reviewed, and approved.",Weekly,Manual,Unauthorized transactions,Clark,86,Excellent,No,WHY
+WHAT-005,Journal entries are reviewed and approved using the ERP system.,Monthly,Automated,Inaccurate journals,Rodriguez,83,Excellent,No,WHY
+WHEN-001,The reconciliation is performed on a monthly basis.,Monthly,Manual,Untimely reconciliation,Lewis,92,Excellent,No,WHO
+WHEN-002,Reviews occur weekly for all critical systems.,Weekly,Manual,Missed reviews,Walker,66,Good,No,WHO
+WHEN-003,Access reviews are done quarterly or when an employee leaves.,Quarterly,Manual,Orphaned access,Hall,66,Good,No,WHO
+WHEN-004,Exceptions are addressed as needed based on system alerts.,As needed,Manual,Delayed response,Allen,74,Good,No,WHO
+WHEN-005,Approvals must be completed within 3 days of submission.,Within 3 days,Manual,Unapproved items,Young,62,Good,No,WHO
+WHY-001,To ensure accurate financial reporting and mitigate risk.,Ongoing,Manual,Misreporting,King,83,Excellent,No,WHAT
+WHY-002,In order to comply with regulatory requirements.,Regulatory,Manual,Regulatory fines,Wright,68,Good,No,WHAT
+WHY-003,To prevent unauthorized access to systems and data.,Ongoing,Manual,Data breach,Scott,70,Good,No,WHAT
+WHY-004,So that errors can be identified and corrected promptly.,Prompt,Manual,Uncorrected errors,Torres,69,Good,No,WHAT
+WHY-005,This control exists to support adherence to internal policy.,Internal,Manual,Policy violations,Nguyen,84,Excellent,No,WHAT
+ESC-001,"If discrepancies exceed $10,000, escalate to the CFO.",,Manual,Threshold violations,Hill,61,Good,No,ESCALATION
+ESC-002,"When exceptions are found, notify the control owner.",,Manual,Control gaps,Green,68,Good,No,ESCALATION
+ESC-003,Issues are reported to Internal Audit for review.,,Manual,Audit issues,Adams,63,Good,No,ESCALATION
+ESC-004,Any errors found during reconciliation are escalated.,,Manual,Reconciliation errors,Baker,64,Good,No,ESCALATION
+ESC-005,System alerts generate automated escalation emails.,,Automated,Alert inaction,Nelson,70,Good,No,ESCALATION
+MC-001,"The Finance Team reviews daily reports for anomalies. If discrepancies are found, they are escalated to the Controller for further investigation.",Daily,Manual,Fraudulent activity,Carter,93,Excellent,Yes,
+MC-002,The IT Department performs monthly access reviews. The Compliance Officer reviews quarterly exception logs and follows up with responsible teams.,"Monthly, Quarterly",Manual,Access control failures,Mitchell,73,Good,Yes,
+MC-003,"On a weekly basis, the Treasury Team reconciles all bank statements. Ad hoc reviews are conducted when major transactions are flagged.","Weekly, Ad hoc",Manual,Large transaction anomalies,Perez,63,Good,Yes,
+MC-004,"The Risk Management Team performs daily monitoring of risk indicators. Subsequently, the team prepares a report for executive leadership.",Daily,Manual,Undetected risk,Roberts,67,Good,Yes,
+MC-005,Control 1: The Supervisor checks inventory levels weekly. Control 2: The Logistics Coordinator investigates discrepancies and reports findings monthly.,"Weekly, Monthly",Manual,Inventory misstatements,Turner,86,Excellent,Yes,
