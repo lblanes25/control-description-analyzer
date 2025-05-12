@@ -1,172 +1,279 @@
-# Control Description Analyzer
+# Control Description Analyzer - System Architecture
 
-An advanced tool for analyzing and improving control descriptions using NLP techniques. The system evaluates control descriptions across five key elements (WHO, WHAT, WHEN, WHY, ESCALATION) to ensure clarity, completeness, and effectiveness.
+## Overview
 
-## Features
+The Control Description Analyzer is a modular system designed to analyze control descriptions for completeness and quality. It identifies the essential elements of controls (WHO, WHAT, WHEN, WHY, ESCALATION) and detects when multiple controls are combined into a single description.
 
-- **Element Analysis**: Detects and scores the presence of five key control elements:
-  - **WHO**: Identifies performers (individuals, teams, or systems)
-  - **WHAT**: Recognizes control actions and their clarity
-  - **WHEN**: Evaluates timing and frequency information
-  - **WHY**: Identifies purpose and alignment with risks
-  - **ESCALATION**: Detects exception handling procedures
+This document outlines the system architecture, component responsibilities, and data flow.
 
-- **Enhanced NLP Detection**: Uses dependency parsing, contextual analysis, and specialized detection modules
-- **Batch Processing**: Handles large datasets efficiently with memory management
-- **Excel Reports**: Generates detailed Excel reports with color-coded results
-- **Interactive Visualizations**: Creates HTML visualizations for analytics
-- **GUI Interface**: Easy-to-use graphic interface with drag-and-drop functionality
+## Architecture Diagram
 
-## Installation
-
-### Requirements
-
-- Python 3.8 or higher
-- Required packages (install using `pip install -r requirements.txt`)
-- spaCy language model (either `en_core_web_md` [recommended] or `en_core_web_sm`)
-
-### Setup
-
-1. Clone this repository:
-```bash
-git clone TBD as I don't know how to use github at work.
-cd control-analyzer
+```
+┌───────────────────┐     ┌───────────────────┐     ┌───────────────────┐
+│                   │     │                   │     │                   │
+│   Command Line    │     │  Control Analyzer │     │  Detection        │
+│   Interface       │──┬──►       Core        │─────►  Modules          │
+│   (integration.py)│  │  │  (analyzer.py)    │     │  (enhanced_*.py)  │
+│                   │  │  │                   │     │                   │
+└───────────────────┘  │  └───────────────────┘     └───────────────────┘
+                       │             │                       │
+                       │             ▼                       │
+                       │  ┌───────────────────┐             │
+                       │  │                   │             │
+                       └──►  Batch Processing │◄────────────┘
+                          │  & Visualization  │
+                          │                   │
+                          └───────────────────┘
 ```
 
-2. Install dependencies:
-```bash
-pip install -r requirements.txt
+## Core Components
+
+### 1. Command Line Interface (`integration.py`)
+
+**Primary Responsibility**: System integration and workflow management
+
+**Functions**:
+- Provides command-line interface with argument parsing
+- Manages batch processing and workflow
+- Handles error recovery and checkpoint mechanisms
+- Coordinates overall execution flow
+- Manages file I/O and external integrations
+
+### 2. Control Analyzer Core (`control_analyzer.py`)
+
+**Primary Responsibility**: Orchestration of analysis and result assembly
+
+**Functions**:
+- Coordinates the analysis pipeline
+- Invokes specialized detection modules
+- Aggregates results into coherent output
+- Calculates final scores and classifications
+- Generates improvement suggestions
+- Handles configuration management
+
+### 3. Specialized Detection Modules
+
+Each module focuses on a specific aspect of control analysis:
+
+#### 3.1 WHO Detection (`enhanced_who.py`)
+- Identifies who performs the control action
+- Detects primary and secondary performers
+- Classifies performers (human, system, etc.)
+- Validates against control type
+
+#### 3.2 WHAT Detection (`enhanced_what.py`)
+- Identifies actions being performed
+- Classifies action strength and specificity
+- Detects WHERE components within actions
+- Validates against control type
+
+#### 3.3 WHEN Detection (`enhanced_when.py`)
+- Identifies timing of control execution
+- Detects frequency patterns and triggers
+- Identifies vague timing terms
+- Validates against metadata
+
+#### 3.4 WHY Detection (`enhanced_why.py`)
+- Identifies purpose and objectives
+- Detects alignment with risk descriptions
+- Classifies purpose quality
+- Analyzes mitigation effectiveness
+
+#### 3.5 ESCALATION Detection (`enhanced_escalation.py`)
+- Identifies escalation paths
+- Detects exception handling
+- Analyzes escalation completeness
+- Determines if escalation is properly defined
+
+#### 3.6 MULTI-CONTROL Detection (`enhanced_multi_control.py`)
+- Identifies multiple controls within a single description
+- Differentiates between multiple controls vs. escalation paths
+- Associates actions with appropriate timing and performers
+- Detects control separation indicators (timing differences, sequence markers)
+
+### 4. Supporting Components
+
+#### 4.1 Configuration Management (`config_manager.py`)
+- Loads and validates configuration
+- Provides default values
+- Handles configuration overrides
+
+#### 4.2 Visualization Generator (`visualization.py`)
+- Creates interactive visualizations of analysis results
+- Generates dashboards and reports
+- Provides filtering and exploration capabilities
+
+## Data Flow
+
+1. **Input Processing**:
+   - User inputs control descriptions via Excel file or single text
+   - Configuration is loaded from YAML or defaults
+
+2. **Element Detection**:
+   - Each specialized module analyzes the text
+   - Modules extract their specific elements
+   - Results include confidence scores and extracted entities
+
+3. **Multi-Control Detection**:
+   - Multi-control detection module combines element results
+   - Determines if description contains multiple controls
+   - Separates core control actions from escalation paths
+
+4. **Score Calculation**:
+   - Element scores are weighted and combined
+   - Penalties applied for vague terms, multiple controls, etc.
+   - Final score and category determined
+
+5. **Result Assembly**:
+   - Comprehensive result object assembled
+   - Includes all element details and scores
+   - Provides improvement suggestions
+
+6. **Output Generation**:
+   - Results saved to Excel or visualized
+   - Interactive dashboards created
+   - Improvement suggestions highlighted
+
+## Module Interactions
+
+### Detection Module Interface
+
+Each detection module implements a common interface:
+
+```python
+def detect_element(text: str, context: Dict, config: Dict) -> Dict:
+    """
+    Analyze text for specific element
+    
+    Args:
+        text: Control description text
+        context: Additional context (control type, frequency, etc.)
+        config: Configuration options
+        
+    Returns:
+        Dictionary with detection results including:
+        - score: Confidence score for this element
+        - extracted entities, classifications, and metadata
+    """
 ```
 
-3. Download spaCy language model:
-```bash
-python -m spacy download en_core_web_md
-```
+### Core Analyzer Orchestration
 
-## Usage
+The analyzer coordinates module execution:
 
-### Command Line Interface
-
-For batch analysis of Excel files:
-
-```bash
-python control_analyzer.py your_controls.xlsx --id-column "Control_ID" --desc-column "Control_Description" --output-file "results.xlsx"
-```
-
-Additional options:
-```
---freq-column      Column containing frequency values for validation
---type-column      Column containing control type values for validation
---risk-column      Column containing risk descriptions for alignment
---audit-leader-column  Column containing audit leader information
---config           Path to YAML configuration file
---use-batches      Enable batch processing for large files
---batch-size       Number of controls per batch (default: 500)
---skip-visualizations  Skip generating visualizations
-```
-
-### Graphical User Interface
-
-To use the GUI for easier interaction:
-
-```bash
-python control_analyzer_gui.py
-```
-
-The GUI allows you:
-- Analyze single controls or Excel files
-- View results in real-time
-- Export analysis to Excel
-- Generate and view interactive visualizations
-
-### Creating Standalone Executable
-
-To create an executable version of the GUI:
-
-```bash
-python package.py
-```
-
-Options:
-```
---onefile          Create a single executable file
---debug            Include debug information
---icon             Path to icon file (.ico)
---name             Name of the executable (default: ControlAnalyzerGUI)
---config           Path to config file (default: control_analyzer_config.yaml)
+```python
+def analyze_control(self, control_id, description, context):
+    """Orchestrate the complete analysis process"""
+    
+    # Invoke element detection modules
+    who_results = self.detect_who(description, context)
+    what_results = self.detect_what(description, context)
+    when_results = self.detect_when(description, context)
+    why_results = self.detect_why(description, context)
+    escalation_results = self.detect_escalation(description, context)
+    
+    # Detect multi-control patterns
+    multi_control_results = self.detect_multi_control(
+        description, who_results, what_results, when_results, 
+        escalation_results, context
+    )
+    
+    # Calculate final scores and assemble results
+    return self.assemble_results(
+        control_id, description, context,
+        who_results, what_results, when_results, 
+        why_results, escalation_results, multi_control_results
+    )
 ```
 
 ## Configuration
 
-The application can be customized with a YAML configuration file. You can specify:
+The system is configured via a YAML file with sections for:
 
-- Element weights
-- Keywords for each element
-- Vague terms to detect
+- Element weights and importance
+- Keywords and patterns for detection
+- Vague terms and penalty values
+- Scoring thresholds
 - Column mappings for Excel files
-- Control type keywords
-- Frequency terms
+- Multi-control detection settings
 
-Example configuration section:
+Example:
 ```yaml
-# Element Definitions
+# Element weights (out of 100%)
 elements:
   WHO:
     weight: 32
-    keywords:
-      - manager
-      - supervisor
-      - team
-      # ... more keywords
   WHAT:
     weight: 32
-    keywords:
-      - review
-      - approve
-      - verify
-      # ... more keywords
-  # ... other elements
+  WHEN:
+    weight: 22
+  WHY:
+    weight: 11
+  ESCALATION:
+    weight: 3
+
+# Category thresholds
+category_thresholds:
+  excellent: 75
+  good: 50
 ```
 
-## Visualization
+## Key Design Principles
 
-The tool generates several interactive visualizations:
+1. **Modularity**: Each component has a single responsibility
+2. **Extensibility**: New detection methods can be added easily
+3. **Configurability**: System behavior can be adjusted via configuration
+4. **Robustness**: Graceful handling of edge cases and errors
+5. **Maintainability**: Clear separation of concerns
 
-- Score distribution by category
-- Element radar chart showing strengths/weaknesses
-- Missing elements frequency
-- Vague terms frequency
-- Audit leader performance breakdown
-- Interactive dashboard with filters
+## Usage Scenarios
 
-Visualizations are saved as HTML files and can be viewed in any browser.
+### Single Control Analysis
 
-## Scoring System
+For analyzing individual control descriptions:
 
-Controls are scored based on:
-- Presence and quality of each element (weighted by importance)
-- Penalties for vague terms
-- Penalties for multi-control descriptions
-- Alignment with metadata (frequency, control type)
-
-Score categories:
-- **Excellent**: 75-100
-- **Good**: 50-74
-- **Needs Improvement**: 0-49
-
-## Example Controls
-
-### Excellent Example
-```
-The Accounting Manager reviews the monthly reconciliation between the subledger and general ledger by the 5th business day of the following month. The reviewer examines supporting documentation, verifies that all reconciling items have been properly identified and resolved, and ensures compliance with accounting policies. The review is evidenced by electronic sign-off in the financial system. Any discrepancies exceeding $10,000 are escalated to the Controller and documented in the issue tracking system.
+```python
+analyzer = EnhancedControlAnalyzer(config_file)
+result = analyzer.analyze_control(
+    "CTRL-001", 
+    "The Manager reviews the reconciliation monthly.",
+    {"control_type": "detective", "frequency": "monthly"}
+)
 ```
 
-### Good Example
-```
-The Accounting Supervisor reviews the monthly journal entries prior to posting to ensure accuracy and completeness. The reviewer checks supporting documentation and approves entries by signing the journal entry form. Any errors are returned to the preparer for correction.
+### Batch Processing
+
+For analyzing multiple controls from Excel files:
+
+```python
+analyzer = EnhancedControlAnalyzer(config_file)
+results = analyzer.analyze_file(
+    "controls.xlsx",
+    id_column="Control_ID",
+    desc_column="Control_Description",
+    freq_column="Frequency",
+    type_column="Type"
+)
 ```
 
-### Needs Improvement Example
+### Command Line
+
+For command-line usage:
+
+```bash
+python integration.py analyze --file controls.xlsx --batch-size 100
 ```
-Management reviews financial statements periodically and addresses any issues as appropriate.
-```
+
+## Future Extensions
+
+The modular architecture supports several planned extensions:
+
+1. **Quality Benchmarking**: Compare controls against industry standards
+2. **Control Suggestions**: Automatically generate improved control descriptions
+3. **Risk Alignment**: Enhanced analysis of control-risk relationships
+4. **Control Network Analysis**: Identify gaps in control coverage
+5. **Natural Language Generation**: Create complete, well-formed controls
+
+---
+
+*Documentation last updated: May 2025*

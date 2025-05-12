@@ -1,0 +1,382 @@
+
+        <!DOCTYPE html>
+        <html>
+        <head>
+            <meta charset="UTF-8">
+            <title>Controls Missing 3+ Elements</title>
+            <style>
+                body { font-family: Arial, sans-serif; margin: 20px; }
+                h1 { color: #333; }
+                table { border-collapse: collapse; width: 100%; }
+                th, td { border: 1px solid #ddd; padding: 8px; text-align: left; }
+                th { background-color: #f2f2f2; }
+                tr:nth-child(even) { background-color: #f9f9f9; }
+                .dropdown { margin-bottom: 20px; }
+                select { padding: 5px; font-size: 16px; }
+            </style>
+        </head>
+        <body>
+            <h1>Controls Missing 3+ Elements</h1>
+            <div class="dropdown">
+                <label for="leaderFilter">Filter by Audit Leader: </label>
+                <select id="leaderFilter" onchange="filterTable()">
+                    <option value="all">All Leaders</option>
+                    <option value="Brown">Brown</option>
+            <option value="Taylor">Taylor</option>
+            <option value="Lee">Lee</option>
+            <option value="Martinez">Martinez</option>
+            <option value="Davis">Davis</option>
+            <option value="Clark">Clark</option>
+            <option value="Rodriguez">Rodriguez</option>
+            <option value="Lewis">Lewis</option>
+            <option value="Walker">Walker</option>
+            <option value="Hall">Hall</option>
+            <option value="Allen">Allen</option>
+            <option value="Young">Young</option>
+            <option value="King">King</option>
+            <option value="Wright">Wright</option>
+            <option value="Scott">Scott</option>
+            <option value="Torres">Torres</option>
+            <option value="Nguyen">Nguyen</option>
+            <option value="Hill">Hill</option>
+            <option value="Adams">Adams</option>
+            <option value="Baker">Baker</option>
+            <option value="Nelson">Nelson</option>
+
+                </select>
+            </div>
+            <table id="controlsTable">
+                <thead>
+                    <tr>
+                    <th>Control ID</th>
+            <th>Total Score</th>
+            <th>Category</th>
+            <th>Missing Elements Count</th>
+            <th>WHO Score</th>
+            <th>WHEN Score</th>
+            <th>WHAT Score</th>
+            <th>WHY Score</th>
+            <th>ESCALATION Score</th>
+            <th>Missing Elements</th>
+            <th>Audit Leader</th>
+            <th>vague_terms_found</th>
+
+                    </tr>
+                </thead>
+                <tbody>
+                <tr class="row" data-leader="Martinez">
+            <td>WHAT-002</td>
+            <td>0.0</td>
+            <td>Needs Improvement</td>
+            <td>5</td>
+            <td>0.0</td>
+            <td>0.0</td>
+            <td>0.0</td>
+            <td>0.0</td>
+            <td>0.0</td>
+            <td>WHO, WHEN, WHAT, WHY, ESCALATION</td>
+            <td>Martinez</td>
+            <td></td>
+        </tr>
+        <tr class="row" data-leader="Clark">
+            <td>WHAT-004</td>
+            <td>0.0</td>
+            <td>Needs Improvement</td>
+            <td>5</td>
+            <td>0.0</td>
+            <td>0.0</td>
+            <td>0.0</td>
+            <td>0.0</td>
+            <td>0.0</td>
+            <td>WHO, WHEN, WHAT, WHY, ESCALATION</td>
+            <td>Clark</td>
+            <td></td>
+        </tr>
+        <tr class="row" data-leader="Davis">
+            <td>WHAT-003</td>
+            <td>3.0799999999999996</td>
+            <td>Needs Improvement</td>
+            <td>4</td>
+            <td>0.0</td>
+            <td>0.0</td>
+            <td>0.0</td>
+            <td>3.0799999999999996</td>
+            <td>0.0</td>
+            <td>WHO, WHEN, WHAT, ESCALATION</td>
+            <td>Davis</td>
+            <td></td>
+        </tr>
+        <tr class="row" data-leader="Baker">
+            <td>ESC-004</td>
+            <td>8.05</td>
+            <td>Needs Improvement</td>
+            <td>3</td>
+            <td>0.0</td>
+            <td>0.0</td>
+            <td>0.0</td>
+            <td>4.4</td>
+            <td>3.6500000000000004</td>
+            <td>WHO, WHEN, WHAT</td>
+            <td>Baker</td>
+            <td></td>
+        </tr>
+        <tr class="row" data-leader="Nguyen">
+            <td>WHY-005</td>
+            <td>8.47</td>
+            <td>Needs Improvement</td>
+            <td>4</td>
+            <td>0.0</td>
+            <td>0.0</td>
+            <td>0.0</td>
+            <td>8.47</td>
+            <td>0.0</td>
+            <td>WHO, WHEN, WHAT, ESCALATION</td>
+            <td>Nguyen</td>
+            <td></td>
+        </tr>
+        <tr class="row" data-leader="Torres">
+            <td>WHY-004</td>
+            <td>9.075</td>
+            <td>Needs Improvement</td>
+            <td>4</td>
+            <td>0.0</td>
+            <td>0.0</td>
+            <td>0.0</td>
+            <td>9.075</td>
+            <td>0.0</td>
+            <td>WHO, WHEN, WHAT, ESCALATION</td>
+            <td>Torres</td>
+            <td></td>
+        </tr>
+        <tr class="row" data-leader="Wright">
+            <td>WHY-002</td>
+            <td>9.9</td>
+            <td>Needs Improvement</td>
+            <td>4</td>
+            <td>0.0</td>
+            <td>0.0</td>
+            <td>0.0</td>
+            <td>9.9</td>
+            <td>0.0</td>
+            <td>WHO, WHEN, WHAT, ESCALATION</td>
+            <td>Wright</td>
+            <td></td>
+        </tr>
+        <tr class="row" data-leader="Scott">
+            <td>WHY-003</td>
+            <td>10.45</td>
+            <td>Needs Improvement</td>
+            <td>4</td>
+            <td>0.0</td>
+            <td>0.0</td>
+            <td>0.0</td>
+            <td>10.45</td>
+            <td>0.0</td>
+            <td>WHO, WHEN, WHAT, ESCALATION</td>
+            <td>Scott</td>
+            <td></td>
+        </tr>
+        <tr class="row" data-leader="Adams">
+            <td>ESC-003</td>
+            <td>23.020000000000003</td>
+            <td>Needs Improvement</td>
+            <td>3</td>
+            <td>0.0</td>
+            <td>0.0</td>
+            <td>17.92</td>
+            <td>0.0</td>
+            <td>5.1</td>
+            <td>WHO, WHEN, WHY</td>
+            <td>Adams</td>
+            <td></td>
+        </tr>
+        <tr class="row" data-leader="Allen">
+            <td>WHEN-004</td>
+            <td>23.6</td>
+            <td>Needs Improvement</td>
+            <td>4</td>
+            <td>25.6</td>
+            <td>0.0</td>
+            <td>0.0</td>
+            <td>0.0</td>
+            <td>0.0</td>
+            <td>WHEN, WHAT, WHY, ESCALATION</td>
+            <td>Allen</td>
+            <td>as needed</td>
+        </tr>
+        <tr class="row" data-leader="Lee">
+            <td>WHO-005</td>
+            <td>25.6</td>
+            <td>Needs Improvement</td>
+            <td>4</td>
+            <td>25.6</td>
+            <td>0.0</td>
+            <td>0.0</td>
+            <td>0.0</td>
+            <td>0.0</td>
+            <td>WHEN, WHAT, WHY, ESCALATION</td>
+            <td>Lee</td>
+            <td></td>
+        </tr>
+        <tr class="row" data-leader="Lewis">
+            <td>WHEN-001</td>
+            <td>28.74544</td>
+            <td>Needs Improvement</td>
+            <td>3</td>
+            <td>0.0</td>
+            <td>18.7</td>
+            <td>10.04544</td>
+            <td>0.0</td>
+            <td>0.0</td>
+            <td>WHO, WHY, ESCALATION</td>
+            <td>Lewis</td>
+            <td></td>
+        </tr>
+        <tr class="row" data-leader="Taylor">
+            <td>WHO-004</td>
+            <td>28.8</td>
+            <td>Needs Improvement</td>
+            <td>4</td>
+            <td>28.8</td>
+            <td>0.0</td>
+            <td>0.0</td>
+            <td>0.0</td>
+            <td>0.0</td>
+            <td>WHEN, WHAT, WHY, ESCALATION</td>
+            <td>Taylor</td>
+            <td></td>
+        </tr>
+        <tr class="row" data-leader="Hill">
+            <td>ESC-001</td>
+            <td>30.35</td>
+            <td>Needs Improvement</td>
+            <td>3</td>
+            <td>25.6</td>
+            <td>0.0</td>
+            <td>0.0</td>
+            <td>0.0</td>
+            <td>4.749999999999999</td>
+            <td>WHEN, WHAT, WHY</td>
+            <td>Hill</td>
+            <td></td>
+        </tr>
+        <tr class="row" data-leader="King">
+            <td>WHY-001</td>
+            <td>31.646799999999992</td>
+            <td>Needs Improvement</td>
+            <td>3</td>
+            <td>0.0</td>
+            <td>0.0</td>
+            <td>21.196799999999993</td>
+            <td>10.45</td>
+            <td>0.0</td>
+            <td>WHO, WHEN, ESCALATION</td>
+            <td>King</td>
+            <td></td>
+        </tr>
+        <tr class="row" data-leader="Brown">
+            <td>WHO-003</td>
+            <td>33.2</td>
+            <td>Needs Improvement</td>
+            <td>3</td>
+            <td>28.8</td>
+            <td>0.0</td>
+            <td>0.0</td>
+            <td>4.4</td>
+            <td>0.0</td>
+            <td>WHEN, WHAT, ESCALATION</td>
+            <td>Brown</td>
+            <td></td>
+        </tr>
+        <tr class="row" data-leader="Young">
+            <td>WHEN-005</td>
+            <td>33.465</td>
+            <td>Needs Improvement</td>
+            <td>3</td>
+            <td>11.52</td>
+            <td>21.945</td>
+            <td>0.0</td>
+            <td>0.0</td>
+            <td>0.0</td>
+            <td>WHAT, WHY, ESCALATION</td>
+            <td>Young</td>
+            <td></td>
+        </tr>
+        <tr class="row" data-leader="Rodriguez">
+            <td>WHAT-005</td>
+            <td>40.08203636363637</td>
+            <td>Needs Improvement</td>
+            <td>3</td>
+            <td>28.8</td>
+            <td>0.0</td>
+            <td>11.282036363636367</td>
+            <td>0.0</td>
+            <td>0.0</td>
+            <td>WHEN, WHY, ESCALATION</td>
+            <td>Rodriguez</td>
+            <td></td>
+        </tr>
+        <tr class="row" data-leader="Walker">
+            <td>WHEN-002</td>
+            <td>45.58</td>
+            <td>Needs Improvement</td>
+            <td>3</td>
+            <td>26.88</td>
+            <td>18.7</td>
+            <td>0.0</td>
+            <td>0.0</td>
+            <td>0.0</td>
+            <td>WHAT, WHY, ESCALATION</td>
+            <td>Walker</td>
+            <td></td>
+        </tr>
+        <tr class="row" data-leader="Hall">
+            <td>WHEN-003</td>
+            <td>47.545</td>
+            <td>Needs Improvement</td>
+            <td>3</td>
+            <td>25.6</td>
+            <td>21.945000000000004</td>
+            <td>0.0</td>
+            <td>0.0</td>
+            <td>0.0</td>
+            <td>WHAT, WHY, ESCALATION</td>
+            <td>Hall</td>
+            <td></td>
+        </tr>
+        <tr class="row" data-leader="Nelson">
+            <td>ESC-005</td>
+            <td>59.461631999999994</td>
+            <td>Good</td>
+            <td>3</td>
+            <td>38.4</td>
+            <td>0.0</td>
+            <td>21.061632</td>
+            <td>0.0</td>
+            <td>0.0</td>
+            <td>WHEN, WHY, ESCALATION</td>
+            <td>Nelson</td>
+            <td></td>
+        </tr>
+
+                </tbody>
+            </table>
+
+            <script>
+                function filterTable() {
+                    const filter = document.getElementById('leaderFilter').value;
+                    const rows = document.querySelectorAll('#controlsTable tbody tr');
+
+                    rows.forEach(row => {
+                        const leader = row.getAttribute('data-leader');
+                        if (filter === 'all' || filter === leader) {
+                            row.style.display = '';
+                        } else {
+                            row.style.display = 'none';
+                        }
+                    });
+                }
+            </script>
+        </body>
+        </html>
+        

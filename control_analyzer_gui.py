@@ -43,6 +43,7 @@ class AnalyzerWorker(QThread):
                 type_col = self.options.get('type_column')
                 risk_col = self.options.get('risk_column')
                 leader_col = self.options.get('leader_column')
+                entity_col = self.options.get('entity_column')
 
                 # Read the file to get control count for progress updates
                 df = pd.read_excel(self.file_path)
@@ -67,15 +68,20 @@ class AnalyzerWorker(QThread):
                         control_type = row.get(type_col) if type_col and type_col in row else None
                         risk_description = row.get(risk_col) if risk_col and risk_col in row else None
                         audit_leader = row.get(leader_col) if leader_col and leader_col in row else None
+                        audit_entity = row.get(entity_col) if entity_col and entity_col in row else None
 
                         # Get Audit Leader if available (assuming 'Audit Leader' is a column in your Excel)
                         audit_leader = row.get('Audit Leader') if 'Audit Leader' in row else None
 
                         # Analyze this control
                         result = original_analyze(control_id, description, frequency, control_type, risk_description)
+
                         # Add Audit Leader to the result
                         if audit_leader:
                             result["Audit Leader"] = audit_leader
+                        # Add Audit Entity to the result
+                        if audit_entity:
+                            result["Audit Entity"] = audit_entity
 
                         results.append(result)
 
@@ -386,6 +392,9 @@ class ControlAnalyzerGUI(QMainWindow):
 
         self.leader_column_input = QLineEdit("Audit Leader")
         columns_layout.addRow("Audit Leader Column (optional):", self.leader_column_input)
+
+        self.entity_column_input = QLineEdit("Audit Entity")
+        columns_layout.addRow("Audit Entity Column (optional):", self.entity_column_input)
 
         columns_group.setLayout(columns_layout)
         layout.addWidget(columns_group)
@@ -872,6 +881,17 @@ class ControlAnalyzerGUI(QMainWindow):
                 if risk_cols:
                     self.risk_column_input.setText(risk_cols[0])
 
+                # Try to find Audit Leader column
+                leader_cols = [col for col in columns if "leader" in col.lower() or "auditor" in col.lower()]
+                if leader_cols:
+                    self.leader_column_input.setText(leader_cols[0])
+
+                # Try to find Audit Entity column
+                entity_cols = [col for col in columns if "entity" in col.lower() or
+                               "business unit" in col.lower() or "department" in col.lower()]
+                if entity_cols:
+                    self.entity_column_input.setText(entity_cols[0])
+
                 self.status_bar.showMessage(f"Loaded Excel file with {len(columns)} columns")
             except Exception as e:
                 self.status_bar.showMessage(f"Error reading Excel file: {str(e)}")
@@ -965,6 +985,7 @@ class ControlAnalyzerGUI(QMainWindow):
         type_column = self.type_column_input.text().strip()
         risk_column = self.risk_column_input.text().strip()
         leader_column = self.leader_column_input.text().strip()
+        entity_column = self.entity_column_input.text().strip()  # Add entity column
 
         # Get options
         batch_size = self.batch_size_input.value()
@@ -985,6 +1006,7 @@ class ControlAnalyzerGUI(QMainWindow):
             'type_column': type_column if type_column else None,
             'risk_column': risk_column if risk_column else None,
             'leader_column': leader_column if leader_column else None,
+            'entity_column': entity_column if entity_column else None,  # Add entity column
             'batch_size': batch_size,
             'generate_visualizations': generate_vis,
             'visualization_dir': vis_dir

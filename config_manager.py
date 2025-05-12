@@ -51,3 +51,12 @@ class ConfigManager:
             return columns["audit_leader"]
         # Then check for top level config
         return self.config.get("audit_leader_column")
+
+    def get_audit_entity_column(self):
+        """Get audit entity column name from config"""
+        columns = self.get_column_defaults()
+        # First look in columns section
+        if columns and "audit_entity" in columns:
+            return columns["audit_entity"]
+        # Then check for top level config
+        return self.config.get("audit_entity_column")
