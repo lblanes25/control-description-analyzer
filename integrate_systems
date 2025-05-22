@@ -1,0 +1,257 @@
+#!/usr/bin/env python3
+"""
+System Application Integration Script
+
+This script helps integrate your system application report into the Control Analyzer
+by updating the YAML configuration and creating an enhanced system detection module.
+
+Usage:
+    python integrate_systems.py --systems-file your_systems_report.xlsx --config-file control_analyzer_config.yaml
+"""
+
+import argparse
+import pandas as pd
+import yaml
+import os
+from typing import List, Dict, Set
+
+
+def read_systems_report(file_path: str, system_column: str = None) -> List[str]:
+    """
+    Read systems from Excel report and return list of system names.
+    
+    Args:
+        file_path: Path to Excel file with systems
+        system_column: Column name containing system names
+    
+    Returns:
+        List of unique system names
+    """
+    try:
+        df = pd.read_excel(file_path)
+        
+        # Try to auto-detect system column if not provided
+        if not system_column:
+            potential_columns = [
+                'System Name', 'Application Name', 'System', 'Application', 
+                'Software', 'Tool', 'Platform', 'Product'
+            ]
+            
+            for col in potential_columns:
+                if col in df.columns:
+                    system_column = col
+                    break
+            
+            if not system_column:
+                print("Available columns:", df.columns.tolist())
+                raise ValueError("Could not auto-detect system column. Please specify with --system-column")
+        
+        # Extract unique system names
+        systems = df[system_column].dropna().unique().tolist()
+        
+        # Clean up system names
+        cleaned_systems = []
+        for system in systems:
+            system_str = str(system).strip()
+            if system_str and system_str.lower() not in ['nan', 'none', '']:
+                cleaned_systems.append(system_str)
+        
+        print(f"Found {len(cleaned_systems)} unique systems in column '{system_column}'")
+        return sorted(list(set(cleaned_systems)))
+        
+    except Exception as e:
+        print(f"Error reading systems file: {e}")
+        raise
+
+
+def categorize_systems(systems: List[str]) -> Dict[str, List[str]]:
+    """
+    Categorize systems into different types for better keyword organization.
+    
+    Args:
+        systems: List of system names
+    
+    Returns:
+        Dictionary with categorized systems
+    """
+    categories = {
+        'erp_systems': [],
+        'financial_systems': [],
+        'hr_systems': [],
+        'crm_systems': [],
+        'reporting_tools': [],
+        'security_systems': [],
+        'database_systems': [],
+        'collaboration_tools': [],
+        'other_systems': []
+    }
+    
+    # Define categorization patterns
+    patterns = {
+        'erp_systems': ['sap', 'oracle', 'peoplesoft', 'netsuite', 'dynamics', 'erp'],
+        'financial_systems': ['quickbooks', 'sage', 'concur', 'hyperion', 'cognos', 'essbase', 'treasury'],
+        'hr_systems': ['workday', 'successfactors', 'adp', 'ceridian', 'bamboo', 'kronos'],
+        'crm_systems': ['salesforce', 'dynamics crm', 'hubspot', 'marketo'],
+        'reporting_tools': ['tableau', 'power bi', 'qlik', 'looker', 'cognos', 'crystal'],
+        'security_systems': ['active directory', 'ldap', 'okta', 'ping', 'cyberark', 'rsa'],
+        'database_systems': ['sql server', 'mysql', 'oracle db', 'postgresql', 'mongodb'],
+        'collaboration_tools': ['sharepoint', 'teams', 'slack', 'confluence', 'jira']
+    }
+    
+    for system in systems:
+        system_lower = system.lower()
+        categorized = False
+        
+        for category, keywords in patterns.items():
+            if any(keyword in system_lower for keyword in keywords):
+                categories[category].append(system)
+                categorized = True
+                break
+        
+        if not categorized:
+            categories['other_systems'].append(system)
+    
+    return categories
+
+
+def update_yaml_config(config_path: str, systems: List[str], backup: bool = True) -> None:
+    """
+    Update the YAML configuration file with system names.
+    
+    Args:
+        config_path: Path to YAML config file
+        systems: List of system names to add
+        backup: Whether to create a backup of the original file
+    """
+    try:
+        # Create backup if requested
+        if backup and os.path.exists(config_path):
+            backup_path = config_path + '.backup'
+            with open(config_path, 'r') as src, open(backup_path, 'w') as dst:
+                dst.write(src.read())
+            print(f"Created backup: {backup_path}")
+        
+        # Load existing config
+        if os.path.exists(config_path):
+            with open(config_path, 'r') as f:
+                config = yaml.safe_load(f) or {}
+        else:
+            config = {}
+        
+        # Ensure structure exists
+        if 'elements' not in config:
+            config['elements'] = {}
+        if 'WHO' not in config['elements']:
+            config['elements']['WHO'] = {}
+        if 'keywords' not in config['elements']['WHO']:
+            config['elements']['WHO']['keywords'] = []
+        
+        # Add systems to WHO keywords
+        existing_keywords = set(config['elements']['WHO']['keywords'])
+        new_systems = [sys for sys in systems if sys.lower() not in {k.lower() for k in existing_keywords}]
+        
+        if new_systems:
+            config['elements']['WHO']['keywords'].extend(new_systems)
+            print(f"Added {len(new_systems)} new system keywords to WHO element")
+        else:
+            print("No new systems to add (all already present)")
+        
+        # Also add to a dedicated systems section for reference
+        if 'system_applications' not in config:
+            config['system_applications'] = {}
+        
+        # Categorize and add systems
+        categorized = categorize_systems(systems)
+        for category, category_systems in categorized.items():
+            if category_systems:
+                config['system_applications'][category] = category_systems
+        
+        # Save updated config
+        with open(config_path, 'w') as f:
+            yaml.dump(config, f, default_flow_style=False, indent=2)
+        
+        print(f"Updated configuration file: {config_path}")
+        print(f"Total systems added to WHO keywords: {len([s for s in systems if s])}")
+        
+    except Exception as e:
+        print(f"Error updating YAML config: {e}")
+        raise
+
+
+def create_system_validation_report(systems: List[str], output_path: str) -> None:
+    """
+    Create a validation report showing how systems will be categorized.
+    
+    Args:
+        systems: List of system names
+        output_path: Path to save the validation report
+    """
+    categorized = categorize_systems(systems)
+    
+    # Create DataFrame for the report
+    report_data = []
+    for category, category_systems in categorized.items():
+        for system in category_systems:
+            report_data.append({
+                'System_Name': system,
+                'Category': category.replace('_', ' ').title(),
+                'Will_Be_Added_To': 'WHO Keywords',
+                'Detection_Priority': 'High' if category != 'other_systems' else 'Medium'
+            })
+    
+    df = pd.DataFrame(report_data)
+    df.to_excel(output_path, index=False)
+    print(f"Created validation report: {output_path}")
+    
+    # Print summary
+    print("\nSystem Categorization Summary:")
+    for category, category_systems in categorized.items():
+        if category_systems:
+            print(f"  {category.replace('_', ' ').title()}: {len(category_systems)} systems")
+
+
+def main():
+    """Main function"""
+    parser = argparse.ArgumentParser(description="Integrate system applications into Control Analyzer")
+    parser.add_argument('--systems-file', required=True, help='Excel file with system applications')
+    parser.add_argument('--system-column', help='Column name containing system names (auto-detected if not provided)')
+    parser.add_argument('--config-file', default='control_analyzer_config.yaml', help='YAML config file to update')
+    parser.add_argument('--validation-report', help='Path to save validation report (optional)')
+    parser.add_argument('--no-backup', action='store_true', help='Skip creating backup of config file')
+    
+    args = parser.parse_args()
+    
+    try:
+        # Read systems from Excel file
+        print(f"Reading systems from: {args.systems_file}")
+        systems = read_systems_report(args.systems_file, args.system_column)
+        
+        if not systems:
+            print("No systems found in the file")
+            return 1
+        
+        print(f"Found {len(systems)} systems to integrate")
+        
+        # Create validation report if requested
+        if args.validation_report:
+            create_system_validation_report(systems, args.validation_report)
+        
+        # Update YAML configuration
+        print(f"Updating configuration: {args.config_file}")
+        update_yaml_config(args.config_file, systems, backup=not args.no_backup)
+        
+        print("\nIntegration complete!")
+        print("\nNext steps:")
+        print("1. Review the updated YAML configuration")
+        print("2. Run the Control Analyzer to test system detection")
+        print("3. Check the results to verify systems are being detected correctly")
+        
+        return 0
+        
+    except Exception as e:
+        print(f"Error during integration: {e}")
+        return 1
+
+
+if __name__ == "__main__":
+    exit(main())
