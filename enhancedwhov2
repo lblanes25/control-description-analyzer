@@ -1,0 +1,618 @@
+import re
+from typing import List, Dict, Any, Optional, Set, Tuple
+
+
+def enhanced_who_detection_v2(text: str, nlp, control_type: Optional[str] = None,
+                              frequency: Optional[str] = None, existing_keywords: Optional[List[str]] = None):
+    """
+    Enhanced WHO detection with systematic improvements to address core issues:
+    1. Robust actor vs non-actor distinction
+    2. Semantic role classification 
+    3. Multi-level validation pipeline
+    4. Performer plausibility scoring
+    
+    This addresses systemic themes rather than individual cases.
+    """
+    if not text or text.strip() == '':
+        return {
+            "primary": None,
+            "secondary": [],
+            "confidence": 0,
+            "message": "No text provided"
+        }
+
+    try:
+        doc = nlp(text)
+        
+        # Step 1: Identify control verbs and their argument structures
+        verb_structures = analyze_verb_argument_structures(doc, existing_keywords)
+        
+        # Step 2: Extract performer candidates using multiple strategies
+        candidates = []
+        
+        # Strategy A: Syntactic agents (subjects of action verbs)
+        syntactic_agents = find_syntactic_agents(doc, verb_structures)
+        candidates.extend(syntactic_agents)
+        
+        # Strategy B: Explicit responsibility patterns
+        responsibility_agents = find_responsibility_patterns(doc)
+        candidates.extend(responsibility_agents)
+        
+        # Strategy C: Prepositional agents (by-phrases, etc.)
+        prep_agents = find_prepositional_agents(doc)
+        candidates.extend(prep_agents)
+        
+        # Step 3: Apply multi-level validation pipeline
+        validated_candidates = apply_validation_pipeline(candidates, doc, verb_structures)
+        
+        # Step 4: Score candidates for performer plausibility
+        scored_candidates = score_performer_plausibility(validated_candidates, control_type, frequency)
+        
+        # Step 5: Select primary and secondary performers
+        return select_performers(scored_candidates, text)
+        
+    except Exception as e:
+        return {
+            "primary": None,
+            "secondary": [],
+            "confidence": 0,
+            "message": f"Error: {str(e)}"
+        }
+
+
+def analyze_verb_argument_structures(doc, existing_keywords: Optional[List[str]] = None) -> List[Dict]:
+    """
+    Analyze verb-argument structures to identify control verbs and their roles.
+    This helps distinguish actors from objects systematically.
+    """
+    # Core control verbs that indicate control activities
+    control_verbs = {
+        "review", "approve", "verify", "check", "validate", "reconcile",
+        "examine", "analyze", "evaluate", "assess", "monitor", "track",
+        "investigate", "inspect", "audit", "oversee", "supervise", "ensure",
+        "perform", "execute", "conduct", "disable", "enforce", "generate",
+        "address", "compare", "maintain", "identify", "correct", "update",
+        "submit", "complete", "prepare", "provide", "confirm", "authorize",
+        "document", "record", "establish", "implement", "manage", "control"
+    }
+    
+    # Add custom keywords if provided
+    if existing_keywords:
+        for keyword in existing_keywords:
+            words = keyword.lower().split()
+            for word in words:
+                if any(word.endswith(suffix) for suffix in ['s', 'ed', 'ing']):
+                    control_verbs.add(word.rstrip('s').rstrip('ed').rstrip('ing'))
+    
+    verb_structures = []
+    
+    for token in doc:
+        if token.lemma_.lower() in control_verbs and token.pos_ == "VERB":
+            structure = {
+                "verb": token,
+                "verb_lemma": token.lemma_.lower(),
+                "subjects": [],  # Who performs the action
+                "objects": [],   # What gets acted upon
+                "agents": [],    # Explicit agents (by-phrases)
+                "is_passive": False
+            }
+            
+            # Check if this is passive voice
+            structure["is_passive"] = any(child.dep_ == "auxpass" for child in token.children)
+            
+            # Find arguments
+            for child in token.children:
+                if child.dep_ in ["nsubj"]:
+                    # Active voice subject (performer)
+                    structure["subjects"].append(child)
+                elif child.dep_ in ["nsubjpass"]:
+                    # Passive voice subject (often the object being acted upon)
+                    if not structure["is_passive"]:
+                        structure["subjects"].append(child)
+                    else:
+                        structure["objects"].append(child)
+                elif child.dep_ in ["dobj", "pobj"]:
+                    # Direct/prepositional objects
+                    structure["objects"].append(child)
+                elif child.dep_ == "prep" and child.text.lower() == "by":
+                    # Find agent in by-phrase
+                    for grandchild in child.children:
+                        if grandchild.dep_ == "pobj":
+                            structure["agents"].append(grandchild)
+            
+            verb_structures.append(structure)
+    
+    return verb_structures
+
+
+def find_syntactic_agents(doc, verb_structures: List[Dict]) -> List[Dict]:
+    """
+    Find syntactic agents - entities that are subjects of action verbs.
+    This systematically identifies who performs actions.
+    """
+    candidates = []
+    
+    for structure in verb_structures:
+        # Process active voice subjects
+        for subject_token in structure["subjects"]:
+            noun_phrase = get_full_noun_phrase(subject_token, doc)
+            if noun_phrase:
+                candidate = {
+                    "text": noun_phrase["text"],
+                    "tokens": noun_phrase["tokens"],
+                    "verb": structure["verb"].text,
+                    "verb_lemma": structure["verb_lemma"],
+                    "detection_method": "syntactic_agent",
+                    "syntactic_role": "subject",
+                    "is_passive": False,
+                    "confidence_boost": 0.3  # High confidence for syntactic agents
+                }
+                candidates.append(candidate)
+        
+        # Process agents from by-phrases (these are true performers in passive voice)
+        for agent_token in structure["agents"]:
+            noun_phrase = get_full_noun_phrase(agent_token, doc)
+            if noun_phrase:
+                candidate = {
+                    "text": noun_phrase["text"],
+                    "tokens": noun_phrase["tokens"], 
+                    "verb": structure["verb"].text,
+                    "verb_lemma": structure["verb_lemma"],
+                    "detection_method": "passive_agent",
+                    "syntactic_role": "agent",
+                    "is_passive": True,
+                    "confidence_boost": 0.4  # Very high confidence for explicit agents
+                }
+                candidates.append(candidate)
+    
+    return candidates
+
+
+def find_responsibility_patterns(doc) -> List[Dict]:
+    """
+    Find explicit responsibility patterns like "X is responsible for".
+    These are high-confidence performer indicators.
+    """
+    candidates = []
+    responsibility_words = ["responsible", "accountable", "tasked", "assigned", "designated"]
+    
+    for token in doc:
+        if token.lemma_.lower() in responsibility_words:
+            # Look for "X is responsible" pattern
+            if token.head.lemma_.lower() in ["be", "is", "are", "was", "were"]:
+                for child in token.head.children:
+                    if child.dep_ == "nsubj":
+                        noun_phrase = get_full_noun_phrase(child, doc)
+                        if noun_phrase:
+                            candidate = {
+                                "text": noun_phrase["text"],
+                                "tokens": noun_phrase["tokens"],
+                                "verb": f"responsible_for",
+                                "verb_lemma": "responsible",
+                                "detection_method": "responsibility_pattern", 
+                                "syntactic_role": "responsible_party",
+                                "is_passive": False,
+                                "confidence_boost": 0.4  # Very high confidence
+                            }
+                            candidates.append(candidate)
+    
+    return candidates
+
+
+def find_prepositional_agents(doc) -> List[Dict]:
+    """
+    Find agents in prepositional phrases beyond just "by".
+    """
+    candidates = []
+    agent_prepositions = ["by", "through", "via"]
+    
+    for token in doc:
+        if token.text.lower() in agent_prepositions and token.dep_ == "prep":
+            for child in token.children:
+                if child.dep_ == "pobj":
+                    noun_phrase = get_full_noun_phrase(child, doc)
+                    if noun_phrase:
+                        candidate = {
+                            "text": noun_phrase["text"],
+                            "tokens": noun_phrase["tokens"],
+                            "verb": token.head.text if token.head.pos_ == "VERB" else "unknown",
+                            "verb_lemma": token.head.lemma_.lower() if token.head.pos_ == "VERB" else "unknown",
+                            "detection_method": f"{token.text.lower()}_prepositional_agent",
+                            "syntactic_role": "prepositional_agent", 
+                            "is_passive": True,
+                            "confidence_boost": 0.3
+                        }
+                        candidates.append(candidate)
+    
+    return candidates
+
+
+def get_full_noun_phrase(token, doc) -> Optional[Dict]:
+    """
+    Get the full noun phrase containing a token.
+    Returns both the text and the token span.
+    """
+    for chunk in doc.noun_chunks:
+        if token.i >= chunk.start and token.i < chunk.end:
+            return {
+                "text": chunk.text,
+                "tokens": list(chunk),
+                "start": chunk.start,
+                "end": chunk.end
+            }
+    
+    # Fallback to just the token if no chunk found
+    return {
+        "text": token.text,
+        "tokens": [token],
+        "start": token.i,
+        "end": token.i + 1
+    }
+
+
+def apply_validation_pipeline(candidates: List[Dict], doc, verb_structures: List[Dict]) -> List[Dict]:
+    """
+    Multi-level validation pipeline to filter out non-performers systematically.
+    """
+    validated = []
+    
+    for candidate in candidates:
+        # Level 1: Syntactic validation
+        if not passes_syntactic_validation(candidate, verb_structures):
+            continue
+            
+        # Level 2: Semantic validation  
+        if not passes_semantic_validation(candidate, doc):
+            continue
+            
+        # Level 3: Contextual validation
+        if not passes_contextual_validation(candidate):
+            continue
+            
+        validated.append(candidate)
+    
+    return validated
+
+
+def passes_syntactic_validation(candidate: Dict, verb_structures: List[Dict]) -> bool:
+    """
+    Validate that the candidate has a legitimate syntactic role as a performer.
+    """
+    # Check if this candidate is actually an object of a control verb
+    candidate_text_lower = candidate["text"].lower()
+    
+    for structure in verb_structures:
+        for obj_token in structure["objects"]:
+            obj_phrase = get_full_noun_phrase(obj_token, None)
+            if obj_phrase and obj_phrase["text"].lower() == candidate_text_lower:
+                return False  # This is an object, not a performer
+    
+    # Check for pronoun issues
+    pronouns = ["this", "that", "it", "they", "these", "those"]
+    if candidate["text"].lower().strip() in pronouns:
+        return False
+    
+    return True
+
+
+def passes_semantic_validation(candidate: Dict, doc) -> bool:
+    """
+    Validate that the candidate could semantically perform actions.
+    """
+    candidate_text = candidate["text"].lower()
+    
+    # Explicit non-performer patterns - things that cannot perform actions
+    non_performer_patterns = [
+        # Abstract concepts
+        r'\b(?:sound|effective|appropriate|proper|adequate)\s+(?:management|considerations|practices|procedures)\b',
+        r'\b(?:strategy|approach|methodology|framework|guidelines|standards)\b',
+        r'\b(?:feedback|input|response|output|results|findings)\b',
+        
+        # Document/system artifacts  
+        r'\bsop\b|\bstandard operating procedure\b',
+        r'\b(?:document|documentation|manual|handbook|guide)\b',
+        r'\b(?:report|reporting|template|form|questionnaire)\b',
+        r'\b(?:policy|procedure|standard|regulation|requirement)\b',
+        
+        # Data/information objects
+        r'\b(?:data|information|records|files|databases)\b',
+        r'\b(?:account|transaction|balance|entry|item)\b',
+        r'\b(?:access|permissions|privileges|rights)\b',
+        
+        # Abstract business concepts
+        r'\b(?:compliance|governance|oversight|monitoring)\b(?!\s+(?:team|group|committee|department|officer|manager))',
+        r'\b(?:risk|control|process|activity|function)\b(?!\s+(?:team|group|committee|department|officer|manager))',
+        
+        # Storage/location references
+        r'\bsystem of record\b|\brepository\b|\barchive\b',
+        r'\bdatabase\b(?!\s+(?:team|administrator))',
+        
+        # Generic management without specificity
+        r'^management$',  # Just "management" alone
+        r'\bmanagement\b(?!\s+(?:team|group|committee))'  # "management" not followed by team/group
+    ]
+    
+    # Check against non-performer patterns
+    for pattern in non_performer_patterns:
+        if re.search(pattern, candidate_text):
+            return False
+    
+    # Positive validation - things that CAN perform actions
+    performer_indicators = [
+        # People and roles
+        r'\b(?:manager|director|supervisor|analyst|specialist|officer|coordinator|lead|head)\b',
+        r'\b(?:accountant|controller|auditor|administrator|executive|president|secretary|treasurer)\b',
+        r'\b(?:employee|staff|personnel|individual|person|user|operator)\b',
+        
+        # Organizational units
+        r'\b(?:team|group|committee|department|unit|division|office|board)\b',
+        r'\b(?:finance|accounting|treasury|compliance|audit|risk|governance)\s+(?:team|group|department)\b',
+        
+        # Specific organizational entities
+        r'\b[A-Z][a-z]+(?:\s+[A-Z][a-z]+)*\s+(?:team|group|committee|department)\b',  # "Finance Team"
+        r'\b[A-Z]{2,}\s+(?:team|group|committee)\b',  # "MCO Team"
+        
+        # Systems (when they can actually perform actions)
+        r'\b(?:system|application|software|platform)\b(?=.*(?:automatically|generates|processes|validates))'
+    ]
+    
+    # Check for performer indicators
+    for pattern in performer_indicators:
+        if re.search(pattern, candidate_text):
+            return True
+    
+    # Use NLP entities as additional validation
+    doc_text = candidate["text"]
+    mini_doc = candidate.get("tokens", [])
+    
+    if mini_doc:
+        # Check if any tokens are person/org entities
+        for token in mini_doc:
+            if hasattr(token, 'ent_type_') and token.ent_type_ in ["PERSON", "ORG"]:
+                return True
+    
+    # Default to false for ambiguous cases - be conservative
+    return False
+
+
+def passes_contextual_validation(candidate: Dict) -> bool:
+    """
+    Validate the candidate makes sense in the control context.
+    """
+    candidate_text = candidate["text"].lower()
+    
+    # Reject very vague references
+    vague_terms = [
+        "this", "that", "it", "they", "these", "those", "such", "said",
+        "aforementioned", "above", "below", "following", "preceding"
+    ]
+    
+    if candidate_text.strip() in vague_terms:
+        return False
+    
+    # Reject if it's just a single common word that's likely misidentified
+    single_word_rejects = [
+        "application", "system", "process", "control", "management", "governance",
+        "compliance", "monitoring", "oversight", "strategy", "approach", "methodology",
+        "framework", "policy", "procedure", "standard", "document", "report", "data",
+        "information", "access", "permissions", "feedback", "results", "findings"
+    ]
+    
+    if candidate_text.strip() in single_word_rejects:
+        return False
+    
+    # Additional length-based validation
+    words = candidate_text.split()
+    if len(words) == 1 and len(candidate_text) < 4:
+        return False  # Too short to be meaningful
+    
+    return True
+
+
+def score_performer_plausibility(candidates: List[Dict], control_type: Optional[str] = None, 
+                                frequency: Optional[str] = None) -> List[Dict]:
+    """
+    Score candidates based on their plausibility as performers.
+    Uses multiple factors: animacy, authority, specificity, syntactic role.
+    """
+    for candidate in candidates:
+        score = calculate_plausibility_score(candidate, control_type, frequency)
+        candidate["plausibility_score"] = score
+        candidate["final_confidence"] = min(1.0, score + candidate.get("confidence_boost", 0))
+    
+    return candidates
+
+
+def calculate_plausibility_score(candidate: Dict, control_type: Optional[str] = None, 
+                                frequency: Optional[str] = None) -> float:
+    """
+    Calculate a plausibility score based on multiple factors.
+    """
+    base_score = 0.4  # Conservative starting point
+    text = candidate["text"].lower()
+    
+    # Factor 1: Animacy (can this entity act?)
+    animacy_score = 0.0
+    
+    # High animacy - people and organizational units
+    if any(indicator in text for indicator in [
+        "manager", "director", "supervisor", "analyst", "specialist", "officer",
+        "team", "group", "committee", "department", "staff", "personnel"
+    ]):
+        animacy_score = 0.3
+    
+    # Medium animacy - systems that can act
+    elif any(indicator in text for indicator in ["system", "application", "software"]):
+        # Only if there's evidence it can actually perform actions
+        if any(action in candidate.get("verb_lemma", "") for action in [
+            "generate", "process", "validate", "calculate", "monitor", "track"
+        ]):
+            animacy_score = 0.2
+        else:
+            animacy_score = 0.1
+    
+    # Factor 2: Authority (does this have agency?)
+    authority_score = 0.0
+    
+    # High authority roles
+    if any(role in text for role in ["manager", "director", "officer", "controller", "head"]):
+        authority_score = 0.2
+    
+    # Medium authority
+    elif any(role in text for role in ["supervisor", "lead", "coordinator", "specialist"]):
+        authority_score = 0.15
+    
+    # Organizational authority
+    elif any(org in text for org in ["committee", "board", "department"]):
+        authority_score = 0.15
+    
+    # Factor 3: Specificity (concrete vs abstract)
+    specificity_score = 0.0
+    
+    # Very specific (proper nouns, acronyms with team)
+    if re.search(r'[A-Z][a-z]+\s+[A-Z][a-z]+\s+(?:team|department)', text) or \
+       re.search(r'[A-Z]{2,}\s+(?:team|group)', text):
+        specificity_score = 0.2
+    
+    # Moderately specific
+    elif any(specific in text for specific in ["team", "group", "committee"]):
+        specificity_score = 0.15
+    
+    # Generic terms get lower scores
+    elif text.strip() in ["management", "system", "process"]:
+        specificity_score = -0.1
+    
+    # Factor 4: Syntactic role strength
+    syntactic_score = 0.0
+    
+    detection_method = candidate.get("detection_method", "")
+    if detection_method in ["responsibility_pattern", "passive_agent"]:
+        syntactic_score = 0.2
+    elif detection_method == "syntactic_agent":
+        syntactic_score = 0.15
+    elif "prepositional_agent" in detection_method:
+        syntactic_score = 0.1
+    
+    # Factor 5: Control type consistency
+    consistency_score = 0.0
+    
+    if control_type:
+        control_type_lower = control_type.lower()
+        
+        if "automated" in control_type_lower:
+            if any(sys in text for sys in ["system", "application", "software"]):
+                consistency_score = 0.1
+            elif any(human in text for human in ["manager", "team", "staff"]):
+                consistency_score = -0.1
+        
+        elif "manual" in control_type_lower:
+            if any(human in text for human in ["manager", "team", "staff", "person"]):
+                consistency_score = 0.1
+            elif any(sys in text for sys in ["system", "application", "automated"]):
+                consistency_score = -0.1
+    
+    # Combine all factors
+    final_score = base_score + animacy_score + authority_score + specificity_score + syntactic_score + consistency_score
+    
+    return max(0.1, min(1.0, final_score))
+
+
+def select_performers(candidates: List[Dict], original_text: str) -> Dict:
+    """
+    Select primary and secondary performers from scored candidates.
+    """
+    if not candidates:
+        return {
+            "primary": None,
+            "secondary": [],
+            "confidence": 0,
+            "message": "No valid performers detected"
+        }
+    
+    # Sort by final confidence score
+    candidates.sort(key=lambda x: x["final_confidence"], reverse=True)
+    
+    # Remove duplicates (same text, different detection methods)
+    unique_candidates = []
+    seen_texts = set()
+    
+    for candidate in candidates:
+        text_lower = candidate["text"].lower().strip()
+        if text_lower not in seen_texts:
+            unique_candidates.append(candidate)
+            seen_texts.add(text_lower)
+    
+    # Select primary performer
+    primary = unique_candidates[0]
+    
+    # Select secondary performers (up to 3, with minimum confidence threshold)
+    secondary = []
+    for candidate in unique_candidates[1:]:
+        if candidate["final_confidence"] >= 0.3 and len(secondary) < 3:
+            secondary.append(candidate)
+    
+    # Generate message
+    message = generate_performer_message(primary, secondary, original_text)
+    
+    return {
+        "primary": {
+            "text": primary["text"],
+            "verb": primary.get("verb", "unknown"),
+            "type": classify_performer_type(primary["text"]),
+            "score": primary["final_confidence"],
+            "detection_method": primary["detection_method"]
+        },
+        "secondary": [{
+            "text": s["text"],
+            "verb": s.get("verb", "unknown"), 
+            "type": classify_performer_type(s["text"]),
+            "score": s["final_confidence"],
+            "detection_method": s["detection_method"]
+        } for s in secondary],
+        "confidence": primary["final_confidence"],
+        "message": message
+    }
+
+
+def classify_performer_type(text: str) -> str:
+    """
+    Classify performer type for backward compatibility.
+    """
+    text_lower = text.lower()
+    
+    # Human indicators
+    if any(indicator in text_lower for indicator in [
+        "manager", "director", "supervisor", "analyst", "specialist", "officer",
+        "team", "group", "committee", "staff", "personnel", "employee", "person"
+    ]):
+        return "human"
+    
+    # System indicators  
+    elif any(indicator in text_lower for indicator in [
+        "system", "application", "software", "platform", "automated", "program"
+    ]):
+        return "system"
+    
+    return "unknown"
+
+
+def generate_performer_message(primary: Dict, secondary: List[Dict], original_text: str) -> str:
+    """
+    Generate an informative message about the detection results.
+    """
+    confidence = primary["final_confidence"]
+    detection_method = primary["detection_method"]
+    
+    if confidence >= 0.8:
+        base_message = f"High confidence performer detected via {detection_method}"
+    elif confidence >= 0.6:
+        base_message = f"Good confidence performer detected via {detection_method}"
+    elif confidence >= 0.4:
+        base_message = f"Moderate confidence performer detected via {detection_method}"
+    else:
+        base_message = f"Low confidence performer detected via {detection_method}"
+    
+    if secondary:
+        base_message += f". {len(secondary)} additional performers identified."
+    
+    return base_message
