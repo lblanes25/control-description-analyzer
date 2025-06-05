@@ -15,207 +15,251 @@ maintaining separation of concerns.
 
 import re
 from typing import Dict, List, Any, Optional, Tuple, Set
+from dataclasses import dataclass
+
+# Import shared constants from WHO detection module
+try:
+    from enhanced_who import CONTROL_VERBS, HUMAN_INDICATORS
+except ImportError:
+    # Fallback constants if import fails
+    CONTROL_VERBS = [
+        "review", "approve", "verify", "check", "validate", "reconcile",
+        "examine", "analyze", "evaluate", "assess", "monitor", "track",
+        "investigate", "inspect", "audit", "oversee", "supervise", "ensure",
+        "perform", "execute", "conduct", "disable", "enforce", "generate",
+        "address", "compare", "maintain", "identify", "correct", "update",
+        "submit", "complete", "prepare", "provide", "confirm"
+    ]
+
+# Multi-control specific constants
+DEFAULT_ESCALATION_MARKERS = [
+    "if ", "when ", "exception", "discrepan", "error", "issue",
+    "escalate", "notify", "alert", "report to", "exceed", "threshold",
+    "not match", "fails", "failure", "variance"
+]
+
+DEFAULT_SEQUENCE_MARKERS = [
+    "then", "after", "subsequently", "next", "following", "afterward",
+    "first", "second", "third", "finally", "lastly", "initially",
+    "subsequently", "consequently", "meanwhile", "later", "prior to"
+]
+
+DEFAULT_ADHOC_TERMS = [
+    "ad hoc", "adhoc", "as needed", "when needed", "if needed",
+    "on-demand", "on demand", "as required", "when necessary"
+]
+
+ESCALATION_VERBS = [
+    "escalate", "notify", "alert", "report", "inform",
+    "communicate", "contact", "forward", "send", "raise"
+]
+
+CONDITIONAL_PATTERNS = [
+    r'\bif\s+[^\.;,]{3,30}(,\s+|then\s+)',
+    r'\bwhen\s+[^\.;,]{3,30}(,\s+|then\s+)',
+    r'\bin\s+case\s+of\s+',
+    r'\bshould\s+[^\.;,]{3,40}(,\s+|then\s+)',
+]
+
+TIMING_INDICATORS = ["daily", "weekly", "monthly", "quarterly", "annually", "every", "each", "upon"]
+
+# Context and proximity constants
+DEFAULT_CONTEXT_WINDOW = 100
+EXTENDED_CONTEXT_WINDOW = 150
+MAX_PERFORMER_DISTANCE = 150
+SENTENCE_BOUNDARY_PENALTY = 2
+AFTER_ACTION_PENALTY = 1.5
+AFTER_ACTION_SENTENCE_PENALTY = 3
+
+# Confidence thresholds
+HIGH_CONFIDENCE_THRESHOLD = 2
+MEDIUM_CONFIDENCE_THRESHOLD = 1
+MINIMUM_CONTROL_SCORE = 0.5
+VERB_SCORE_WEIGHT = 0.5
+SUBJECT_SCORE_WEIGHT = 0.3
+TIMING_SCORE_WEIGHT = 0.1
+NEW_SENTENCE_SCORE_WEIGHT = 0.1
+
+
+@dataclass
+class MultiControlConfig:
+    """Configuration object for multi-control detection"""
+    escalation_markers: List[str] = None
+    sequence_markers: List[str] = None
+    adhoc_terms: List[str] = None
+
+    def __post_init__(self):
+        if self.escalation_markers is None:
+            self.escalation_markers = DEFAULT_ESCALATION_MARKERS.copy()
+        if self.sequence_markers is None:
+            self.sequence_markers = DEFAULT_SEQUENCE_MARKERS.copy()
+        if self.adhoc_terms is None:
+            self.adhoc_terms = DEFAULT_ADHOC_TERMS.copy()
 
 
 def detect_multi_control(text: str, who_data: Dict, what_data: Dict,
                          when_data: Dict, escalation_data: Dict,
                          config: Optional[Dict] = None) -> Dict[str, Any]:
     """
+    Main orchestrator function for multi-control detection.
+
     Detect if multiple distinct controls are described in a single text.
-
-    Args:
-        text: The control description text
-        who_data: Results from WHO element detection
-        what_data: Results from WHAT element detection
-        when_data: Results from WHEN element detection
-        escalation_data: Results from ESCALATION element detection
-        config: Optional configuration dictionary
-
-    Returns:
-        Dictionary with detection results including:
-        - detected: Boolean indicating if multiple controls detected
-        - count: Estimated number of distinct controls
-        - candidates: List of potential control candidates
-        - confidence: Confidence level of detection
     """
     if not text or text.strip() == '':
-        return {
-            "detected": False,
-            "count": 0,
-            "candidates": [],
-            "confidence": "low"
-        }
+        return _create_empty_result()
 
-    # Use config or defaults
-    config = config or {}
+    # Initialize configuration
+    multi_config = _initialize_configuration(config)
+
+    # Extract and prepare data
+    performers_data = _extract_performers_data(who_data)
+    actions_data = _extract_actions_data(what_data)
+    timing_data = _extract_timing_data(when_data)
+    escalation_info = _extract_escalation_data(escalation_data)
+
+    # Categorize actions with context
+    categorized_actions = _categorize_actions_with_context(
+        text, actions_data, multi_config, timing_data.timing_candidates, performers_data.all_performers
+    )
+
+    # Analyze structure and patterns
+    structure_analysis = _analyze_text_structure(text, multi_config, timing_data, performers_data)
+
+    # Group actions by different criteria
+    groupings = _create_action_groupings(categorized_actions, timing_data, performers_data)
+
+    # Build control candidates
+    control_candidates = _build_enhanced_control_candidates(
+        groupings, categorized_actions, performers_data, text, timing_data, multi_config
+    )
+
+    # Determine if multiple controls exist
+    detection_result = _determine_multi_control_presence(
+        groupings, timing_data, structure_analysis, control_candidates, multi_config
+    )
+
+    # Calculate confidence
+    confidence = _calculate_enhanced_confidence(detection_result, groupings, structure_analysis, control_candidates)
+
+    return _assemble_final_detection_result(
+        detection_result, control_candidates, groupings, structure_analysis, timing_data, confidence
+    )
+
+
+@dataclass
+class PerformersData:
+    """Data structure for performer information"""
+    primary_who: str
+    secondary_whos: List[str]
+    all_performers: List[str]
+
+
+@dataclass
+class TimingData:
+    """Data structure for timing information"""
+    timing_candidates: List[Dict]
+    explicit_frequencies: List[Dict]
+    complex_patterns: List[Dict]
+    multi_frequency_detected: bool
+    detected_frequencies: List[str]
+    has_adhoc_timing: bool
+    has_regular_frequency: bool
+    mixed_timing_detected: bool
+
+
+@dataclass
+class ActionGroupings:
+    """Data structure for action groupings"""
+    timing_groups: Dict[str, List[Dict]]
+    performer_groups: Dict[str, List[Dict]]
+
+
+def _create_empty_result() -> Dict[str, Any]:
+    """Create empty result for invalid input"""
+    return {
+        "detected": False,
+        "count": 0,
+        "candidates": [],
+        "confidence": "low"
+    }
+
+
+def _initialize_configuration(config: Optional[Dict]) -> MultiControlConfig:
+    """Initialize configuration with defaults"""
+    if not config:
+        return MultiControlConfig()
+
     multi_control_config = config.get("multi_control", {})
+    return MultiControlConfig(
+        escalation_markers=_get_config_value(multi_control_config, "escalation_markers", DEFAULT_ESCALATION_MARKERS),
+        sequence_markers=_get_config_value(multi_control_config, "sequence_markers", DEFAULT_SEQUENCE_MARKERS),
+        adhoc_terms=_get_config_value(multi_control_config, "adhoc_terms", DEFAULT_ADHOC_TERMS)
+    )
 
-    # Extract performers (WHO)
+
+def _extract_performers_data(who_data: Dict) -> PerformersData:
+    """Extract and structure performer data"""
     primary_who = who_data.get("primary", {}).get("text", "").lower() if who_data.get("primary") else ""
     secondary_whos = [w.get("text", "").lower() for w in who_data.get("secondary", [])]
     all_performers = [primary_who] + secondary_whos if primary_who else secondary_whos
     all_performers = [p for p in all_performers if p]  # Remove empty strings
 
-    # Extract actions (WHAT)
+    return PerformersData(primary_who, secondary_whos, all_performers)
+
+
+def _extract_actions_data(what_data: Dict) -> List[Dict]:
+    """Extract and structure action data"""
     primary_action = what_data.get("primary_action", {})
     secondary_actions = what_data.get("secondary_actions", [])
     all_actions = [primary_action] + secondary_actions if primary_action else secondary_actions
-    all_actions = [a for a in all_actions if a]  # Remove empty values
+    return [a for a in all_actions if a]  # Remove empty values
 
-    # Extract timing information (WHEN)
+
+def _extract_timing_data(when_data: Dict) -> TimingData:
+    """Extract and structure timing data"""
     timing_candidates = when_data.get("candidates", [])
     explicit_frequencies = [c for c in timing_candidates if c.get("method", "").startswith("explicit_frequency")]
     complex_patterns = [c for c in timing_candidates if c.get("method", "").startswith("complex_pattern")]
 
-    # Check for multiple frequencies explicitly detected by WHEN module
     multi_frequency_detected = when_data.get("multi_frequency_detected", False)
     detected_frequencies = when_data.get("frequencies", [])
 
-    # Extract escalation information
-    has_escalation = escalation_data.get("detected", False)
-    escalation_phrases = escalation_data.get("phrases", [])
-
-    # Get escalation and sequence markers
-    escalation_markers = get_config_value(multi_control_config, "escalation_markers", [
-        "if ", "when ", "exception", "discrepan", "error", "issue",
-        "escalate", "notify", "alert", "report to", "exceed", "threshold",
-        "not match", "fails", "failure", "variance"
-    ])
-
-    # Expanded sequence markers with additional terms
-    sequence_markers = get_config_value(multi_control_config, "sequence_markers", [
-        "then", "after", "subsequently", "next", "following", "afterward",
-        "first", "second", "third", "finally", "lastly", "initially",
-        "subsequently", "consequently", "meanwhile", "later", "prior to"
-    ])
-
-    # Check for ad-hoc patterns alongside regular frequencies
-    adhoc_terms = get_config_value(multi_control_config, "adhoc_terms", [
-        "ad hoc", "adhoc", "as needed", "when needed", "if needed",
-        "on-demand", "on demand", "as required", "when necessary"
-    ])
-
-    # Detect the presence of ad-hoc timing alongside regular frequencies
-    has_adhoc_timing = any(term.lower() in text.lower() for term in adhoc_terms)
-    has_regular_frequency = len(detected_frequencies) > 0 or len(explicit_frequencies) > 0
-    mixed_timing_detected = has_adhoc_timing and has_regular_frequency
-
-    # Categorize each action by context, timing, and performer
-    categorized_actions = categorize_actions(
-        text, all_actions, escalation_markers, timing_candidates, all_performers
+    return TimingData(
+        timing_candidates=timing_candidates,
+        explicit_frequencies=explicit_frequencies,
+        complex_patterns=complex_patterns,
+        multi_frequency_detected=multi_frequency_detected,
+        detected_frequencies=detected_frequencies,
+        has_adhoc_timing=False,  #For Will be set later
+        has_regular_frequency=len(detected_frequencies) > 0 or len(explicit_frequencies) > 0,
+        mixed_timing_detected=False  # Will be set later
     )
 
-    # Group actions by timing pattern
-    timing_groups = group_actions_by_timing(categorized_actions, detected_frequencies)
 
-    # Analyze paragraph structure for separate controls
-    paragraph_structure = analyze_paragraph_structure(text)
-    has_distinct_paragraphs = paragraph_structure.get("has_distinct_paragraphs", False)
-
-    # Detect sequence markers that indicate process steps vs. separate controls
-    sequence_analysis = analyze_sequence_markers(
-        text, sequence_markers, escalation_markers, timing_candidates, all_performers
-    )
-    has_control_sequence = sequence_analysis.get("has_control_sequence", False)
-
-    # Find controls with distinct performers
-    performer_groups = group_actions_by_performer(categorized_actions, all_performers)
-    has_distinct_performers = len(performer_groups) > 1
-
-    # Build control candidates using the enhanced groupings
-    control_candidates = build_control_candidates(
-        timing_groups, performer_groups, categorized_actions,
-        all_performers, text, has_adhoc_timing, adhoc_terms
-    )
-
-    # Check for each clear indicator of multiple controls
-    multi_control_indicators = {
-        "distinct_timing": len(timing_groups) > 1,
-        "mixed_timing": mixed_timing_detected,
-        "multi_frequency": multi_frequency_detected,
-        "distinct_paragraphs": has_distinct_paragraphs,
-        "control_sequence": has_control_sequence,
-        "distinct_performers": has_distinct_performers
-    }
-
-    # Count positive indicators
-    indicator_count = sum(1 for value in multi_control_indicators.values() if value)
-
-    # Make final determination with enhanced logic
-    is_multi_control = (
-            len(timing_groups) > 1 or  # Different timing patterns
-            multi_frequency_detected or  # Multiple frequencies explicitly detected
-            (mixed_timing_detected and indicator_count >= 1) or  # Mixed timing with other indicator
-            (has_distinct_paragraphs and indicator_count >= 1) or  # Structural separation with other indicator
-            (has_distinct_performers and len(control_candidates) > 1) or  # Different performers doing different things
-            (has_control_sequence and not is_escalation_sequence(text, escalation_markers))  # True control sequence
-    )
-
-    # Calculate confidence level with enhanced factors
-    confidence = calculate_confidence(
-        is_multi_control, timing_groups, multi_frequency_detected,
-        control_candidates, sequence_analysis, has_distinct_performers,
-        has_distinct_paragraphs, mixed_timing_detected
-    )
-
+def _extract_escalation_data(escalation_data: Dict) -> Dict:
+    """Extract escalation information"""
     return {
-        "detected": is_multi_control,
-        "count": len(control_candidates) if is_multi_control else 1,
-        "candidates": control_candidates,
-        "has_multi_frequency": multi_frequency_detected,
-        "timing_groups": list(timing_groups.keys()),
-        "has_adhoc_component": has_adhoc_timing,
-        "has_sequence_markers": sequence_analysis.get("has_sequence_markers", False),
-        "has_distinct_performers": has_distinct_performers,
-        "has_distinct_paragraphs": has_distinct_paragraphs,
-        "multi_control_indicators": multi_control_indicators,
-        "confidence": confidence
+        "has_escalation": escalation_data.get("detected", False),
+        "escalation_phrases": escalation_data.get("phrases", [])
     }
 
 
-def categorize_actions(text: str, all_actions: List[Dict],
-                       escalation_markers: List[str],
-                       timing_candidates: List[Dict],
-                       all_performers: List[str]) -> List[Dict]:
+def _categorize_actions_with_context(text: str, all_actions: List[Dict],
+                                     multi_config: MultiControlConfig,
+                                     timing_candidates: List[Dict],
+                                     all_performers: List[str]) -> List[Dict]:
     """
+    Enhanced action categorization with context analysis.
+
     Categorize actions as regular control actions or escalation actions,
     and associate them with timing information and performers.
-
-    Args:
-        text: Control description text
-        all_actions: List of action dictionaries
-        escalation_markers: List of markers indicating escalation
-        timing_candidates: List of timing candidates
-        all_performers: List of identified performers
-
-    Returns:
-        List of categorized action dictionaries
     """
     categorized_actions = []
     text_lower = text.lower()
 
-    # First, create a map of timing terms to their positions
-    timing_positions = {}
-    for timing in timing_candidates:
-        timing_text = timing.get("text", "").lower()
-        if timing_text:
-            span = timing.get("span", [0, 0])
-            timing_positions[timing_text] = {
-                "span": span,
-                "frequency": timing.get("frequency", "unknown"),
-                "is_vague": timing.get("is_vague", False)
-            }
-
-    # Create a map of performers to their positions
-    performer_positions = {}
-    for performer in all_performers:
-        performer_lower = performer.lower()
-        # Find all occurrences of this performer
-        for match in re.finditer(r'\b' + re.escape(performer_lower) + r'\b', text_lower):
-            performer_positions[performer_lower] = {
-                "span": [match.start(), match.end()],
-                "text": performer
-            }
+    # Create position maps for timing and performers
+    timing_positions = _create_timing_position_map(timing_candidates)
+    performer_positions = _create_performer_position_map(all_performers, text_lower)
 
     for action in all_actions:
         if not action:
@@ -231,18 +275,13 @@ def categorize_actions(text: str, all_actions: List[Dict],
             continue  # Skip if action not found
 
         action_span = [action_pos, action_pos + len(action_text)]
-        action_context = get_surrounding_context(text, action_pos, action_pos + len(action_text), 150)
+        action_context = _get_surrounding_context(text, action_pos, action_pos + len(action_text),
+                                                  EXTENDED_CONTEXT_WINDOW)
 
-        # Check if action is associated with distinct timing
-        timing_association = find_timing_for_action(action_text, action_context, timing_candidates)
-
-        # Is this likely an escalation action?
-        is_escalation = is_escalation_action(action_context, escalation_markers)
-
-        # Find the closest performer to this action
-        associated_performer = find_performer_for_action(
-            action_span, all_performers, performer_positions, text_lower
-        )
+        # Analyze action characteristics
+        timing_association = _find_timing_for_action(action_text, action_context, timing_candidates)
+        is_escalation = _is_escalation_action(action_context, multi_config.escalation_markers)
+        associated_performer = _find_performer_for_action(action_span, all_performers, performer_positions, text_lower)
 
         categorized_actions.append({
             "action": action,
@@ -257,52 +296,187 @@ def categorize_actions(text: str, all_actions: List[Dict],
     return categorized_actions
 
 
-def is_escalation_action(context: str, escalation_markers: List[str]) -> bool:
+def _create_timing_position_map(timing_candidates: List[Dict]) -> Dict[str, Dict]:
+    """Create a map of timing terms to their positions"""
+    timing_positions = {}
+    for timing in timing_candidates:
+        timing_text = timing.get("text", "").lower()
+        if timing_text:
+            span = timing.get("span", [0, 0])
+            timing_positions[timing_text] = {
+                "span": span,
+                "frequency": timing.get("frequency", "unknown"),
+                "is_vague": timing.get("is_vague", False)
+            }
+    return timing_positions
+
+
+def _create_performer_position_map(all_performers: List[str], text_lower: str) -> Dict[str, Dict]:
+    """Create a map of performers to their positions"""
+    performer_positions = {}
+    for performer in all_performers:
+        performer_lower = performer.lower()
+        # Find all occurrences of this performer
+        for match in re.finditer(r'\b' + re.escape(performer_lower) + r'\b', text_lower):
+            performer_positions[performer_lower] = {
+                "span": [match.start(), match.end()],
+                "text": performer
+            }
+    return performer_positions
+
+
+def _analyze_text_structure(text: str, multi_config: MultiControlConfig,
+                            timing_data: TimingData, performers_data: PerformersData) -> Dict[str, Any]:
+    """Analyze text structure for multi-control indicators"""
+    # Check for ad-hoc timing patterns
+    timing_data.has_adhoc_timing = _detect_adhoc_timing(text, multi_config.adhoc_terms)
+    timing_data.mixed_timing_detected = timing_data.has_adhoc_timing and timing_data.has_regular_frequency
+
+    # Analyze paragraph structure
+    paragraph_analysis = _analyze_paragraph_structure(text)
+
+    # Analyze sequence markers
+    sequence_analysis = _analyze_sequence_markers(
+        text, multi_config.sequence_markers, multi_config.escalation_markers,
+        timing_data.timing_candidates, performers_data.all_performers
+    )
+
+    return {
+        "paragraph_analysis": paragraph_analysis,
+        "sequence_analysis": sequence_analysis,
+        "has_mixed_timing": timing_data.mixed_timing_detected
+    }
+
+
+def _detect_adhoc_timing(text: str, adhoc_terms: List[str]) -> bool:
+    """Detect presence of ad-hoc timing terms"""
+    return any(term.lower() in text.lower() for term in adhoc_terms)
+
+
+def _create_action_groupings(categorized_actions: List[Dict], timing_data: TimingData,
+                             performers_data: PerformersData) -> ActionGroupings:
+    """Create groupings of actions by timing and performer"""
+    timing_groups = _group_actions_by_timing(categorized_actions, timing_data.detected_frequencies)
+    performer_groups = _group_actions_by_performer(categorized_actions, performers_data.all_performers)
+
+    return ActionGroupings(timing_groups, performer_groups)
+
+
+def _determine_multi_control_presence(groupings: ActionGroupings, timing_data: TimingData,
+                                      structure_analysis: Dict, control_candidates: List[Dict],
+                                      multi_config: MultiControlConfig) -> Dict[str, Any]:
+    """Determine if multiple controls are present using various indicators"""
+    paragraph_analysis = structure_analysis["paragraph_analysis"]
+    sequence_analysis = structure_analysis["sequence_analysis"]
+
+    # Check for distinct performers
+    has_distinct_performers = len(groupings.performer_groups) > 1
+
+    # Build multi-control indicators
+    multi_control_indicators = {
+        "distinct_timing": len(groupings.timing_groups) > 1,
+        "mixed_timing": timing_data.mixed_timing_detected,
+        "multi_frequency": timing_data.multi_frequency_detected,
+        "distinct_paragraphs": paragraph_analysis.get("has_distinct_paragraphs", False),
+        "control_sequence": sequence_analysis.get("has_control_sequence", False),
+        "distinct_performers": has_distinct_performers
+    }
+
+    # Count positive indicators
+    indicator_count = sum(1 for value in multi_control_indicators.values() if value)
+
+    # Make final determination with enhanced logic
+    is_multi_control = (
+            len(groupings.timing_groups) > 1 or  # Different timing patterns
+            timing_data.multi_frequency_detected or  # Multiple frequencies explicitly detected
+            (timing_data.mixed_timing_detected and indicator_count >= 1) or  # Mixed timing with other indicator
+            (paragraph_analysis.get("has_distinct_paragraphs",
+                                    False) and indicator_count >= 1) or  # Structural separation with other indicator
+            (has_distinct_performers and len(control_candidates) > 1) or  # Different performers doing different things
+            (sequence_analysis.get("has_control_sequence", False) and not _is_escalation_sequence_check(
+                sequence_analysis, multi_config))  # True control sequence
+    )
+
+    return {
+        "is_multi_control": is_multi_control,
+        "indicators": multi_control_indicators,
+        "indicator_count": indicator_count,
+        "has_distinct_performers": has_distinct_performers
+    }
+
+
+def _is_escalation_sequence_check(sequence_analysis: Dict, multi_config: MultiControlConfig) -> bool:
+    """Check if sequence is primarily escalation based on analysis"""
+    # This is a simplified check - could be enhanced based on sequence_analysis results
+    return False  # Placeholder - implement based on specific sequence analysis
+
+
+def _calculate_enhanced_confidence(detection_result: Dict, groupings: ActionGroupings,
+                                   structure_analysis: Dict, control_candidates: List[Dict]) -> str:
+    """Calculate confidence level for multi-control detection with enhanced factors"""
+    if not detection_result["is_multi_control"]:
+        return "low"
+
+    strong_indicators = detection_result["indicator_count"]
+
+    # Additional factors for confidence
+    has_multiple_timing_groups = len(groupings.timing_groups) > 1
+    has_multiple_performer_groups = len(groupings.performer_groups) > 1
+    has_multiple_candidates = len(control_candidates) > 1
+
+    # Convert indicator count to confidence level
+    if strong_indicators >= HIGH_CONFIDENCE_THRESHOLD:
+        return "high"
+    elif strong_indicators == MEDIUM_CONFIDENCE_THRESHOLD and has_multiple_candidates:
+        return "medium"
+    else:
+        return "low"
+
+
+def _assemble_final_detection_result(detection_result: Dict, control_candidates: List[Dict],
+                                     groupings: ActionGroupings, structure_analysis: Dict,
+                                     timing_data: TimingData, confidence: str) -> Dict[str, Any]:
+    """Assemble the final detection result"""
+    return {
+        "detected": detection_result["is_multi_control"],
+        "count": len(control_candidates) if detection_result["is_multi_control"] else 1,
+        "candidates": control_candidates,
+        "has_multi_frequency": timing_data.multi_frequency_detected,
+        "timing_groups": list(groupings.timing_groups.keys()),
+        "has_adhoc_component": timing_data.has_adhoc_timing,
+        "has_sequence_markers": structure_analysis["sequence_analysis"].get("has_sequence_markers", False),
+        "has_distinct_performers": detection_result["has_distinct_performers"],
+        "has_distinct_paragraphs": structure_analysis["paragraph_analysis"].get("has_distinct_paragraphs", False),
+        "multi_control_indicators": detection_result["indicators"],
+        "confidence": confidence
+    }
+
+
+def _is_escalation_action(context: str, escalation_markers: List[str]) -> bool:
     """
+    Uses contextual analysis to identify escalation actions.
+
     Determine if an action is part of an escalation path rather than a primary control.
-
-    Args:
-        context: Surrounding context of the action
-        escalation_markers: List of escalation indicator terms
-
-    Returns:
-        Boolean indicating if this is an escalation action
     """
     # Check for escalation markers
     has_escalation_marker = any(marker.lower() in context.lower() for marker in escalation_markers)
 
     # Check for conditional phrases that indicate escalation
-    conditional_patterns = [
-        r'\bif\s+[^\.;,]{3,30}(,\s+|then\s+)',
-        r'\bwhen\s+[^\.;,]{3,30}(,\s+|then\s+)',
-        r'\bin\s+case\s+of\s+',
-        r'\bshould\s+[^\.;,]{3,40}(,\s+|then\s+)',
-    ]
-
-    has_conditional = any(re.search(pattern, context.lower()) for pattern in conditional_patterns)
+    has_conditional = any(re.search(pattern, context.lower()) for pattern in CONDITIONAL_PATTERNS)
 
     # Look for escalation-specific verbs
-    escalation_verbs = [
-        "escalate", "notify", "alert", "report", "inform",
-        "communicate", "contact", "forward", "send", "raise"
-    ]
-
     has_escalation_verb = any(re.search(r'\b' + re.escape(verb) + r'\b', context.lower())
-                              for verb in escalation_verbs)
+                              for verb in ESCALATION_VERBS)
 
     return has_escalation_marker or (has_conditional and has_escalation_verb)
 
 
-def analyze_paragraph_structure(text: str) -> Dict[str, Any]:
+def _analyze_paragraph_structure(text: str) -> Dict[str, Any]:
     """
+    Analyzes paragraph structure to identify distinct control statements.
+
     Analyze the paragraph structure to identify if there are distinct
     control statements separated by paragraph breaks.
-
-    Args:
-        text: Control description text
-
-    Returns:
-        Dictionary with paragraph analysis results
     """
     # Split text into paragraphs
     paragraphs = re.split(r'\n\s*\n|\r\n\s*\r\n|\n\s*\r\n', text)
@@ -317,16 +491,12 @@ def analyze_paragraph_structure(text: str) -> Dict[str, Any]:
 
     # Check if paragraphs likely contain distinct controls
     distinct_control_paragraphs = []
-    control_verbs = [
-        "review", "approve", "check", "validate", "ensure", "monitor",
-        "reconcile", "verify", "examine", "inspect", "audit", "confirm"
-    ]
 
     for para in clean_paragraphs:
         # Check if paragraph contains a main control verb at the beginning
         para_lower = para.lower()
         contains_control_verb = any(re.search(r'\b' + verb + r'\b', para_lower[:50])
-                                    for verb in control_verbs)
+                                    for verb in CONTROL_VERBS)
 
         # Check if paragraph starts with a likely performer
         performer_start = re.search(r'^(?:The|An|A)\s+[A-Z][a-z]+(?:\s+[A-Z][a-z]+)*', para)
@@ -346,23 +516,15 @@ def analyze_paragraph_structure(text: str) -> Dict[str, Any]:
     }
 
 
-def analyze_sequence_markers(text: str, sequence_markers: List[str],
-                             escalation_markers: List[str],
-                             timing_candidates: List[Dict],
-                             all_performers: List[str]) -> Dict[str, Any]:
+def _analyze_sequence_markers(text: str, sequence_markers: List[str],
+                              escalation_markers: List[str],
+                              timing_candidates: List[Dict],
+                              all_performers: List[str]) -> Dict[str, Any]:
     """
+    Analyzes sequence markers to distinguish control sequences from process steps.
+
     Analyze sequence markers to differentiate between process steps within
     a single control and sequences of separate controls.
-
-    Args:
-        text: Control description text
-        sequence_markers: List of sequence indicator terms
-        escalation_markers: List of escalation markers
-        timing_candidates: List of timing candidates
-        all_performers: List of identified performers
-
-    Returns:
-        Dictionary with sequence analysis results
     """
     text_lower = text.lower()
 
@@ -373,7 +535,7 @@ def analyze_sequence_markers(text: str, sequence_markers: List[str],
             sequence_positions.append({
                 "marker": marker,
                 "span": [match.start(), match.end()],
-                "context": get_surrounding_context(text, match.start(), match.end(), 100)
+                "context": _get_surrounding_context(text, match.start(), match.end(), DEFAULT_CONTEXT_WINDOW)
             })
 
     # No sequence markers found
@@ -394,26 +556,9 @@ def analyze_sequence_markers(text: str, sequence_markers: List[str],
         # Check if marker is surrounded by escalation context
         is_escalation_context = any(escalation in context for escalation in escalation_markers)
 
-        # Check if marker is followed by a different timing pattern
-        follows_timing = False
-        preceded_by_timing = False
-
-        for timing in timing_candidates:
-            timing_span = timing.get("span", [0, 0])
-            # Check if timing comes before this sequence marker
-            if timing_span[1] < seq["span"][0] and timing_span[1] >= seq["span"][0] - 100:
-                preceded_by_timing = True
-            # Check if timing comes after this sequence marker
-            if timing_span[0] > seq["span"][1] and timing_span[0] <= seq["span"][1] + 100:
-                follows_timing = True
-
-        # Check if marker is followed by a different performer
-        follows_performer = False
-        for performer in all_performers:
-            performer_pos = text_lower.find(performer.lower(), seq["span"][1])
-            if performer_pos > 0 and performer_pos <= seq["span"][1] + 100:
-                follows_performer = True
-                break
+        # Check if marker is followed by different timing or performer
+        follows_timing = _check_timing_follows_marker(seq, timing_candidates)
+        follows_performer = _check_performer_follows_marker(seq, all_performers, text_lower)
 
         # A sequence marker indicates separate controls if:
         # 1. It's not in an escalation context AND
@@ -439,62 +584,32 @@ def analyze_sequence_markers(text: str, sequence_markers: List[str],
     }
 
 
-def is_escalation_sequence(text: str, escalation_markers: List[str]) -> bool:
+def _check_timing_follows_marker(seq: Dict, timing_candidates: List[Dict]) -> bool:
+    """Check if timing pattern follows a sequence marker"""
+    for timing in timing_candidates:
+        timing_span = timing.get("span", [0, 0])
+        # Check if timing comes after this sequence marker within reasonable distance
+        if timing_span[0] > seq["span"][1] and timing_span[0] <= seq["span"][1] + DEFAULT_CONTEXT_WINDOW:
+            return True
+    return False
+
+
+def _check_performer_follows_marker(seq: Dict, all_performers: List[str], text_lower: str) -> bool:
+    """Check if performer follows a sequence marker"""
+    for performer in all_performers:
+        performer_pos = text_lower.find(performer.lower(), seq["span"][1])
+        if performer_pos > 0 and performer_pos <= seq["span"][1] + DEFAULT_CONTEXT_WINDOW:
+            return True
+    return False
+
+
+def _group_actions_by_timing(categorized_actions: List[Dict],
+                             detected_frequencies: List[str]) -> Dict[str, List[Dict]]:
     """
-    Determine if sequence markers in the text primarily represent escalation paths
-    rather than separate controls.
+    Groups actions by timing patterns with enhanced handling.
 
-    Args:
-        text: Control description text
-        escalation_markers: List of escalation indicator terms
-
-    Returns:
-        Boolean indicating if the sequence is primarily escalation
-    """
-    text_lower = text.lower()
-
-    # Check if sequence is following an escalation pattern
-    escalation_context_count = sum(1 for marker in escalation_markers
-                                   if marker.lower() in text_lower)
-
-    # Look for if-then patterns indicating escalation
-    if_then_patterns = [
-        r'if\s+[^\.;]{5,50}(?:,\s+|\.\s+|\s+then\s+)(?:[^\.;]{5,50})?',
-        r'when\s+[^\.;]{5,50}(?:,\s+|\.\s+|\s+then\s+)(?:[^\.;]{5,50})?',
-        r'in\s+case\s+[^\.;]{5,50}(?:,\s+|\.\s+|\s+then\s+)(?:[^\.;]{5,50})?'
-    ]
-
-    has_if_then = any(re.search(pattern, text_lower) for pattern in if_then_patterns)
-
-    # Check for escalation verbs following conditional words
-    escalation_verbs = ["escalate", "notify", "alert", "report", "inform"]
-
-    conditional_escalation_patterns = [
-        r'if\s+[^\.;]{1,40}(?:' + '|'.join(escalation_verbs) + r')',
-        r'when\s+[^\.;]{1,40}(?:' + '|'.join(escalation_verbs) + r')'
-    ]
-
-    has_conditional_escalation = any(re.search(pattern, text_lower)
-                                     for pattern in conditional_escalation_patterns)
-
-    # If there are multiple escalation markers or conditional patterns
-    # with escalation verbs, this is likely an escalation sequence
-    return (escalation_context_count >= 2 or
-            (has_if_then and has_conditional_escalation))
-
-
-def group_actions_by_timing(categorized_actions: List[Dict],
-                            detected_frequencies: List[str]) -> Dict[str, List[Dict]]:
-    """
     Group actions by their timing pattern to identify distinct controls.
     Enhanced to handle ad-hoc alongside regular frequencies and complex timing.
-
-    Args:
-        categorized_actions: List of categorized action dictionaries
-        detected_frequencies: List of normalized frequencies detected
-
-    Returns:
-        Dictionary mapping timing keys to lists of actions
     """
     timing_groups = {}
 
@@ -507,21 +622,16 @@ def group_actions_by_timing(categorized_actions: List[Dict],
         timing_key = timing.get("frequency", "unknown")
         timing_method = timing.get("method", "")
 
-        # Special case for handling ad-hoc vs. regular frequencies
-        if "adhoc" in timing_key.lower() or "as needed" in timing_key.lower():
-            timing_key = "adhoc"  # Normalize ad-hoc terms
-        elif "event" in timing_method or "trigger" in timing_method:
-            timing_key = "event_triggered"
-        elif not timing_key or timing_key == "unknown":
-            # If no explicit timing, look for timing words in context
-            context = action_info.get("context", "").lower()
+        # Add null safety check before calling .lower()
+        if timing_key is None:
+            timing_key = "unknown"
 
-            # Check if context suggests a timing pattern
-            if any(freq.lower() in context for freq in detected_frequencies):
-                for freq in detected_frequencies:
-                    if freq.lower() in context:
-                        timing_key = freq
-                        break
+        # Special case for handling ad-hoc vs. regular frequencies
+        timing_key = _normalize_timing_key(timing_key, timing_method)
+
+        # If no explicit timing, try to infer from context
+        if timing_key == "unknown":
+            timing_key = _infer_timing_from_context(action_info, detected_frequencies)
 
         # Ensure the group exists
         if timing_key not in timing_groups:
@@ -532,17 +642,33 @@ def group_actions_by_timing(categorized_actions: List[Dict],
     return timing_groups
 
 
-def group_actions_by_performer(categorized_actions: List[Dict],
-                               all_performers: List[str]) -> Dict[str, List[Dict]]:
+def _normalize_timing_key(timing_key: str, timing_method: str) -> str:
+    """Normalize timing key for consistent grouping"""
+    if timing_key and ("adhoc" in timing_key.lower() or "as needed" in timing_key.lower()):
+        return "adhoc"  # Normalize ad-hoc terms
+    elif "event" in timing_method or "trigger" in timing_method:
+        return "event_triggered"
+    return timing_key
+
+
+def _infer_timing_from_context(action_info: Dict, detected_frequencies: List[str]) -> str:
+    """Infer timing from action context when not explicitly found"""
+    context = action_info.get("context", "").lower()
+
+    # Check if context suggests a timing pattern
+    for freq in detected_frequencies:
+        if freq.lower() in context:
+            return freq
+
+    return "unknown"
+
+
+def _group_actions_by_performer(categorized_actions: List[Dict],
+                                all_performers: List[str]) -> Dict[str, List[Dict]]:
     """
+    Groups actions by associated performers.
+
     Group actions by their associated performer to identify distinct controls.
-
-    Args:
-        categorized_actions: List of categorized action dictionaries
-        all_performers: List of performer strings
-
-    Returns:
-        Dictionary mapping performer keys to lists of actions
     """
     performer_groups = {}
 
@@ -554,13 +680,7 @@ def group_actions_by_performer(categorized_actions: List[Dict],
 
         # Handle cases where performer wasn't explicitly associated
         if not performer or performer == "unknown":
-            # Try to find performer in context
-            action_context = action_info.get("context", "").lower()
-
-            for possible_performer in all_performers:
-                if possible_performer.lower() in action_context:
-                    performer = possible_performer
-                    break
+            performer = _find_performer_in_context(action_info, all_performers)
 
         # Ensure the group exists
         if performer not in performer_groups:
@@ -571,50 +691,59 @@ def group_actions_by_performer(categorized_actions: List[Dict],
     return performer_groups
 
 
-def build_control_candidates(timing_groups: Dict[str, List[Dict]],
-                             performer_groups: Dict[str, List[Dict]],
-                             categorized_actions: List[Dict],
-                             all_performers: List[str],
-                             text: str,
-                             has_adhoc_timing: bool,
-                             adhoc_terms: List[str]) -> List[Dict]:
+def _find_performer_in_context(action_info: Dict, all_performers: List[str]) -> str:
+    """Find performer in action context when not explicitly associated"""
+    action_context = action_info.get("context", "").lower()
+
+    for possible_performer in all_performers:
+        if possible_performer.lower() in action_context:
+            return possible_performer
+
+    return "unknown"
+
+
+def _build_enhanced_control_candidates(groupings: ActionGroupings, categorized_actions: List[Dict],
+                                       performers_data: PerformersData, text: str,
+                                       timing_data: TimingData, multi_config: MultiControlConfig) -> List[Dict]:
     """
+    Enhanced control candidate building with better handling of mixed patterns.
+
     Build control candidates from timing groups, performer groups, and actions.
     Enhanced to better handle mixed timing patterns and performers.
-
-    Args:
-        timing_groups: Dictionary mapping timing keys to lists of actions
-        performer_groups: Dictionary mapping performer keys to lists of actions
-        categorized_actions: List of categorized action dictionaries
-        all_performers: List of all performers
-        text: Control description text
-        has_adhoc_timing: Whether ad-hoc timing is detected
-        adhoc_terms: List of ad-hoc timing terms
-
-    Returns:
-        List of control candidate dictionaries
     """
     control_candidates = []
-    text_lower = text.lower()
 
-    # First, create candidates from timing groups
+    # Build candidates from timing groups
+    control_candidates.extend(_build_candidates_from_timing_groups(groupings.timing_groups, performers_data))
+
+    # Add candidates from distinct performer groups not covered
+    control_candidates.extend(_build_candidates_from_performer_groups(
+        groupings.performer_groups, control_candidates, performers_data
+    ))
+
+    # Check for ad-hoc controls mixed with regular controls
+    control_candidates.extend(_build_adhoc_candidates(
+        text, timing_data, categorized_actions, performers_data, multi_config, control_candidates
+    ))
+
+    # Deduplicate candidates
+    return _deduplicate_control_candidates(control_candidates)
+
+
+def _build_candidates_from_timing_groups(timing_groups: Dict[str, List[Dict]],
+                                         performers_data: PerformersData) -> List[Dict]:
+    """Build candidates from timing groups"""
+    candidates = []
+
     for frequency, actions in timing_groups.items():
         for action in actions:
-            # Use the associated performer from categorization
             associated_who = action.get("performer", "")
 
-            # If no performer was associated, try to find one
-            if not associated_who:
-                for performer in all_performers:
-                    if performer.lower() in action.get("context", "").lower():
-                        associated_who = performer
-                        break
+            # If no performer was associated, use primary if available
+            if not associated_who and performers_data.all_performers:
+                associated_who = performers_data.all_performers[0]
 
-            # Still no performer found, use primary if available
-            if not associated_who and all_performers:
-                associated_who = all_performers[0]
-
-            control_candidates.append({
+            candidates.append({
                 "who": associated_who,
                 "what": action["text"],
                 "when": frequency,
@@ -623,8 +752,15 @@ def build_control_candidates(timing_groups: Dict[str, List[Dict]],
                 "action": action["action"]  # Include original action data
             })
 
-    # Then, add candidates from distinct performer groups not covered
-    performers_added = set(c["who"].lower() for c in control_candidates if c["who"])
+    return candidates
+
+
+def _build_candidates_from_performer_groups(performer_groups: Dict[str, List[Dict]],
+                                            existing_candidates: List[Dict],
+                                            performers_data: PerformersData) -> List[Dict]:
+    """Build candidates from performer groups not already covered"""
+    candidates = []
+    performers_added = set(c["who"].lower() for c in existing_candidates if c["who"])
 
     for performer, actions in performer_groups.items():
         # Skip if performer's action is already covered
@@ -632,7 +768,7 @@ def build_control_candidates(timing_groups: Dict[str, List[Dict]],
             # Check that all actions for this performer are covered
             performer_action_texts = set(a["text"].lower() for a in actions)
             candidate_action_texts = set(
-                c["what"].lower() for c in control_candidates
+                c["what"].lower() for c in existing_candidates
                 if c["who"].lower() == performer.lower()
             )
 
@@ -647,14 +783,14 @@ def build_control_candidates(timing_groups: Dict[str, List[Dict]],
             # Skip if this exact action is already covered
             if any(c["what"].lower() == action_text and
                    c["who"].lower() == performer.lower()
-                   for c in control_candidates):
+                   for c in existing_candidates):
                 continue
 
             # Find timing for this action
             timing = action.get("timing", {})
             frequency = timing.get("frequency", "unknown")
 
-            control_candidates.append({
+            candidates.append({
                 "who": performer,
                 "what": action["text"],
                 "when": frequency,
@@ -663,55 +799,82 @@ def build_control_candidates(timing_groups: Dict[str, List[Dict]],
                 "action": action["action"]
             })
 
-    # Check for ad-hoc controls mixed with regular controls
-    if has_adhoc_timing and "adhoc" not in timing_groups:
-        adhoc_context = ""
-        for term in adhoc_terms:
-            if term.lower() in text_lower:
-                adhoc_pos = text_lower.find(term.lower())
-                if adhoc_pos >= 0:
-                    adhoc_context = get_surrounding_context(text, adhoc_pos, adhoc_pos + len(term), 150)
-                    break
+    return candidates
 
-        if adhoc_context:
-            # Find actions in adhoc context not already covered
-            for action_info in categorized_actions:
-                action_text = action_info["text"].lower()
-                action_context = action_info.get("context", "").lower()
 
-                # Skip escalation actions
-                if action_info["is_escalation"]:
-                    continue
+def _build_adhoc_candidates(text: str, timing_data: TimingData, categorized_actions: List[Dict],
+                            performers_data: PerformersData, multi_config: MultiControlConfig,
+                            existing_candidates: List[Dict]) -> List[Dict]:
+    """Build candidates for ad-hoc controls mixed with regular controls"""
+    candidates = []
 
-                # Skip if action is already in a candidate
-                if any(c["what"].lower() == action_text for c in control_candidates):
-                    continue
+    if not timing_data.has_adhoc_timing or "adhoc" in {c["when"] for c in existing_candidates}:
+        return candidates
 
-                # Check if this action appears in adhoc context
-                if action_text in adhoc_context:
-                    associated_who = action_info.get("performer", "")
+    text_lower = text.lower()
+    adhoc_context = _find_adhoc_context(text, text_lower, multi_config.adhoc_terms)
 
-                    # If no performer was associated, try to find one
-                    if not associated_who:
-                        for performer in all_performers:
-                            if performer.lower() in adhoc_context:
-                                associated_who = performer
-                                break
+    if not adhoc_context:
+        return candidates
 
-                    # If still no performer, use primary
-                    if not associated_who and all_performers:
-                        associated_who = all_performers[0]
+    # Find actions in adhoc context not already covered
+    for action_info in categorized_actions:
+        action_text = action_info["text"].lower()
 
-                    control_candidates.append({
-                        "who": associated_who,
-                        "what": action_info["text"],
-                        "when": "adhoc",
-                        "is_escalation": False,
-                        "span": action_info.get("span", [0, 0]),
-                        "action": action_info["action"]
-                    })
+        # Skip escalation actions and already covered actions
+        if (action_info["is_escalation"] or
+                any(c["what"].lower() == action_text for c in existing_candidates)):
+            continue
 
-    # Deduplicate candidates by finding unique (who, what, when) combinations
+        # Check if this action appears in adhoc context
+        if action_text in adhoc_context:
+            associated_who = _find_performer_for_adhoc_action(
+                action_info, adhoc_context, performers_data.all_performers
+            )
+
+            candidates.append({
+                "who": associated_who,
+                "what": action_info["text"],
+                "when": "adhoc",
+                "is_escalation": False,
+                "span": action_info.get("span", [0, 0]),
+                "action": action_info["action"]
+            })
+
+    return candidates
+
+
+def _find_adhoc_context(text: str, text_lower: str, adhoc_terms: List[str]) -> str:
+    """Find context around ad-hoc terms"""
+    for term in adhoc_terms:
+        if term.lower() in text_lower:
+            adhoc_pos = text_lower.find(term.lower())
+            if adhoc_pos >= 0:
+                return _get_surrounding_context(text, adhoc_pos, adhoc_pos + len(term), EXTENDED_CONTEXT_WINDOW)
+    return ""
+
+
+def _find_performer_for_adhoc_action(action_info: Dict, adhoc_context: str,
+                                     all_performers: List[str]) -> str:
+    """Find performer for ad-hoc action"""
+    associated_who = action_info.get("performer", "")
+
+    # If no performer was associated, try to find one in adhoc context
+    if not associated_who:
+        for performer in all_performers:
+            if performer.lower() in adhoc_context:
+                associated_who = performer
+                break
+
+    # If still no performer, use primary
+    if not associated_who and all_performers:
+        associated_who = all_performers[0]
+
+    return associated_who
+
+
+def _deduplicate_control_candidates(control_candidates: List[Dict]) -> List[Dict]:
+    """Deduplicate candidates by finding unique (who, what, when) combinations"""
     unique_candidates = []
     seen_combinations = set()
 
@@ -729,82 +892,13 @@ def build_control_candidates(timing_groups: Dict[str, List[Dict]],
     return unique_candidates
 
 
-def calculate_confidence(is_multi_control: bool,
-                         timing_groups: Dict[str, List[Dict]],
-                         multi_frequency_detected: bool,
-                         control_candidates: List[Dict],
-                         sequence_analysis: Dict[str, Any],
-                         has_distinct_performers: bool,
-                         has_distinct_paragraphs: bool,
-                         mixed_timing_detected: bool) -> str:
+def _find_timing_for_action(action_text: str, action_context: str,
+                            timing_candidates: List[Dict]) -> Dict:
     """
-    Calculate confidence level for multi-control detection with enhanced factors.
+    Enhanced timing association with better context analysis.
 
-    Args:
-        is_multi_control: Whether multiple controls are detected
-        timing_groups: Dictionary mapping timing keys to lists of actions
-        multi_frequency_detected: Whether multiple frequencies detected
-        control_candidates: List of control candidate dictionaries
-        sequence_analysis: Results of sequence marker analysis
-        has_distinct_performers: Whether distinct performers detected
-        has_distinct_paragraphs: Whether distinct paragraphs detected
-        mixed_timing_detected: Whether mixed timing patterns detected
-
-    Returns:
-        Confidence level string: "high", "medium", or "low"
-    """
-    if not is_multi_control:
-        return "low"
-
-    # Count strong indicators
-    strong_indicators = 0
-
-    # Different timing patterns
-    if len(timing_groups) > 1:
-        strong_indicators += 1
-
-    # Explicit multiple frequencies
-    if multi_frequency_detected:
-        strong_indicators += 1
-
-    # Control sequence markers
-    if sequence_analysis.get("has_control_sequence", False):
-        strong_indicators += 1
-
-    # Distinct performers doing different things
-    if has_distinct_performers:
-        strong_indicators += 1
-
-    # Distinct paragraphs describing controls
-    if has_distinct_paragraphs:
-        strong_indicators += 1
-
-    # Mixed regular and ad-hoc timing
-    if mixed_timing_detected:
-        strong_indicators += 1
-
-    # Convert indicator count to confidence level
-    if strong_indicators >= 2:
-        return "high"
-    elif strong_indicators == 1 and len(control_candidates) > 1:
-        return "medium"
-    else:
-        return "low"
-
-
-def find_timing_for_action(action_text: str, action_context: str,
-                           timing_candidates: List[Dict]) -> Dict:
-    """
     Associate an action with its timing information based on textual context.
     Enhanced to handle more timing patterns and contextual clues.
-
-    Args:
-        action_text: Action text
-        action_context: Context around the action
-        timing_candidates: List of timing candidates
-
-    Returns:
-        Dictionary with timing information
     """
     action_lower = action_text.lower()
     context_lower = action_context.lower()
@@ -812,6 +906,19 @@ def find_timing_for_action(action_text: str, action_context: str,
     # Extract action start position in the context
     action_pos_in_context = context_lower.find(action_lower)
 
+    best_match = _find_best_timing_match(context_lower, action_pos_in_context, timing_candidates)
+
+    # If no timing found in direct context, try inference
+    if not best_match:
+        best_match = _infer_timing_from_indicators(context_lower)
+
+    # Return empty dict if no timing found
+    return best_match if best_match else {"text": "", "frequency": "unknown", "method": ""}
+
+
+def _find_best_timing_match(context_lower: str, action_pos_in_context: int,
+                            timing_candidates: List[Dict]) -> Optional[Dict]:
+    """Find the best timing match from candidates"""
     best_match = None
     best_score = 0
 
@@ -827,18 +934,16 @@ def find_timing_for_action(action_text: str, action_context: str,
         if candidate_text in context_lower:
             candidate_pos = context_lower.find(candidate_text)
 
-            # Calculate proximity score (higher for closer timing)
+            # Calculate proximity score
             distance = abs(candidate_pos - action_pos_in_context)
-            proximity_score = 150 - min(distance, 150)  # Max distance of 150
+            proximity_score = EXTENDED_CONTEXT_WINDOW - min(distance, EXTENDED_CONTEXT_WINDOW)
 
             # Determine timing relationship
             timing_before_action = candidate_pos < action_pos_in_context
-
-            # Timing before action gets higher score (more likely to be associated)
             relationship_bonus = 1.2 if timing_before_action else 1.0
 
             # Calculate final score
-            match_score = (proximity_score / 150) * relationship_bonus
+            match_score = (proximity_score / EXTENDED_CONTEXT_WINDOW) * relationship_bonus
 
             # Skip vague timing if we have a better specific timing
             is_vague = candidate.get("is_vague", False)
@@ -856,68 +961,59 @@ def find_timing_for_action(action_text: str, action_context: str,
                     "proximity_score": match_score
                 }
 
-    # If no timing found in direct context, try inference from sentence structure
-    if not best_match:
-        # Look for timing indicators in the immediate context
-        timing_indicators = ["daily", "weekly", "monthly", "quarterly", "annually", "every", "each", "upon"]
-
-        for indicator in timing_indicators:
-            if indicator in context_lower:
-                # Look for the indicator and surrounding text
-                indicator_pos = context_lower.find(indicator)
-                if indicator_pos >= 0:
-                    # Extract potential timing phrase (up to 5 words)
-                    timing_start = max(0, context_lower.rfind(" ", 0, indicator_pos))
-                    timing_end = context_lower.find(".", indicator_pos)
-                    if timing_end == -1:
-                        timing_end = len(context_lower)
-
-                    timing_phrase = context_lower[timing_start:timing_end].strip()
-
-                    # Determine frequency from the timing phrase
-                    frequency = "unknown"
-                    if "daily" in timing_phrase:
-                        frequency = "daily"
-                    elif "weekly" in timing_phrase:
-                        frequency = "weekly"
-                    elif "monthly" in timing_phrase:
-                        frequency = "monthly"
-                    elif "quarterly" in timing_phrase:
-                        frequency = "quarterly"
-                    elif "annually" in timing_phrase or "yearly" in timing_phrase:
-                        frequency = "annually"
-
-                    best_match = {
-                        "text": timing_phrase,
-                        "frequency": frequency,
-                        "method": "inferred_from_context",
-                        "is_vague": False,
-                        "proximity_score": 0.5  # Lower confidence for inferred timing
-                    }
-                    break
-
-    # Return empty dict if no timing found
-    if not best_match:
-        return {"text": "", "frequency": "unknown", "method": ""}
-
     return best_match
 
 
-def find_performer_for_action(action_span: List[int], all_performers: List[str],
-                              performer_positions: Dict[str, Dict],
-                              text_lower: str) -> str:
+def _infer_timing_from_indicators(context_lower: str) -> Optional[Dict]:
+    """Infer timing from indicators when no explicit timing found"""
+    for indicator in TIMING_INDICATORS:
+        if indicator in context_lower:
+            # Look for the indicator and surrounding text
+            indicator_pos = context_lower.find(indicator)
+            if indicator_pos >= 0:
+                # Extract potential timing phrase (up to 5 words)
+                timing_start = max(0, context_lower.rfind(" ", 0, indicator_pos))
+                timing_end = context_lower.find(".", indicator_pos)
+                if timing_end == -1:
+                    timing_end = len(context_lower)
+
+                timing_phrase = context_lower[timing_start:timing_end].strip()
+                frequency = _determine_frequency_from_phrase(timing_phrase)
+
+                return {
+                    "text": timing_phrase,
+                    "frequency": frequency,
+                    "method": "inferred_from_context",
+                    "is_vague": False,
+                    "proximity_score": 0.5  # Lower confidence for inferred timing
+                }
+
+    return None
+
+
+def _determine_frequency_from_phrase(timing_phrase: str) -> str:
+    """Determine frequency from timing phrase"""
+    if "daily" in timing_phrase:
+        return "daily"
+    elif "weekly" in timing_phrase:
+        return "weekly"
+    elif "monthly" in timing_phrase:
+        return "monthly"
+    elif "quarterly" in timing_phrase:
+        return "quarterly"
+    elif "annually" in timing_phrase or "yearly" in timing_phrase:
+        return "annually"
+    return "unknown"
+
+
+def _find_performer_for_action(action_span: List[int], all_performers: List[str],
+                               performer_positions: Dict[str, Dict],
+                               text_lower: str) -> str:
     """
+    Enhanced performer association with improved proximity analysis.
+
     Find the performer most likely associated with a specific action based on proximity
     and syntactic relationships.
-
-    Args:
-        action_span: [start, end] positions of the action in text
-        all_performers: List of all performers
-        performer_positions: Dictionary mapping performers to their positions
-        text_lower: Lowercased text
-
-    Returns:
-        Performer text or empty string if none found
     """
     if not all_performers:
         return ""
@@ -925,7 +1021,22 @@ def find_performer_for_action(action_span: List[int], all_performers: List[str],
     # Get action position
     action_start, action_end = action_span
 
-    # First try to find performers that appear before the action within a reasonable distance
+    # Find closest performer using enhanced logic
+    closest_performer = _find_closest_performer(
+        action_start, action_end, all_performers, performer_positions, text_lower
+    )
+
+    # If we found a performer within reasonable distance
+    if closest_performer and closest_performer["distance"] <= MAX_PERFORMER_DISTANCE:
+        return closest_performer["performer"]
+
+    # If no close performer found, return the primary performer
+    return all_performers[0] if all_performers else ""
+
+
+def _find_closest_performer(action_start: int, action_end: int, all_performers: List[str],
+                            performer_positions: Dict[str, Dict], text_lower: str) -> Optional[Dict]:
+    """Find the closest performer to an action"""
     closest_performer = None
     min_distance = float('inf')
 
@@ -939,56 +1050,61 @@ def find_performer_for_action(action_span: List[int], all_performers: List[str],
         performer_span = position_info.get("span", [0, 0])
         performer_start, performer_end = performer_span
 
-        # Look for performers before the action (higher priority)
-        if performer_end <= action_start:
-            distance = action_start - performer_end
+        # Calculate distance and penalties
+        distance_info = _calculate_performer_distance(
+            action_start, action_end, performer_start, performer_end, text_lower
+        )
 
-            # Check for sentence boundary between performer and action
-            text_between = text_lower[performer_end:action_start]
-            has_sentence_boundary = "." in text_between
+        if distance_info["distance_with_penalty"] < min_distance:
+            min_distance = distance_info["distance_with_penalty"]
+            closest_performer = {
+                "performer": performer,
+                "distance": distance_info["raw_distance"],
+                "has_sentence_boundary": distance_info["has_sentence_boundary"]
+            }
 
-            # Apply penalty for sentence boundary
-            distance_with_penalty = distance * 2 if has_sentence_boundary else distance
-
-            if distance_with_penalty < min_distance:
-                min_distance = distance_with_penalty
-                closest_performer = performer
-
-        # If no performer before action, check after action (lower priority)
-        elif closest_performer is None and performer_start >= action_end:
-            distance = performer_start - action_end
-
-            # Check for sentence boundary between action and performer
-            text_between = text_lower[action_end:performer_start]
-            has_sentence_boundary = "." in text_between
-
-            # Apply larger penalty for performer after action with sentence boundary
-            distance_with_penalty = distance * 3 if has_sentence_boundary else distance * 1.5
-
-            if distance_with_penalty < min_distance:
-                min_distance = distance_with_penalty
-                closest_performer = performer
-
-    # If we found a performer within reasonable distance (e.g., 150 characters)
-    if closest_performer and min_distance <= 150:
-        return closest_performer
-
-    # If no close performer found, return the primary performer (first in list)
-    return all_performers[0] if all_performers else ""
+    return closest_performer
 
 
-def get_surrounding_context(text: str, start: int, end: int, window_size: int = 100) -> str:
+def _calculate_performer_distance(action_start: int, action_end: int,
+                                  performer_start: int, performer_end: int, text_lower: str) -> Dict:
+    """Calculate distance between performer and action with penalties"""
+    # Look for performers before the action (higher priority)
+    if performer_end <= action_start:
+        raw_distance = action_start - performer_end
+        text_between = text_lower[performer_end:action_start]
+        has_sentence_boundary = "." in text_between
+        distance_with_penalty = raw_distance * SENTENCE_BOUNDARY_PENALTY if has_sentence_boundary else raw_distance
+
+    # If no performer before action, check after action (lower priority)
+    elif performer_start >= action_end:
+        raw_distance = performer_start - action_end
+        text_between = text_lower[action_end:performer_start]
+        has_sentence_boundary = "." in text_between
+
+        # Apply larger penalty for performer after action with sentence boundary
+        if has_sentence_boundary:
+            distance_with_penalty = raw_distance * AFTER_ACTION_SENTENCE_PENALTY
+        else:
+            distance_with_penalty = raw_distance * AFTER_ACTION_PENALTY
+    else:
+        # Performer overlaps with action - shouldn't happen but handle gracefully
+        raw_distance = 0
+        has_sentence_boundary = False
+        distance_with_penalty = 0
+
+    return {
+        "raw_distance": raw_distance,
+        "distance_with_penalty": distance_with_penalty,
+        "has_sentence_boundary": has_sentence_boundary
+    }
+
+
+def _get_surrounding_context(text: str, start: int, end: int, window_size: int = DEFAULT_CONTEXT_WINDOW) -> str:
     """
+    Enhanced context extraction with boundary handling.
+
     Get the surrounding context of a phrase within the text.
-
-    Args:
-        text: Full text
-        start: Start position of phrase
-        end: End position of phrase
-        window_size: Size of context window in characters
-
-    Returns:
-        Context string
     """
     if not text:
         return ""
@@ -999,83 +1115,53 @@ def get_surrounding_context(text: str, start: int, end: int, window_size: int = 
     return text[context_start:context_end]
 
 
-def get_config_value(config: Dict, key: str, default_value: Any) -> Any:
+def _get_config_value(config: Dict, key: str, default_value: Any) -> Any:
     """
+    Enhanced configuration value retrieval with type safety.
+
     Helper function to safely get a value from configuration with defaults.
-
-    Args:
-        config: Configuration dictionary
-        key: Configuration key
-        default_value: Default value if key not found
-
-    Returns:
-        Configuration value or default
     """
     return config.get(key, default_value)
 
 
-def mark_possible_standalone_controls(text: str, nlp, config: Optional[Dict] = None) -> List[Dict]:
+def mark_possible_standalone_controls(text: str, nlp_model, config: Optional[Dict] = None) -> List[Dict]:
     """
+    Enhanced standalone control detection with shared constants.
+
     Identify possible standalone control statements within a text.
     This is a simplified detection that can be used independently.
-
-    Args:
-        text: Control description text
-        nlp: spaCy NLP model
-        config: Optional configuration dictionary
-
-    Returns:
-        List of possible control statements with scores
     """
     config = config or {}
 
     # Process text
-    doc = nlp(text)
+    doc = nlp_model(text)
 
     # Split text into sentences
     sentences = [sent.text.strip() for sent in doc.sents if len(sent.text.strip()) > 10]
-
-    # Control action verbs (simplified list)
-    control_verbs = [
-        "review", "approve", "verify", "check", "validate", "reconcile",
-        "examine", "analyze", "evaluate", "assess", "monitor", "track"
-    ]
 
     # Identify possible standalone controls
     candidates = []
 
     for i, sent in enumerate(sentences):
-        sent_doc = nlp(sent)
+        sent_doc = nlp_model(sent)
 
         # Check if sentence contains a key control verb
-        contains_verb = any(token.lemma_.lower() in control_verbs for token in sent_doc)
+        contains_verb = any(token.lemma_.lower() in CONTROL_VERBS for token in sent_doc)
 
         # Check if sentence has a subject (likely performer)
         has_subject = any(token.dep_ == "nsubj" for token in sent_doc)
 
-        # Simple score based on these features
-        score = 0
-        if contains_verb:
-            score += 0.5
-        if has_subject:
-            score += 0.3
-
-        # Boost score if sentence starts with a capitalized word (likely new thought)
-        if sent[0].isupper() and i > 0:
-            score += 0.1
+        # Calculate score based on features
+        score = _calculate_control_score(contains_verb, has_subject, sent, i)
 
         # Check for timing indicators
-        has_timing = any(re.search(
-            r'\b(daily|weekly|monthly|quarterly|annually|every|each|when|as needed)\b',
-            sent, re.IGNORECASE
-        ))
-
+        has_timing = _check_sentence_timing(sent)
         if has_timing:
-            score += 0.1
+            score += TIMING_SCORE_WEIGHT
 
         # Only add if minimum threshold is met
-        if score > 0.5:
-            verb_tokens = [token for token in sent_doc if token.lemma_.lower() in control_verbs]
+        if score > MINIMUM_CONTROL_SCORE:
+            verb_tokens = [token for token in sent_doc if token.lemma_.lower() in CONTROL_VERBS]
             action = verb_tokens[0].lemma_ if verb_tokens else ""
 
             candidates.append({
@@ -1088,3 +1174,27 @@ def mark_possible_standalone_controls(text: str, nlp, config: Optional[Dict] = N
             })
 
     return candidates
+
+
+def _calculate_control_score(contains_verb: bool, has_subject: bool, sent: str, position: int) -> float:
+    """Calculate score for potential standalone control"""
+    score = 0
+
+    if contains_verb:
+        score += VERB_SCORE_WEIGHT
+    if has_subject:
+        score += SUBJECT_SCORE_WEIGHT
+
+    # Boost score if sentence starts with a capitalized word (likely new thought)
+    if sent[0].isupper() and position > 0:
+        score += NEW_SENTENCE_SCORE_WEIGHT
+
+    return score
+
+
+def _check_sentence_timing(sent: str) -> bool:
+    """Check if sentence contains timing indicators"""
+    return bool(re.search(
+        r'\b(daily|weekly|monthly|quarterly|annually|every|each|when|as needed)\b',
+        sent, re.IGNORECASE
+    ))

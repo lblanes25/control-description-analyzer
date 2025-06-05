@@ -1,0 +1,97 @@
+
+        <!DOCTYPE html>
+        <html>
+        <head>
+            <meta charset="UTF-8">
+            <title>Controls Missing 3+ Elements</title>
+            <style>
+                body { font-family: Arial, sans-serif; margin: 20px; }
+                h1 { color: #333; }
+                table { border-collapse: collapse; width: 100%; }
+                th, td { border: 1px solid #ddd; padding: 8px; text-align: left; }
+                th { background-color: #f2f2f2; }
+                tr:nth-child(even) { background-color: #f9f9f9; }
+                .dropdown { margin-bottom: 20px; }
+                select { padding: 5px; font-size: 16px; }
+            </style>
+        </head>
+        <body>
+            <h1>Controls Missing 3+ Elements</h1>
+            <div class="dropdown">
+                <label for="leaderFilter">Filter by Audit Leader: </label>
+                <select id="leaderFilter" onchange="filterTable()">
+                    <option value="all">All Leaders</option>
+                    <option value="Unknown">Unknown</option>
+
+                </select>
+                &nbsp;&nbsp;&nbsp;
+                <label for="entityFilter">Filter by Audit Entity: </label>
+                <select id="entityFilter" onchange="filterTable()">
+                    <option value="all">All Entities</option>
+                    <option value="Unknown">Unknown</option>
+
+                </select>
+            </div>
+            <table id="controlsTable">
+                <thead>
+                    <tr>
+                    <th>Control ID</th>
+            <th>Total Score</th>
+            <th>Category</th>
+            <th>Missing Elements Count</th>
+            <th>WHO Score</th>
+            <th>WHEN Score</th>
+            <th>WHAT Score</th>
+            <th>WHY Score</th>
+            <th>ESCALATION Score</th>
+            <th>Missing Elements</th>
+            <th>Audit Leader</th>
+            <th>Audit Entity</th>
+            <th>vague_terms_found</th>
+
+                    </tr>
+                </thead>
+                <tbody>
+                <tr class="row" data-leader="Unknown" data-entity="Unknown">
+            <td>CONTROL-1</td>
+            <td>25.252278857142862</td>
+            <td>Needs Improvement</td>
+            <td>3</td>
+            <td>11.52</td>
+            <td>0.0</td>
+            <td>13.73227885714286</td>
+            <td>0.0</td>
+            <td>0.0</td>
+            <td>WHEN, WHY, ESCALATION</td>
+            <td>Unknown</td>
+            <td>Unknown</td>
+            <td></td>
+        </tr>
+
+                </tbody>
+            </table>
+
+            <script>
+                function filterTable() {
+                    const leaderFilter = document.getElementById('leaderFilter').value;
+                    const entityFilter = document.getElementById('entityFilter').value;
+                    const rows = document.querySelectorAll('#controlsTable tbody tr');
+
+                    rows.forEach(row => {
+                        const leader = row.getAttribute('data-leader');
+                        const entity = row.getAttribute('data-entity');
+
+                        const leaderMatch = leaderFilter === 'all' || leaderFilter === leader;
+                        const entityMatch = entityFilter === 'all' || entityFilter === entity;
+
+                        if (leaderMatch && entityMatch) {
+                            row.style.display = '';
+                        } else {
+                            row.style.display = 'none';
+                        }
+                    });
+                }
+            </script>
+        </body>
+        </html>
+        
