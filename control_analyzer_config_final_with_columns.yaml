@@ -12,288 +12,6 @@ category_thresholds:
 
 # WHO Detection Constants
 who_detection:
-  # Confidence scoring constants
-  confidence_scoring:
-    base_confidence_score: 0.7
-    human_type_boost: 0.2
-    managerial_role_boost: 0.2
-    specific_finance_role_boost: 0.3
-    team_boost: 0.1
-    committee_boost: 0.15
-    acronym_team_boost: 0.2
-    system_type_boost: 0.1
-    non_performer_penalty: 0.1
-    passive_voice_penalty: 0.1
-    main_subject_boost: 1.2
-    by_phrase_boost: 1.3
-    responsibility_boost: 1.3
-    temporal_boost: 1.2
-    fallback_penalty: 0.7
-    regex_fallback_penalty: 0.6
-    automated_control_boost: 0.2
-    manual_control_boost: 0.2
-    executive_frequency_penalty: 0.1
-    continuous_system_boost: 0.1
-    minimum_confidence: 0.1
-    maximum_confidence: 1.0
-    minimum_fallback_confidence: 0.3
-
-  # Control verbs for WHO detection
-  control_verbs:
-    - review
-    - approve
-    - verify
-    - check
-    - validate
-    - reconcile
-    - examine
-    - analyze
-    - evaluate
-    - assess
-    - monitor
-    - track
-    - investigate
-    - inspect
-    - audit
-    - oversee
-    - supervise
-    - ensure
-    - perform
-    - execute
-    - conduct
-    - disable
-    - enforce
-    - generate
-    - address
-    - compare
-    - maintain
-    - identify
-    - correct
-    - update
-    - submit
-    - complete
-    - prepare
-    - provide
-    - confirm
-
-  # Human role indicators
-  human_indicators:
-    # Roles and titles
-    - manager
-    - director
-    - supervisor
-    - analyst
-    - specialist
-    - officer
-    - coordinator
-    - lead
-    - team
-    - staff
-    - personnel
-    - employee
-    - individual
-    - person
-    - accountant
-    - controller
-    - auditor
-    - administrator
-    - executive
-    - chief
-    - head
-    - president
-    - ceo
-    - cfo
-    - cio
-    - vp
-    - vice president
-    - secretary
-    - treasurer
-    - owner
-    - preparer
-    - reviewer
-    # Departments and groups
-    - finance
-    - accounting
-    - accounts receivable
-    - accounts payable
-    - treasury
-    - financial reporting
-    - tax
-    - payroll
-    - billing
-    - credit
-    - collections
-    - committee
-    - department
-    - group
-    - unit
-    - division
-    - office
-    - board
-    # Specific roles
-    - financial controller
-    - financial analyst
-    - budget analyst
-    - compliance
-    - audit
-    - risk
-    - governance
-    - oversight
-    - management
-    - leadership
-
-  # System indicators
-  system_indicators:
-    - system
-    - application
-    - software
-    - platform
-    - database
-    - server
-    - program
-    - script
-    - job
-    - batch
-    - workflow
-    - algorithm
-    - automated
-    - automatic
-    - tool
-    - module
-    - interface
-    - api
-    - service
-    - function
-    - scheduled
-    - timer
-    - daemon
-    - bot
-    - routine
-    - task
-
-  # Non-performer indicators
-  non_performer_indicators:
-    - limit
-    - threshold
-    - policy
-    - procedure
-    - standard
-    - regulation
-    - account
-    - transaction
-    - balance
-    - report
-    - document
-    - record
-    - exception
-    - error
-    - issue
-    - finding
-    - discrepancy
-    - review
-    - control
-    - entry
-    - activity
-    - access
-    - instance
-    - item
-    - questionnaire
-    - form
-    - template
-    - results
-    - assessment
-    - risk
-    - compliance
-    - process
-    - monitoring
-    - levels
-    - ensure
-
-  # Temporal prefixes for pattern detection
-  temporal_prefixes:
-    - annually
-    - monthly
-    - quarterly
-    - weekly
-    - daily
-    - periodically
-    - regularly
-
-  # Problem patterns for validation
-  problem_patterns:
-    - '\brisk\b'
-    - '\baccess levels\b'
-    - '\bensure compliance\b'
-    - '\bmonitor\b'
-    - '\blimit\b'
-    - '\bprocess\b'
-    - '\bcontrol\b'
-    - '\bcompliance\b'
-    - '\baccess\b'
-    - '\blevels\b'
-    - '\bensure\b'
-
-  # Non-performer terms for subject filtering
-  non_performer_terms:
-    - exception
-    - error
-    - transaction
-    - record
-    - issue
-    - item
-    - reconciliation
-    - document
-    - report
-    - questionnaire
-    - form
-    - template
-    - results
-    - risk
-    - compliance
-    - access
-    - levels
-    - limit
-    - process
-    - customer
-    - data
-
-# Penalty Configuration
-vague_term_penalty: 2
-max_vague_penalty: 10
-penalties:
-  multi_control:
-    points_per_control: 5
-    max_penalty: 10
-  timing:
-    vague_term_score: 0.1
-    secondary_vague_penalty_per_term: 0.1
-    max_secondary_vague_penalty: 0.3
-    detective_control_penalty: 0.8
-    preventive_control_boost: 1.2
-
-# Enable/disable enhanced detection
-use_enhanced_detection: true
-
-# Timing Detection Configuration
-timing_detection:
-  # Regex patterns for frequency detection
-  patterns:
-    daily: '\b(daily|each\s+day|every\s+day|on\s+a\s+daily\s+basis|day\b|daily\s+basis)\b'
-    weekly: '\b(weekly|each\s+week|every\s+week|on\s+a\s+weekly\s+basis|week\b|weekly\s+basis)\b'
-    monthly: '\b(monthly|each\s+month|every\s+month|on\s+a\s+monthly\s+basis|month\b|monthly\s+basis)\b'
-    quarterly: '\b(quarterly|each\s+quarter|every\s+quarter|on\s+a\s+quarterly\s+basis|quarter\b|once\s+per\s+quarter|each\s+fiscal\s+quarter|every\s+three\s+months)\b'
-    annually: '\b(annually|yearly|each\s+year|every\s+year|annual\b|on\s+an\s+annual\s+basis|year\b)\b'
-    adhoc: '\b(adhoc|ad[\s-]hoc|on\s+an\s+ad[\s-]hoc\s+basis)\b'
-    weekday: '\b(every|each|on)\s+(monday|tuesday|wednesday|thursday|friday|saturday|sunday)s?\b'
-    period_end: '\b(at|during|before|after)\s+(the\s+)?(fiscal|calendar)?\s*(year|quarter|month)[\s-]end(\s+close)?\b'
-    close_period: '\b(at|during)\s+(each|every|the)\s+closing\s+(cycle|period|process)\b'
-    timeline: '\b(after|before|prior\s+to|following|upon)\s+'
-    vague_terms: '\b(as\s+needed|when\s+needed|if\s+needed|as\s+appropriate|when\s+appropriate|if\s+appropriate|as\s+required|when\s+required|if\s+required|periodically|occasionally|from\s+time\s+to\s+time|regularly|may\s+vary|may\s+change|may\s+differ|may\s+be|may\s+not|on\s+demand|as\s+and\s+when|upon\s+request|when\s+requested|non[\s-]scheduled)\b'
-    problematic_may: '\b(may\s+(?:vary|differ|change|be|not|need)\b'
-    business_cycle: '\b(during|after|before|at|upon|following|as\s+part\s+of)\s+(the\s+)?(each|every)?\s*(audit|review|assessment|reporting|close|closing)\s+(cycle|period|process)\b'
-    procedure_reference: '\b(defined|outlined|described|according|per|as\s+per|based|in\s+accordance)\s+(in|on|with|to)\s+(procedure|policy|document|standard)\b'
-    event_trigger: '\b(upon|after|when|following|immediately|promptly)\s+(receipt|notification|identification|detection|discovery|system|application|platform|database)\b'
-
   # Scoring thresholds
   scores:
     explicit_frequency: 0.9
@@ -899,6 +617,180 @@ elements:
       - approve documents
       - authorize access
     append: false
+
+    # Verb strength categories moved from code
+    high_strength_verbs:
+      approve: 1.0
+      authorize: 1.0
+      reconcile: 1.0
+      validate: 1.0
+      certify: 1.0
+      verify: 1.0
+      confirm: 0.9
+      test: 0.9
+      enforce: 0.9
+      authenticate: 0.9
+      audit: 0.9
+      inspect: 0.9
+      review: 0.85
+      check: 0.85
+      notify: 0.85
+      route: 0.85
+
+    medium_strength_verbs:
+      examine: 0.7
+      analyze: 0.7
+      evaluate: 0.7
+      assess: 0.7
+      track: 0.7
+      document: 0.7
+      record: 0.7
+      maintain: 0.6
+      prepare: 0.6
+      generate: 0.6
+      update: 0.6
+      calculate: 0.6
+      process: 0.6
+      monitor: 0.65
+      revoke: 0.7
+      disable: 0.7
+      remove: 0.7
+      limit: 0.7
+      restrict: 0.7
+      resolve: 0.7
+
+    low_strength_verbs:
+      look: 0.2
+      observe: 0.3
+      view: 0.2
+      consider: 0.2
+      watch: 0.2
+      note: 0.3
+      see: 0.1
+      handle: 0.2
+      manage: 0.3
+      coordinate: 0.3
+      oversee: 0.4
+      perform: 0.3
+
+    problematic_verbs:
+      use: 0.1
+      launch: 0.1
+      set: 0.1
+      meet: 0.1
+      include: 0.1
+      have: 0.1
+      be: 0.1
+      exist: 0.1
+      contain: 0.1
+      store: 0.2
+
+    # Confidence calculation multipliers moved from code
+    confidence_multipliers:
+      future_tense_boost: 1.15
+      high_strength_passive_penalty: 0.9
+      problematic_passive_penalty: 0.3
+      standard_passive_penalty: 0.7
+      subject_boost: 1.1
+      object_specificity_boost: 0.2
+      where_component_boost: 1.1
+      root_verb_boost: 1.2
+      position_factor_reduction: 0.1
+
+    # Confidence threshold for candidate filtering
+    confidence_threshold: 0.4
+
+    # Strong action threshold for primary detection
+    strong_action_threshold: 0.7
+
+    # Control patterns for pattern-based extraction
+    control_patterns:
+      - pattern: '(will\s+)?(obtain|collect|gather|receive)\s+([a-z\s]+)'
+        confidence: 0.8
+      - pattern: '(notify|alert|inform)\s+([a-z\s]+)'
+        confidence: 0.75
+      - pattern: '(validate|verify|confirm)\s+that\s+([a-z\s]+)'
+        confidence: 0.8
+      - pattern: '(age|categorize|classify)\s+([a-z\s]+)'
+        confidence: 0.7
+      - pattern: '(limit|restrict)\s+([a-z\s]+)\s+to\s+([a-z\s]+)'
+        confidence: 0.75
+      - pattern: '(route|escalate|forward)\s+([a-z\s]+)\s+to\s+([a-z\s]+)'
+        confidence: 0.75
+
+    # Control activity nouns for noun chunk fallback
+    control_nouns:
+      review: 0.8
+      approval: 0.8
+      validation: 0.8
+      verification: 0.8
+      reconciliation: 0.8
+      assessment: 0.7
+      monitoring: 0.7
+      inspection: 0.7
+      audit: 0.8
+      analysis: 0.7
+      testing: 0.7
+
+    # Verb mapping for noun chunks
+    verb_mapping:
+      review: "review"
+      approval: "approve"
+      validation: "validate"
+      verification: "verify"
+      reconciliation: "reconcile"
+      assessment: "assess"
+      monitoring: "monitor"
+      inspection: "inspect"
+      audit: "audit"
+      analysis: "analyze"
+      testing: "test"
+
+    # Timing exclusions for phrase cleaning
+    timing_exclusions:
+      - annually
+      - monthly
+      - quarterly
+      - weekly
+      - daily
+      - periodically
+      - regularly
+      - basis
+      - ad
+      - hoc
+
+    # Purpose clause starters to exclude
+    purpose_clause_starters:
+      - "to ensure"
+      - "to manage"
+      - "to maintain"
+      - "to provide"
+      - "to comply"
+      - "to achieve"
+      - "to support"
+      - "to enable"
+      - "to prevent"
+      - "to detect"
+
+    # Future tense auxiliaries
+    future_auxiliaries:
+      - will
+      - shall
+      - can
+      - may
+      - must
+      - should
+
+    # Passive control verbs
+    passive_control_verbs:
+      - reviewed
+      - approved
+      - verified
+      - reconciled
+      - tested
+      - validated
+      - examined
+      - analyzed
 
     # Control type validation settings
     control_type_indicators:
@@ -1660,4 +1552,286 @@ columns:
         leader: "Jane Smith"
       "AUDIT-2023-002":
         name: "IT Department Audit 2023"
-        leader: "John Doe"
+        leader: "John Doe" Confidence scoring constants
+  confidence_scoring:
+    base_confidence_score: 0.7
+    human_type_boost: 0.2
+    managerial_role_boost: 0.2
+    specific_finance_role_boost: 0.3
+    team_boost: 0.1
+    committee_boost: 0.15
+    acronym_team_boost: 0.2
+    system_type_boost: 0.1
+    non_performer_penalty: 0.1
+    passive_voice_penalty: 0.1
+    main_subject_boost: 1.2
+    by_phrase_boost: 1.3
+    responsibility_boost: 1.3
+    temporal_boost: 1.2
+    fallback_penalty: 0.7
+    regex_fallback_penalty: 0.6
+    automated_control_boost: 0.2
+    manual_control_boost: 0.2
+    executive_frequency_penalty: 0.1
+    continuous_system_boost: 0.1
+    minimum_confidence: 0.1
+    maximum_confidence: 1.0
+    minimum_fallback_confidence: 0.3
+
+  # Control verbs for WHO detection
+  control_verbs:
+    - review
+    - approve
+    - verify
+    - check
+    - validate
+    - reconcile
+    - examine
+    - analyze
+    - evaluate
+    - assess
+    - monitor
+    - track
+    - investigate
+    - inspect
+    - audit
+    - oversee
+    - supervise
+    - ensure
+    - perform
+    - execute
+    - conduct
+    - disable
+    - enforce
+    - generate
+    - address
+    - compare
+    - maintain
+    - identify
+    - correct
+    - update
+    - submit
+    - complete
+    - prepare
+    - provide
+    - confirm
+
+  # Human role indicators
+  human_indicators:
+    # Roles and titles
+    - manager
+    - director
+    - supervisor
+    - analyst
+    - specialist
+    - officer
+    - coordinator
+    - lead
+    - team
+    - staff
+    - personnel
+    - employee
+    - individual
+    - person
+    - accountant
+    - controller
+    - auditor
+    - administrator
+    - executive
+    - chief
+    - head
+    - president
+    - ceo
+    - cfo
+    - cio
+    - vp
+    - vice president
+    - secretary
+    - treasurer
+    - owner
+    - preparer
+    - reviewer
+    # Departments and groups
+    - finance
+    - accounting
+    - accounts receivable
+    - accounts payable
+    - treasury
+    - financial reporting
+    - tax
+    - payroll
+    - billing
+    - credit
+    - collections
+    - committee
+    - department
+    - group
+    - unit
+    - division
+    - office
+    - board
+    # Specific roles
+    - financial controller
+    - financial analyst
+    - budget analyst
+    - compliance
+    - audit
+    - risk
+    - governance
+    - oversight
+    - management
+    - leadership
+
+  # System indicators
+  system_indicators:
+    - system
+    - application
+    - software
+    - platform
+    - database
+    - server
+    - program
+    - script
+    - job
+    - batch
+    - workflow
+    - algorithm
+    - automated
+    - automatic
+    - tool
+    - module
+    - interface
+    - api
+    - service
+    - function
+    - scheduled
+    - timer
+    - daemon
+    - bot
+    - routine
+    - task
+
+  # Non-performer indicators
+  non_performer_indicators:
+    - limit
+    - threshold
+    - policy
+    - procedure
+    - standard
+    - regulation
+    - account
+    - transaction
+    - balance
+    - report
+    - document
+    - record
+    - exception
+    - error
+    - issue
+    - finding
+    - discrepancy
+    - review
+    - control
+    - entry
+    - activity
+    - access
+    - instance
+    - item
+    - questionnaire
+    - form
+    - template
+    - results
+    - assessment
+    - risk
+    - compliance
+    - process
+    - monitoring
+    - levels
+    - ensure
+
+  # Temporal prefixes for pattern detection
+  temporal_prefixes:
+    - annually
+    - monthly
+    - quarterly
+    - weekly
+    - daily
+    - periodically
+    - regularly
+
+  # Problem patterns for validation
+  problem_patterns:
+    - '\brisk\b'
+    - '\baccess levels\b'
+    - '\bensure compliance\b'
+    - '\bmonitor\b'
+    - '\blimit\b'
+    - '\bprocess\b'
+    - '\bcontrol\b'
+    - '\bcompliance\b'
+    - '\baccess\b'
+    - '\blevels\b'
+    - '\bensure\b'
+
+  # Non-performer terms for subject filtering
+  non_performer_terms:
+    - exception
+    - error
+    - transaction
+    - record
+    - issue
+    - item
+    - reconciliation
+    - document
+    - report
+    - questionnaire
+    - form
+    - template
+    - results
+    - risk
+    - compliance
+    - access
+    - levels
+    - limit
+    - process
+    - customer
+    - data
+
+# Penalty Configuration
+vague_term_penalty: 2
+max_vague_penalty: 10
+penalties:
+  multi_control:
+    points_per_control: 5
+    max_penalty: 10
+  timing:
+    vague_term_score: 0.1
+    secondary_vague_penalty_per_term: 0.1
+    max_secondary_vague_penalty: 0.3
+    detective_control_penalty: 0.8
+    preventive_control_boost: 1.2
+
+# Enable/disable enhanced detection
+use_enhanced_detection: true
+
+# Timing Detection Configuration
+timing_detection:
+  # Regex patterns for frequency detection
+  patterns:
+    daily: '\b(daily|each\s+day|every\s+day|on\s+a\s+daily\s+basis|day\b|daily\s+basis)\b'
+    weekly: '\b(weekly|each\s+week|every\s+week|on\s+a\s+weekly\s+basis|week\b|weekly\s+basis)\b'
+    monthly: '\b(monthly|each\s+month|every\s+month|on\s+a\s+monthly\s+basis|month\b|monthly\s+basis)\b'
+    quarterly: '\b(quarterly|each\s+quarter|every\s+quarter|on\s+a\s+quarterly\s+basis|quarter\b|once\s+per\s+quarter|each\s+fiscal\s+quarter|every\s+three\s+months)\b'
+    annually: '\b(annually|yearly|each\s+year|every\s+year|annual\b|on\s+an\s+annual\s+basis|year\b)\b'
+    adhoc: '\b(adhoc|ad[\s-]hoc|on\s+an\s+ad[\s-]hoc\s+basis)\b'
+    weekday: '\b(every|each|on)\s+(monday|tuesday|wednesday|thursday|friday|saturday|sunday)s?\b'
+    period_end: '\b(at|during|before|after)\s+(the\s+)?(fiscal|calendar)?\s*(year|quarter|month)[\s-]end(\s+close)?\b'
+    close_period: '\b(at|during)\s+(each|every|the)\s+closing\s+(cycle|period|process)\b'
+    timeline: '\b(after|before|prior\s+to|following|upon)\s+'
+    vague_terms: '\b(as\s+needed|when\s+needed|if\s+needed|as\s+appropriate|when\s+appropriate|if\s+appropriate|as\s+required|when\s+required|if\s+required|periodically|occasionally|from\s+time\s+to\s+time|regularly|may\s+vary|may\s+change|may\s+differ|may\s+be|may\s+not|on\s+demand|as\s+and\s+when|upon\s+request|when\s+requested|non[\s-]scheduled)\b'
+    problematic_may: '\b(may\s+(?:vary|differ|change|be|not|need)\b'
+    business_cycle: '\b(during|after|before|at|upon|following|as\s+part\s+of)\s+(the\s+)?(each|every)?\s*(audit|review|assessment|reporting|close|closing)\s+(cycle|period|process)\b'
+    procedure_reference: '\b(defined|outlined|described|according|per|as\s+per|based|in\s+accordance)\s+(in|on|with|to)\s+(procedure|policy|document|standard)\b'
+    event_trigger: '\b(upon|after|when|following|immediately|promptly)\s+(receipt|notification|identification|detection|discovery|system|application|platform|database)\b'
+
+  #
