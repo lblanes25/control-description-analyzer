@@ -34,7 +34,7 @@ from config_manager import ConfigManager
 
 # Import enhanced detection modules
 from enhanced_who import enhanced_who_detection_v2
-from enhanced_what import enhance_what_detection, mark_possible_standalone_controls
+from enhanced_what import analyze_control_actions, mark_possible_standalone_controls  # Updated import
 from enhanced_when import enhance_when_detection
 from enhanced_why import enhance_why_detection
 from enhanced_escalation import enhance_escalation_detection
@@ -44,6 +44,7 @@ from enhanced_multi_control import detect_multi_control
 logger = logging.getLogger("control_analyzer")
 
 logging.basicConfig(level=logging.DEBUG)
+
 
 class ControlElement:
     """
@@ -126,14 +127,23 @@ class ControlElement:
                 ] if self.enhanced_results and self.enhanced_results.get("primary") else []
 
             elif self.name == "WHAT":
-                self.enhanced_results = enhance_what_detection(text, nlp, self.keywords)
+                # Updated to use the new function name and signature
+                control_type = context.get("control_type")
+                config = getattr(context, 'analyzer_config', None)  # Get config if available
+
+                self.enhanced_results = analyze_control_actions(
+                    text, nlp, self.keywords, control_type, config
+                )
                 self.score = self.enhanced_results.get("score", 0) if self.enhanced_results else 0
                 self.normalized_score = self.score * 100
+
+                # Updated to work with new WHAT module structure
                 if self.enhanced_results and self.enhanced_results.get("primary_action"):
                     self.matched_keywords = [self.enhanced_results["primary_action"]["full_phrase"]]
                 else:
-                    self.matched_keywords = [a["full_phrase"] for a in self.enhanced_results.get("actions", [])[
-                                                                       :3]] if self.enhanced_results else []
+                    # Fallback to actions list if primary_action not available
+                    actions = self.enhanced_results.get("actions", []) if self.enhanced_results else []
+                    self.matched_keywords = [a.get("full_phrase", "") for a in actions[:3] if a.get("full_phrase")]
 
             elif self.name == "WHEN":
                 self.enhanced_results = enhance_when_detection(
@@ -703,7 +713,8 @@ class EnhancedControlAnalyzer:
         context = {
             "control_type": control_type,
             "frequency": frequency,
-            "risk_description": risk_description
+            "risk_description": risk_description,
+            "analyzer_config": self.config  # Pass config to elements
         }
 
         # Analyze for each element with specialized detection
