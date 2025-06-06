@@ -1,0 +1,999 @@
+# Configuration file structure follows 5W analysis framework
+# Enhanced configuration for Control Description Analyzer
+# Version 2.0 - Refactored for clarity and maintainability
+
+# NLP Configuration
+nlp_config:
+  preferred_model: en_core_web_md
+  fallback_model: en_core_web_sm
+
+# Global Constants
+constants:
+  # Confidence thresholds range from 0.0 to 1.0
+  confidence_thresholds:
+    explicit: 0.9
+    high: 0.85
+    medium_high: 0.8
+    medium: 0.75
+    medium_low: 0.7
+    low: 0.6
+    very_low: 0.4
+  
+  # Common control document types
+  document_types:
+    - procedure
+    - policy
+    - document
+    - standard
+    - guideline
+    - regulation
+    - instruction
+    - manual
+
+# Scoring Configuration
+scoring:
+  # Category thresholds for overall control scoring
+  category_thresholds:
+    excellent: 75
+    good: 50
+  
+  # Weight of 32 indicates highest importance in control analysis
+  element_weights:
+    WHO: 32
+    WHAT: 25
+    WHEN: 20
+    WHY: 13
+    ESCALATION: 10
+
+# WHO Element Configuration
+who_element:
+  # PersonRoleDetector configuration
+  person_roles:
+    # Executive roles
+    executive:
+      - ceo
+      - cfo
+      - coo
+      - cto
+      - cio
+      - chief
+      - president
+      - vp
+      - vice president
+      - executive
+      - c-suite
+    
+    # Management roles
+    management:
+      - director
+      - manager
+      - supervisor
+      - lead
+      - head
+      - controller
+      - coordinator
+    
+    # Staff roles
+    staff:
+      - analyst
+      - specialist
+      - officer
+      - accountant
+      - auditor
+      - administrator
+      - representative
+      - employee
+      - staff
+    
+    # Finance-specific roles
+    finance:
+      - finance director
+      - financial controller
+      - corporate controller
+      - fund accountant
+      - general ledger accountant
+      - senior accountant
+      - junior accountant
+      - staff accountant
+      - accounts payable
+      - accounts receivable
+      - revenue accountant
+      - fixed asset accountant
+      - cost accountant
+      - tax accountant
+      - payroll specialist
+      - billing specialist
+      - treasury analyst
+      - cash manager
+      - financial analyst
+      - financial planning analyst
+      - budget analyst
+      - forecasting specialist
+      - financial reporting manager
+      - accounting manager
+      - accounting supervisor
+      - bookkeeper
+      - credit analyst
+      - accounts supervisor
+    
+    # Audit and compliance roles
+    audit_compliance:
+      - cae
+      - audit director
+      - internal audit manager
+      - senior internal auditor
+      - internal auditor
+      - it auditor
+      - compliance officer
+      - chief compliance officer
+      - compliance manager
+      - compliance analyst
+      - regulatory compliance
+      - sox compliance
+      - controls specialist
+      - control tester
+      - risk analyst
+      - risk manager
+      - control owner
+      - process owner
+    
+    # IT roles
+    technology:
+      - it director
+      - it manager
+      - system administrator
+      - network administrator
+      - database administrator
+      - application owner
+      - application administrator
+      - security administrator
+      - systems analyst
+      - it security
+      - it support
+      - it governance
+      - data steward
+      - data custodian
+      - data owner
+    
+    # Operations roles
+    operations:
+      - operations director
+      - operations manager
+      - business unit head
+      - division leader
+      - business manager
+      - product manager
+      - program manager
+      - project manager
+      - process manager
+      - line manager
+      - shift supervisor
+      - team leader
+      - functional manager
+      - unit head
+      - department supervisor
+  
+  # Human indicator patterns
+  human_indicators:
+    - responsible
+    - accountable
+    - performs
+    - executes
+    - carries out
+    - conducts
+    - implements
+    - oversees
+    - manages
+    - supervises
+    - approves
+    - authorizes
+    - signs off
+    - validates
+    - confirms
+    - responsible
+    - accountable
+    - oversees
+    - approves
+    - authorizes
+    - signs off
+    - validates
+    - confirms
+    - reviews
+    - assesses
+    - submits
+    - intervenes
+    - investigates
+  
+  # SystemDetector configuration
+  system_patterns:
+    automated_keywords:
+      - system
+      - application
+      - software
+      - platform
+      - automated
+      - automatic
+      - automatically
+      - programmed
+      - scheduled
+      - scripted
+      - configured
+      - system-generated
+      - system performs
+      - automated control
+      - system restricts
+      - system enforces
+    
+    system_verbs:
+      - generates
+      - calculates
+      - processes
+      - executes
+      - runs
+      - triggers
+      - alerts
+      - notifies
+      - prevents
+      - blocks
+      - restricts
+      - enforces
+    
+    common_systems:
+      - erp
+      - sap
+      - oracle
+      - peoplesoft
+      - servicenow
+      - sharepoint
+      - crm
+      - grc system
+      - financial system
+      - accounting system
+      - reporting system
+      - monitoring system
+      - control system
+      - ticketing system
+      - workflow system
+  
+  # Group entities
+  group_entities:
+    committees:
+      - board of directors
+      - audit committee
+      - risk committee
+      - governance committee
+      - executive committee
+      - management committee
+      - steering committee
+      - leadership team
+      - senior leadership
+      - executive management
+      - senior management
+    
+    departments:
+      - finance team
+      - accounting department
+      - treasury department
+      - audit group
+      - internal audit team
+      - external auditors
+      - compliance team
+      - risk management team
+      - it department
+      - security team
+      - operations team
+      - business unit
+      - management team
+      - executive team
+      - control team
+      - process team
+      - project team
+      - governance team
+      - reporting team
+      - financial operations
+      - accounting operations
+      - back office
+      - front office
+      - middle office
+      - shared services
+    
+    organizational_units:
+      - group
+      - unit
+      - division
+      - function
+      - office
+      - organization
+      - entity
+      - branch
+
+# WHEN Element Configuration
+when_element:
+  # TimingPatternMatcher configuration
+  # Patterns ordered by confidence level (highest first)
+  timing_pattern_rules:
+    explicit_frequency:
+      confidence: 0.9
+      patterns:
+        - daily
+        - weekly
+        - monthly
+        - quarterly
+        - annually
+        - yearly
+        - semi-annually
+        - biweekly
+        - bimonthly
+        - every day
+        - every week
+        - every month
+        - every quarter
+        - every year
+        - each day
+        - each week
+        - each month
+        - each quarter
+        - each year
+        - once a day
+        - once a week
+        - once a month
+        - twice daily
+        - twice weekly
+        - twice monthly
+        - three times
+        - four times
+    
+    period_end:
+      confidence: 0.85
+      patterns:
+        - month-end
+        - month end
+        - quarter-end
+        - quarter end
+        - year-end
+        - year end
+        - period-end
+        - period end
+        - at the end of
+        - by the end of
+        - end of period
+        - end of month
+        - end of quarter
+        - end of year
+        - fiscal year end
+        - calendar year end
+    
+    close_period:
+      confidence: 0.85
+      patterns:
+        - during close
+        - close process
+        - financial close
+        - monthly close
+        - quarterly close
+        - annual close
+        - closing period
+        - closing cycle
+        - before close
+        - after close
+        - prior to close
+        - following close
+    
+    timeline_based:
+      confidence: 0.8
+      patterns:
+        - within \d+ days
+        - within \d+ hours
+        - within \d+ business days
+        - within \d+ working days
+        - no later than
+        - by [date]
+        - before [date]
+        - after [date]
+        - on or before
+        - on or after
+        - deadline
+        - due date
+    
+    business_cycle:
+      confidence: 0.75
+      patterns:
+        - business day
+        - working day
+        - calendar day
+        - fiscal period
+        - reporting period
+        - billing cycle
+        - pay period
+        - budget cycle
+        - planning cycle
+        - review cycle
+    
+    event_trigger:
+      confidence: 0.75
+      patterns:
+        - upon receipt
+        - when received
+        - after approval
+        - before submission
+        - following completion
+        - prior to processing
+        - after validation
+        - when identified
+        - upon discovery
+        - when detected
+        - after occurrence
+        - following incident
+    
+    conditional_timing:
+      confidence: 0.7
+      patterns:
+        - as needed
+        - when necessary
+        - as appropriate
+        - as required
+        - if needed
+        - if necessary
+        - when appropriate
+        - where appropriate
+        - as applicable
+        - as deemed necessary
+    
+    implicit_temporal:
+      confidence: 0.6
+      patterns:
+        - ongoing
+        - continuous
+        - continuously
+        - real-time
+        - near real-time
+        - throughout
+        - during
+        - while
+        - concurrent
+        - simultaneous
+  
+  # Vague timing terms requiring clarification
+  vague_terms:
+    periodically:
+      suggestion: "specific frequency (daily, weekly, monthly)"
+      penalty: 0.3
+    regularly:
+      suggestion: "specific frequency (daily, weekly, monthly)"
+      penalty: 0.3
+    timely:
+      suggestion: "specific timeframe (e.g., 'within 3 business days')"
+      penalty: 0.25
+    promptly:
+      suggestion: "specific timeframe (e.g., 'within 24 hours')"
+      penalty: 0.25
+    occasionally:
+      suggestion: "specific frequency (monthly, quarterly)"
+      penalty: 0.3
+    frequently:
+      suggestion: "specific frequency (daily, twice weekly)"
+      penalty: 0.2
+    infrequently:
+      suggestion: "specific frequency (quarterly, annually)"
+      penalty: 0.2
+    ad-hoc:
+      suggestion: "specific triggering conditions for the ad-hoc review"
+      penalty: 0.35
+    on demand:
+      suggestion: "specific triggering conditions"
+      penalty: 0.3
+    from time to time:
+      suggestion: "specific frequency or conditions"
+      penalty: 0.4
+
+# WHAT Element Configuration
+what_element:
+  # ActionAnalyzer configuration
+  # Verb strength categories based on control effectiveness research
+  actionable_verbs:
+    strong_action:
+      confidence: 0.9
+      verbs:
+        - review
+        - approve
+        - validate
+        - verify
+        - authorize
+        - confirm
+        - reconcile
+        - analyze
+        - investigate
+        - assess
+        - evaluate
+        - test
+        - examine
+        - inspect
+        - audit
+        - compare
+        - match
+        - check
+        - document
+        - report
+        - escalate
+        - prevent
+        - detect
+        - correct
+        - implement
+        - execute
+        - perform
+        - complete
+        - submit
+        - process
+        - calculate
+        - determine
+        - establish
+        - develop
+        - create
+        - design
+        - configure
+        - update
+        - maintain
+        - monitor
+        - track
+        - measure
+        - control
+    
+    moderate_action:
+      confidence: 0.7
+      verbs:
+        - ensure
+        - confirm
+        - coordinate
+        - facilitate
+        - support
+        - assist
+        - guide
+        - advise
+        - recommend
+        - suggest
+        - communicate
+        - inform
+        - notify
+        - follow up
+        - oversee
+        - supervise
+        - manage
+        - administer
+        - organize
+        - plan
+        - schedule
+        - arrange
+    
+    weak_action:
+      confidence: 0.5
+      verbs:
+        - consider
+        - may
+        - might
+        - could
+        - should
+        - attempt
+        - try
+        - seek
+        - strive
+        - aim
+        - intend
+        - expect
+        - hope
+        - believe
+        - think
+        - feel
+        - understand
+        - acknowledge
+        - recognize
+        - note
+        - observe
+  
+  # Control-specific nouns
+  control_nouns:
+    - reconciliation
+    - validation
+    - verification
+    - approval
+    - authorization
+    - review
+    - analysis
+    - assessment
+    - evaluation
+    - testing
+    - examination
+    - inspection
+    - audit
+    - check
+    - control
+    - process
+    - procedure
+    - activity
+    - task
+    - step
+    - action
+    - measure
+    - safeguard
+    - mechanism
+    - requirement
+    - standard
+    - rule
+    - regulation
+    - guideline
+    - protocol
+    - policy
+  
+  # Low confidence verbs (renamed from problematic_verbs)
+  low_confidence_verbs:
+    - use
+    - have
+    - do
+    - make
+    - get
+    - take
+    - keep
+    - put
+    - see
+    - know
+    - think
+    - feel
+    - want
+    - need
+    - try
+    - help
+    - show
+    - tell
+    - ask
+    - work
+    - seem
+    - look
+    - come
+    - go
+    - give
+    - find
+  
+  # Confidence calculation parameters
+  confidence_threshold: 0.4
+  
+  # Action strength multipliers
+  action_multipliers:
+    multiple_strong_actions: 1.2
+    single_strong_action: 1.0
+    moderate_action_only: 0.8
+    weak_action_only: 0.6
+    no_clear_action: 0.4
+
+# WHY Element Configuration
+why_element:
+  # PurposeAnalyzer configuration
+  control_intent_categories:
+    compliance:
+      keywords:
+        - comply
+        - compliance
+        - regulatory
+        - regulation
+        - requirement
+        - sox
+        - gaap
+        - ifrs
+        - law
+        - statute
+        - mandate
+        - obligate
+        - mandatory
+        - required
+      confidence: 0.9
+    
+    risk_mitigation:
+      keywords:
+        - risk
+        - mitigate
+        - prevent
+        - avoid
+        - reduce
+        - minimize
+        - control
+        - safeguard
+        - protect
+        - secure
+        - defend
+        - threat
+        - vulnerability
+        - exposure
+      confidence: 0.85
+    
+    accuracy:
+      keywords:
+        - accuracy
+        - accurate
+        - correct
+        - precision
+        - exact
+        - reliable
+        - valid
+        - integrity
+        - quality
+        - completeness
+        - consistency
+        - error-free
+      confidence: 0.8
+    
+    efficiency:
+      keywords:
+        - efficiency
+        - efficient
+        - optimize
+        - streamline
+        - improve
+        - enhance
+        - productivity
+        - performance
+        - effectiveness
+        - timely
+        - speed
+      confidence: 0.75
+    
+    transparency:
+      keywords:
+        - transparency
+        - transparent
+        - visibility
+        - traceable
+        - trackable
+        - auditable
+        - accountability
+        - responsible
+        - oversight
+        - governance
+      confidence: 0.75
+  
+  # Purpose pattern indicators
+  purpose_patterns:
+    - in order to
+    - to ensure
+    - to prevent
+    - to detect
+    - to maintain
+    - to comply
+    - to support
+    - to provide
+    - to protect
+    - to minimize
+    - to avoid
+    - to reduce
+    - to improve
+    - to enhance
+    - to facilitate
+    - to enable
+    - for the purpose of
+    - with the objective of
+    - aimed at
+    - designed to
+    - intended to
+    - so that
+    - such that
+    - thereby
+    - thus
+    - therefore
+    - consequently
+  
+  # Risk alignment keywords
+  risk_keywords:
+    - fraud
+    - error
+    - misstatement
+    - loss
+    - theft
+    - unauthorized
+    - improper
+    - incorrect
+    - inaccurate
+    - incomplete
+    - untimely
+    - non-compliance
+    - violation
+    - breach
+    - failure
+    - deficiency
+    - weakness
+    - gap
+    - issue
+    - problem
+    - concern
+    - exposure
+    - threat
+    - vulnerability
+
+# ESCALATION Element Configuration
+escalation_element:
+  # EscalationPathDetector configuration
+  escalation_indicators:
+    # Escalation roles
+    roles:
+      - supervisor
+      - manager
+      - director
+      - executive
+      - management
+      - leadership
+      - committee
+      - board
+      - cfo
+      - controller
+      - head
+      - chief
+      - senior
+    
+    # Escalation actions
+    actions:
+      - escalate
+      - report
+      - notify
+      - inform
+      - communicate
+      - alert
+      - raise
+      - elevate
+      - submit
+      - present
+      - forward
+      - refer
+    
+    # Exception handling terms
+    exception_terms:
+      - exception
+      - deviation
+      - variance
+      - discrepancy
+      - anomaly
+      - outlier
+      - unusual
+      - abnormal
+      - irregular
+      - non-standard
+      - non-routine
+      - special case
+      - edge case
+      - breach
+      - violation
+      - non-compliance
+      - failure
+      - error
+      - issue
+      - problem
+      - concern
+      - incident
+      - event
+    
+    # Threshold terms
+    threshold_terms:
+      - threshold
+      - limit
+      - tolerance
+      - materiality
+      - significant
+      - material
+      - substantial
+      - major
+      - critical
+      - high risk
+      - severe
+      - extreme
+    
+    # Process terms
+    process_terms:
+      - process
+      - procedure
+      - protocol
+      - guideline
+      - workflow
+      - path
+      - route
+      - channel
+      - mechanism
+      - framework
+
+# Penalty Configuration
+penalties:
+  # ScoringPenalties configuration
+  # Penalties reduce confidence scores for vague or problematic content
+  vague_terms:
+    base_penalty: 0.3
+    severe_penalty: 0.4
+    moderate_penalty: 0.25
+    light_penalty: 0.15
+  
+  multi_control:
+    per_control_penalty: 0.2
+    max_penalty: 0.6
+  
+  missing_elements:
+    critical_element: 0.4  # WHO, WHAT
+    important_element: 0.3  # WHEN, WHY
+    optional_element: 0.2  # ESCALATION
+  
+  quality_issues:
+    no_clear_action: 0.35
+    weak_action_only: 0.25
+    vague_timing: 0.3
+    missing_purpose: 0.3
+    no_escalation_path: 0.2
+
+# Column Mapping Configuration
+column_mapping:
+  primary_columns:
+    - Control Description
+    - Control Statement
+    - Control Activity
+    - Control Text
+    - Description
+    - Control
+    - Statement
+    - Narrative
+    - Activity
+    - Procedure
+    - Process Description
+    - Control Procedure
+    - Control Narrative
+    - Control Details
+    - Control Description Text
+    - Description of Control
+    - Control Activity Description
+  
+  control_id_columns:
+    - Control ID
+    - Control #
+    - Control Number
+    - Control Ref
+    - Reference
+    - ID
+    - Number
+    - Ref #
+    - Control Reference
+    - Ctrl ID
+    - Control Identifier
+    - Control Code
+  
+  process_columns:
+    - Process
+    - Business Process
+    - Process Name
+    - Process Area
+    - Process Description
+    - Business Area
+    - Functional Area
+    - Department
+    - Function
+    - Area
+    - Domain
+    - Process Category
+    - Process Group
+  
+  frequency_columns:
+    - Frequency
+    - Control Frequency
+    - How Often
+    - Timing
+    - When Performed
+    - Periodicity
+    - Schedule
+    - Occurrence
+    - Frequency of Control
+    - Performance Frequency
+    - Control Timing
+    - Execution Frequency
+  
+  owner_columns:
+    - Control Owner
+    - Owner
+    - Responsible Party
+    - Responsible Person
+    - Performed By
+    - Reviewer
+    - Approver
+    - Who Performs
+    - Control Performer
+    - Responsible Individual
+    - Process Owner
+    - Control Responsible

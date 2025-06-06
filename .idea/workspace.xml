@@ -1,0 +1,300 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<project version="4">
+  <component name="AutoImportSettings">
+    <option name="autoReloadType" value="SELECTIVE" />
+  </component>
+  <component name="ChangeListManager">
+    <list default="true" id="e7deeee2-00f6-4740-8efd-2cc08fd51cb6" name="Changes" comment="">
+      <change beforePath="$PROJECT_DIR$/.idea/.gitignore" beforeDir="false" />
+      <change beforePath="$PROJECT_DIR$/.idea/.name" beforeDir="false" />
+      <change beforePath="$PROJECT_DIR$/.idea/final_consolidated_analyzer.iml" beforeDir="false" />
+      <change beforePath="$PROJECT_DIR$/.idea/inspectionProfiles/profiles_settings.xml" beforeDir="false" />
+      <change beforePath="$PROJECT_DIR$/.idea/misc.xml" beforeDir="false" />
+      <change beforePath="$PROJECT_DIR$/.idea/modules.xml" beforeDir="false" />
+      <change beforePath="$PROJECT_DIR$/.idea/vcs.xml" beforeDir="false" />
+      <change beforePath="$PROJECT_DIR$/Control Description Analyzer - User Guide.txt" beforeDir="false" />
+      <change beforePath="$PROJECT_DIR$/Control_Test_Data2.xlsx" beforeDir="false" />
+      <change beforePath="$PROJECT_DIR$/EdgeCaseResults.xlsx" beforeDir="false" />
+      <change beforePath="$PROJECT_DIR$/README.md.txt" beforeDir="false" />
+      <change beforePath="$PROJECT_DIR$/README_updated.md" beforeDir="false" />
+      <change beforePath="$PROJECT_DIR$/System_Architecture.md" beforeDir="false" />
+      <change beforePath="$PROJECT_DIR$/Test Text.txt" beforeDir="false" />
+      <change beforePath="$PROJECT_DIR$/Test_Controls_for_Analyzer.csv" beforeDir="false" />
+      <change beforePath="$PROJECT_DIR$/auditor_review_template.py" beforeDir="false" />
+      <change beforePath="$PROJECT_DIR$/column_mapping_test.py" beforeDir="false" />
+      <change beforePath="$PROJECT_DIR$/config_manager.py" beforeDir="false" />
+      <change beforePath="$PROJECT_DIR$/control_analyzer.py" beforeDir="false" />
+      <change beforePath="$PROJECT_DIR$/control_analyzer_architecture.md" beforeDir="false" />
+      <change beforePath="$PROJECT_DIR$/control_analyzer_config_final_with_columns.yaml" beforeDir="false" />
+      <change beforePath="$PROJECT_DIR$/control_analyzer_gui.py" beforeDir="false" />
+      <change beforePath="$PROJECT_DIR$/convert_to_spacy_format.py" beforeDir="false" />
+      <change beforePath="$PROJECT_DIR$/debug_wrapper.py" beforeDir="false" />
+      <change beforePath="$PROJECT_DIR$/enhanced_diagnostic.py" beforeDir="false" />
+      <change beforePath="$PROJECT_DIR$/enhanced_escalation.py" beforeDir="false" />
+      <change beforePath="$PROJECT_DIR$/enhanced_multi_control.py" beforeDir="false" />
+      <change beforePath="$PROJECT_DIR$/enhanced_what.py" beforeDir="false" />
+      <change beforePath="$PROJECT_DIR$/enhanced_when.py" beforeDir="false" />
+      <change beforePath="$PROJECT_DIR$/enhanced_who.py" beforeDir="false" />
+      <change beforePath="$PROJECT_DIR$/enhanced_why.py" beforeDir="false" />
+      <change beforePath="$PROJECT_DIR$/generate_review_template.py" beforeDir="false" />
+      <change beforePath="$PROJECT_DIR$/generated_controls_for_testing.xlsx" beforeDir="false" />
+      <change beforePath="$PROJECT_DIR$/generated_controls_for_testing_edge_cases.xlsx" beforeDir="false" />
+      <change beforePath="$PROJECT_DIR$/generated_controls_for_testing_realistic.xlsx" beforeDir="false" />
+      <change beforePath="$PROJECT_DIR$/gitignore" beforeDir="false" />
+      <change beforePath="$PROJECT_DIR$/integration.py" beforeDir="false" />
+      <change beforePath="$PROJECT_DIR$/integration_verbose.py" beforeDir="false" />
+      <change beforePath="$PROJECT_DIR$/migration_plan.md" beforeDir="false" />
+      <change beforePath="$PROJECT_DIR$/package.py" beforeDir="false" />
+      <change beforePath="$PROJECT_DIR$/project_scaffold_README.md" beforeDir="false" />
+      <change beforePath="$PROJECT_DIR$/simple_diagnostic.py" beforeDir="false" />
+      <change beforePath="$PROJECT_DIR$/tableau-hyper-integration.py" beforeDir="false" />
+      <change beforePath="$PROJECT_DIR$/tableau_workbook_generator.py" beforeDir="false" />
+      <change beforePath="$PROJECT_DIR$/test_controls_enhanced_modules.xlsx" beforeDir="false" />
+      <change beforePath="$PROJECT_DIR$/test_controls_enhanced_modules_analysis_results.xlsx" beforeDir="false" />
+      <change beforePath="$PROJECT_DIR$/test_controls_enhanced_modules_analysis_results1.xlsx" beforeDir="false" />
+      <change beforePath="$PROJECT_DIR$/test_controls_enhanced_modules_analysis_results2.xlsx" beforeDir="false" />
+      <change beforePath="$PROJECT_DIR$/test_controls_enhanced_modules_analysis_results_backup.xlsx" beforeDir="false" />
+      <change beforePath="$PROJECT_DIR$/test_controls_enhanced_modules_analysis_results_visualizations/dashboard.html" beforeDir="false" />
+      <change beforePath="$PROJECT_DIR$/test_controls_enhanced_modules_analysis_results_visualizations/element_radar.html" beforeDir="false" />
+      <change beforePath="$PROJECT_DIR$/test_controls_enhanced_modules_analysis_results_visualizations/leader_avg_score.html" beforeDir="false" />
+      <change beforePath="$PROJECT_DIR$/test_controls_enhanced_modules_analysis_results_visualizations/leader_missing_elements.html" beforeDir="false" />
+      <change beforePath="$PROJECT_DIR$/test_controls_enhanced_modules_analysis_results_visualizations/missing_elements.html" beforeDir="false" />
+      <change beforePath="$PROJECT_DIR$/test_controls_enhanced_modules_analysis_results_visualizations/score_distribution.html" beforeDir="false" />
+      <change beforePath="$PROJECT_DIR$/test_controls_enhanced_modules_analysis_results_visualizations/vague_terms.html" beforeDir="false" />
+      <change beforePath="$PROJECT_DIR$/test_controls_enhanced_modules_analysis_results_visualizations/worst_controls.html" beforeDir="false" />
+      <change beforePath="$PROJECT_DIR$/test_controls_multi_control.xlsx" beforeDir="false" />
+      <change beforePath="$PROJECT_DIR$/test_elements_suite.py" beforeDir="false" />
+      <change beforePath="$PROJECT_DIR$/test_enhanced_multi_control.py" beforeDir="false" />
+      <change beforePath="$PROJECT_DIR$/test_regression_controls.py" beforeDir="false" />
+      <change beforePath="$PROJECT_DIR$/train_spacy_model.py" beforeDir="false" />
+      <change beforePath="$PROJECT_DIR$/validate_spans.py" beforeDir="false" />
+      <change beforePath="$PROJECT_DIR$/visualization.py" beforeDir="false" />
+      <change beforePath="$PROJECT_DIR$/visualizations/dashboard.html" beforeDir="false" />
+      <change beforePath="$PROJECT_DIR$/visualizations/element_radar.html" beforeDir="false" />
+      <change beforePath="$PROJECT_DIR$/visualizations/leader_avg_score.html" beforeDir="false" />
+      <change beforePath="$PROJECT_DIR$/visualizations/leader_missing_elements.html" beforeDir="false" />
+      <change beforePath="$PROJECT_DIR$/visualizations/missing_elements.html" beforeDir="false" />
+      <change beforePath="$PROJECT_DIR$/visualizations/score_distribution.html" beforeDir="false" />
+      <change beforePath="$PROJECT_DIR$/visualizations/worst_controls.html" beforeDir="false" />
+      <change beforePath="$PROJECT_DIR$/visualize_entities.py" beforeDir="false" />
+      <change beforePath="$PROJECT_DIR$/what_test_controls.xlsx" beforeDir="false" />
+      <change beforePath="$PROJECT_DIR$/when_test_controls.xlsx" beforeDir="false" />
+      <change beforePath="$PROJECT_DIR$/when_test_controls_analysis_results.xlsx" beforeDir="false" />
+      <change beforePath="$PROJECT_DIR$/who_test_controls.xlsx" beforeDir="false" />
+      <change beforePath="$PROJECT_DIR$/why_test_controls.xlsx" beforeDir="false" />
+    </list>
+    <option name="SHOW_DIALOG" value="false" />
+    <option name="HIGHLIGHT_CONFLICTS" value="true" />
+    <option name="HIGHLIGHT_NON_ACTIVE_CHANGELIST" value="false" />
+    <option name="LAST_RESOLUTION" value="IGNORE" />
+  </component>
+  <component name="FileTemplateManagerImpl">
+    <option name="RECENT_TEMPLATES">
+      <list>
+        <option value="Python Script" />
+      </list>
+    </option>
+  </component>
+  <component name="Git.Settings">
+    <option name="RECENT_GIT_ROOT_PATH" value="$PROJECT_DIR$" />
+  </component>
+  <component name="ProjectColorInfo">{
+  &quot;associatedIndex&quot;: 0
+}</component>
+  <component name="ProjectId" id="2wBLq4TetZCQS1TfbMD7WdEpaZ0" />
+  <component name="ProjectViewState">
+    <option name="hideEmptyMiddlePackages" value="true" />
+    <option name="showLibraryContents" value="true" />
+  </component>
+  <component name="PropertiesComponent">{
+  &quot;keyToString&quot;: {
+    &quot;Python.AnalyzerGUI.executor&quot;: &quot;Run&quot;,
+    &quot;Python.Run Analyzer.executor&quot;: &quot;Run&quot;,
+    &quot;Python.What Testing.executor&quot;: &quot;Run&quot;,
+    &quot;Python.When Testing.executor&quot;: &quot;Run&quot;,
+    &quot;Python.Who Testing.executor&quot;: &quot;Run&quot;,
+    &quot;Python.Why Testing.executor&quot;: &quot;Run&quot;,
+    &quot;RunOnceActivity.ShowReadmeOnStart&quot;: &quot;true&quot;,
+    &quot;RunOnceActivity.git.unshallow&quot;: &quot;true&quot;,
+    &quot;git-widget-placeholder&quot;: &quot;refactorupdate&quot;,
+    &quot;ignore.virus.scanning.warn.message&quot;: &quot;true&quot;,
+    &quot;last_opened_file_path&quot;: &quot;C:/Users/luria/OneDrive/Desktop/final_consolidated_analyzer/src/gui/main_window.py&quot;,
+    &quot;settings.editor.selected.configurable&quot;: &quot;preferences.rainbow.brackets.disable.when&quot;
+  }
+}</component>
+  <component name="RecentsManager">
+    <key name="CopyFile.RECENT_KEYS">
+      <recent name="C:\Users\luria\OneDrive\Desktop\final_consolidated_analyzer" />
+    </key>
+  </component>
+  <component name="RunManager" selected="Python.AnalyzerGUI">
+    <configuration name="AnalyzerGUI" type="PythonConfigurationType" factoryName="Python">
+      <module name="final_consolidated_analyzer" />
+      <option name="ENV_FILES" value="" />
+      <option name="INTERPRETER_OPTIONS" value="" />
+      <option name="PARENT_ENVS" value="true" />
+      <envs>
+        <env name="PYTHONUNBUFFERED" value="1" />
+      </envs>
+      <option name="SDK_HOME" value="" />
+      <option name="SDK_NAME" value="Python 3.12 (Attempt3)" />
+      <option name="WORKING_DIRECTORY" value="$PROJECT_DIR$" />
+      <option name="IS_MODULE_SDK" value="false" />
+      <option name="ADD_CONTENT_ROOTS" value="true" />
+      <option name="ADD_SOURCE_ROOTS" value="true" />
+      <option name="SCRIPT_NAME" value="$PROJECT_DIR$/src/gui/main_window.py" />
+      <option name="PARAMETERS" value="" />
+      <option name="SHOW_COMMAND_LINE" value="false" />
+      <option name="EMULATE_TERMINAL" value="false" />
+      <option name="MODULE_MODE" value="false" />
+      <option name="REDIRECT_INPUT" value="false" />
+      <option name="INPUT_FILE" value="" />
+      <method v="2" />
+    </configuration>
+    <configuration name="Run Analyzer" type="PythonConfigurationType" factoryName="Python" temporary="true">
+      <module name="final_consolidated_analyzer" />
+      <option name="ENV_FILES" value="" />
+      <option name="INTERPRETER_OPTIONS" value="" />
+      <option name="PARENT_ENVS" value="true" />
+      <envs>
+        <env name="PYTHONUNBUFFERED" value="1" />
+      </envs>
+      <option name="SDK_HOME" value="" />
+      <option name="WORKING_DIRECTORY" value="$PROJECT_DIR$" />
+      <option name="IS_MODULE_SDK" value="true" />
+      <option name="ADD_CONTENT_ROOTS" value="true" />
+      <option name="ADD_SOURCE_ROOTS" value="true" />
+      <option name="SCRIPT_NAME" value="$PROJECT_DIR$/integration.py" />
+      <option name="PARAMETERS" value="test_controls_enhanced_modules.xlsx --config control_analyzer_config_final_with_columns.yaml" />
+      <option name="SHOW_COMMAND_LINE" value="false" />
+      <option name="EMULATE_TERMINAL" value="false" />
+      <option name="MODULE_MODE" value="false" />
+      <option name="REDIRECT_INPUT" value="false" />
+      <option name="INPUT_FILE" value="" />
+      <method v="2" />
+    </configuration>
+    <configuration name="What Testing" type="PythonConfigurationType" factoryName="Python">
+      <module name="final_consolidated_analyzer" />
+      <option name="ENV_FILES" value="" />
+      <option name="INTERPRETER_OPTIONS" value="" />
+      <option name="PARENT_ENVS" value="true" />
+      <envs>
+        <env name="PYTHONUNBUFFERED" value="1" />
+      </envs>
+      <option name="SDK_HOME" value="" />
+      <option name="SDK_NAME" value="Python 3.12 (Attempt3)" />
+      <option name="WORKING_DIRECTORY" value="$PROJECT_DIR$" />
+      <option name="IS_MODULE_SDK" value="false" />
+      <option name="ADD_CONTENT_ROOTS" value="true" />
+      <option name="ADD_SOURCE_ROOTS" value="true" />
+      <option name="SCRIPT_NAME" value="$PROJECT_DIR$/integration.py" />
+      <option name="PARAMETERS" value="what_test_controls.xlsx --config control_analyzer_config_final_with_columns.yaml" />
+      <option name="SHOW_COMMAND_LINE" value="false" />
+      <option name="EMULATE_TERMINAL" value="false" />
+      <option name="MODULE_MODE" value="false" />
+      <option name="REDIRECT_INPUT" value="false" />
+      <option name="INPUT_FILE" value="" />
+      <method v="2" />
+    </configuration>
+    <configuration name="When Testing" type="PythonConfigurationType" factoryName="Python">
+      <module name="final_consolidated_analyzer" />
+      <option name="ENV_FILES" value="" />
+      <option name="INTERPRETER_OPTIONS" value="" />
+      <option name="PARENT_ENVS" value="true" />
+      <envs>
+        <env name="PYTHONUNBUFFERED" value="1" />
+      </envs>
+      <option name="SDK_HOME" value="" />
+      <option name="SDK_NAME" value="Python 3.12 (Attempt3)" />
+      <option name="WORKING_DIRECTORY" value="$PROJECT_DIR$" />
+      <option name="IS_MODULE_SDK" value="false" />
+      <option name="ADD_CONTENT_ROOTS" value="true" />
+      <option name="ADD_SOURCE_ROOTS" value="true" />
+      <option name="SCRIPT_NAME" value="$PROJECT_DIR$/integration.py" />
+      <option name="PARAMETERS" value="when_test_controls.xlsx --config control_analyzer_config_final_with_columns.yaml" />
+      <option name="SHOW_COMMAND_LINE" value="false" />
+      <option name="EMULATE_TERMINAL" value="false" />
+      <option name="MODULE_MODE" value="false" />
+      <option name="REDIRECT_INPUT" value="false" />
+      <option name="INPUT_FILE" value="" />
+      <method v="2" />
+    </configuration>
+    <configuration name="Who Testing" type="PythonConfigurationType" factoryName="Python">
+      <module name="final_consolidated_analyzer" />
+      <option name="ENV_FILES" value="" />
+      <option name="INTERPRETER_OPTIONS" value="" />
+      <option name="PARENT_ENVS" value="true" />
+      <envs>
+        <env name="PYTHONUNBUFFERED" value="1" />
+      </envs>
+      <option name="SDK_HOME" value="" />
+      <option name="SDK_NAME" value="Python 3.12 (Attempt3)" />
+      <option name="WORKING_DIRECTORY" value="$PROJECT_DIR$" />
+      <option name="IS_MODULE_SDK" value="false" />
+      <option name="ADD_CONTENT_ROOTS" value="true" />
+      <option name="ADD_SOURCE_ROOTS" value="true" />
+      <option name="SCRIPT_NAME" value="$PROJECT_DIR$/integration.py" />
+      <option name="PARAMETERS" value="who_test_controls.xlsx --config control_analyzer_config_final_with_columns.yaml" />
+      <option name="SHOW_COMMAND_LINE" value="false" />
+      <option name="EMULATE_TERMINAL" value="false" />
+      <option name="MODULE_MODE" value="false" />
+      <option name="REDIRECT_INPUT" value="false" />
+      <option name="INPUT_FILE" value="" />
+      <method v="2" />
+    </configuration>
+    <configuration name="Why Testing" type="PythonConfigurationType" factoryName="Python">
+      <module name="final_consolidated_analyzer" />
+      <option name="ENV_FILES" value="" />
+      <option name="INTERPRETER_OPTIONS" value="" />
+      <option name="PARENT_ENVS" value="true" />
+      <envs>
+        <env name="PYTHONUNBUFFERED" value="1" />
+      </envs>
+      <option name="SDK_HOME" value="" />
+      <option name="SDK_NAME" value="Python 3.12 (Attempt3)" />
+      <option name="WORKING_DIRECTORY" value="$PROJECT_DIR$" />
+      <option name="IS_MODULE_SDK" value="false" />
+      <option name="ADD_CONTENT_ROOTS" value="true" />
+      <option name="ADD_SOURCE_ROOTS" value="true" />
+      <option name="SCRIPT_NAME" value="$PROJECT_DIR$/integration.py" />
+      <option name="PARAMETERS" value="why_test_controls.xlsx --config control_analyzer_config_final_with_columns.yaml" />
+      <option name="SHOW_COMMAND_LINE" value="false" />
+      <option name="EMULATE_TERMINAL" value="false" />
+      <option name="MODULE_MODE" value="false" />
+      <option name="REDIRECT_INPUT" value="false" />
+      <option name="INPUT_FILE" value="" />
+      <method v="2" />
+    </configuration>
+    <list>
+      <item itemvalue="Python.AnalyzerGUI" />
+      <item itemvalue="Python.Run Analyzer" />
+      <item itemvalue="Python.What Testing" />
+      <item itemvalue="Python.When Testing" />
+      <item itemvalue="Python.Who Testing" />
+      <item itemvalue="Python.Why Testing" />
+    </list>
+    <recent_temporary>
+      <list>
+        <item itemvalue="Python.Run Analyzer" />
+      </list>
+    </recent_temporary>
+  </component>
+  <component name="SharedIndexes">
+    <attachedChunks>
+      <set>
+        <option value="bundled-python-sdk-4f4e415b4190-aa17d162503b-com.jetbrains.pycharm.community.sharedIndexes.bundled-PC-243.26053.29" />
+      </set>
+    </attachedChunks>
+  </component>
+  <component name="SpellCheckerSettings" RuntimeDictionaries="0" Folders="0" CustomDictionaries="0" DefaultDictionary="application-level" UseSingleDictionary="true" transferred="true" />
+  <component name="TaskManager">
+    <task active="true" id="Default" summary="Default task">
+      <changelist id="e7deeee2-00f6-4740-8efd-2cc08fd51cb6" name="Changes" comment="" />
+      <created>1745510207518</created>
+      <option name="number" value="Default" />
+      <option name="presentableId" value="Default" />
+      <updated>1745510207518</updated>
+    </task>
+    <servers />
+  </component>
+</project>
