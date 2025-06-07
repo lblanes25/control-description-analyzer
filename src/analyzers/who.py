@@ -61,13 +61,13 @@ NON_PERFORMER_TERMS = [
 
 # Confidence score constants
 BASE_CONFIDENCE_SCORE = 0.7
-HUMAN_TYPE_BOOST = 0.2
+HUMAN_TYPE_BOOST = 0.0  # Set to 0.0 to eliminate artificial scoring preferences
 MANAGERIAL_ROLE_BOOST = 0.2
 SPECIFIC_FINANCE_ROLE_BOOST = 0.3
 TEAM_BOOST = 0.1
 COMMITTEE_BOOST = 0.15
 ACRONYM_TEAM_BOOST = 0.2
-SYSTEM_TYPE_BOOST = 0.1
+SYSTEM_TYPE_BOOST = 0.0  # Set to 0.0 to eliminate artificial scoring preferences
 NON_PERFORMER_PENALTY = 0.1
 PASSIVE_VOICE_PENALTY = 0.1
 MAIN_SUBJECT_BOOST = 1.2
@@ -116,18 +116,19 @@ def enhanced_who_detection_v2(text: str, nlp_model, control_type: Optional[str] 
         doc = nlp_model(text)
         params = DetectionParameters(control_type, frequency, existing_keywords)
 
-        # Try to use new detector classes if available
-        if config_adapter and hasattr(config_adapter, 'get_detector'):
-            person_detector = config_adapter.get_detector('person_role')
-            system_detector = config_adapter.get_detector('system')
-            
-            if person_detector and system_detector:
-                # Use new detection logic with enhanced confidence calculations
-                person_matches = person_detector.detect_in_text(text, doc)
-                system_matches = system_detector.detect_in_text(text, doc)
-                
-                if person_matches or system_matches:
-                    return _process_detector_results(person_matches, system_matches, person_detector, system_detector, text)
+        # Skip new detector classes for now - they don't have detect_in_text method
+        # TODO: Implement detect_in_text method in PersonRoleDetector and SystemDetector
+        # if config_adapter and hasattr(config_adapter, 'get_detector'):
+        #     person_detector = config_adapter.get_detector('person_role')
+        #     system_detector = config_adapter.get_detector('system')
+        #     
+        #     if person_detector and system_detector:
+        #         # Use new detection logic with enhanced confidence calculations
+        #         person_matches = person_detector.detect_in_text(text, doc)
+        #         system_matches = system_detector.detect_in_text(text, doc)
+        #         
+        #         if person_matches or system_matches:
+        #             return _process_detector_results(person_matches, system_matches, person_detector, system_detector, text)
 
         # Initialize candidates list
         who_candidates = []
@@ -264,6 +265,9 @@ def _find_main_subjects(doc, verb_objects: List[Dict], params: DetectionParamete
 
         # Now find subjects of these main verbs
         for verb in main_verbs:
+            found_subject = False
+            
+            # First check for normal subject dependencies
             for child in verb.children:
                 if child.dep_ in ["nsubj", "nsubjpass"]:
                     # Get the full noun phrase
@@ -271,13 +275,87 @@ def _find_main_subjects(doc, verb_objects: List[Dict], params: DetectionParamete
                         if child.i >= chunk.start and child.i < chunk.end:
                             # Check that this isn't a misidentified object
                             if not any(chunk.text.lower() == obj["text"] for obj in verb_objects):
-                                main_subjects.append({
+                                subject_data = {
                                     "text": chunk.text,
                                     "span": (chunk.start, chunk.end),
                                     "is_passive": child.dep_ == "nsubjpass",
                                     "verb": verb.text,
                                     "verb_lemma": verb.lemma_
-                                })
+                                }
+                                main_subjects.append(subject_data)
+                                found_subject = True
+            
+            # SPECIAL CASE: Check for compound modifiers of the verb that should be subjects
+            # This handles the "Finance Manager reviews" parsing issue
+            if not found_subject:
+                # Look for any direct compound children of the verb
+                for child in verb.children:
+                    if child.dep_ == "compound" and child.pos_ in ["PROPN", "NOUN"]:
+                        # This might be a misanalyzed subject
+                        # Collect all tokens that form this compound phrase
+                        tokens_to_include = []
+                        
+                        # Function to recursively collect compound parts with cycle protection
+                        visited_tokens = set()
+                        def collect_compound_parts(token, tokens_list):
+                            # Prevent infinite recursion with cycle detection
+                            if token.i in visited_tokens:
+                                return
+                            visited_tokens.add(token.i)
+                            
+                            # Add compounds that come before this token
+                            for subchild in token.children:
+                                if subchild.dep_ == "compound" and subchild.i < token.i and subchild.i not in visited_tokens:
+                                    collect_compound_parts(subchild, tokens_list)
+                            tokens_list.append(token)
+                            # Add compounds that come after this token  
+                            for subchild in token.children:
+                                if subchild.dep_ == "compound" and subchild.i > token.i and subchild.i not in visited_tokens:
+                                    collect_compound_parts(subchild, tokens_list)
+                        
+                        # Collect all parts
+                        collect_compound_parts(child, tokens_to_include)
+                        
+                        # Also look for a determiner
+                        determiner = None
+                        for t in tokens_to_include:
+                            for subchild in t.children:
+                                if subchild.dep_ == "det":
+                                    determiner = subchild
+                                    break
+                        
+                        # Sort by position
+                        tokens_to_include.sort(key=lambda x: x.i)
+                        
+                        # Check if this looks like a subject (contains role indicators)
+                        role_indicators = ["manager", "director", "officer", "supervisor", 
+                                          "analyst", "specialist", "coordinator", "lead", 
+                                          "chief", "head", "accountant", "controller", 
+                                          "auditor", "team", "committee"]
+                        
+                        phrase_text = " ".join([t.text for t in tokens_to_include])
+                        if any(indicator in phrase_text.lower() for indicator in role_indicators):
+                            # Build complete subject
+                            if determiner:
+                                full_text = f"{determiner.text} {phrase_text}"
+                                start_pos = min(determiner.i, tokens_to_include[0].i)
+                                end_pos = tokens_to_include[-1].i + 1
+                            else:
+                                full_text = phrase_text
+                                start_pos = tokens_to_include[0].i
+                                end_pos = tokens_to_include[-1].i + 1
+                            
+                            subject_data = {
+                                "text": full_text,
+                                "span": (start_pos, end_pos),
+                                "is_passive": False,
+                                "verb": verb.text,
+                                "verb_lemma": verb.lemma_
+                            }
+                            main_subjects.append(subject_data)
+                            found_subject = True
+                            break  # Found our subject, stop looking
+                
 
     return main_subjects
 
@@ -849,7 +927,7 @@ def calculate_who_confidence(entity_info, control_type=None, frequency=None):
     # Apply control type consistency adjustments
     base_score = _apply_control_type_consistency(base_score, entity_info, control_type)
 
-    # Apply frequency consistency adjustments
+    # Apply frequency consistency adjustments  
     base_score = _apply_frequency_consistency(base_score, entity_info, frequency)
 
     # Ensure score is within valid range
@@ -866,9 +944,12 @@ def _has_problem_patterns(text: str) -> bool:
 
 def _apply_entity_type_scoring(base_score: float, entity_info: Dict) -> float:
     """Apply scoring adjustments based on entity type"""
+    if entity_info["type"] == "non-performer":
+        return MINIMUM_CONFIDENCE
+    
     if entity_info["type"] == "human":
-        base_score += HUMAN_TYPE_BOOST
-
+        base_score += HUMAN_TYPE_BOOST  # Now set to 0.0 to eliminate artificial scoring preferences
+        
         # Extra boost for specific managerial roles
         if any(term in entity_info["text"].lower() for term in ["manager", "director", "supervisor", "officer"]):
             base_score += MANAGERIAL_ROLE_BOOST
@@ -888,15 +969,13 @@ def _apply_entity_type_scoring(base_score: float, entity_info: Dict) -> float:
         if "committee" in entity_info["text"].lower():
             base_score += COMMITTEE_BOOST
 
-        # Acronym team boost - recognize patterns like "MCO team"
+        # Acronym team boost
         if re.search(r'[A-Z]{2,}\s+team', entity_info["text"], re.IGNORECASE):
             base_score += ACRONYM_TEAM_BOOST
 
     elif entity_info["type"] == "system":
-        base_score += SYSTEM_TYPE_BOOST
-    elif entity_info["type"] == "non-performer":
-        base_score = MINIMUM_CONFIDENCE
-
+        base_score += SYSTEM_TYPE_BOOST  # Now set to 0.0 to eliminate artificial scoring preferences
+    
     return base_score
 
 

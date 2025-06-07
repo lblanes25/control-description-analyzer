@@ -194,16 +194,23 @@ class ControlAnalyzerGUI(QMainWindow):
     def init_analyzer(self):
         """Initialize the control analyzer"""
         try:
-            # Look for config file in the same directory
+            # Look for config file in the config directory
             script_dir = os.path.dirname(os.path.abspath(__file__))
-            config_path = os.path.join(script_dir, "control_analyzer_config.yaml")
+            project_root = os.path.dirname(os.path.dirname(script_dir))
+            config_path = os.path.join(project_root, "config", "control_analyzer_updated.yaml")
 
             if os.path.exists(config_path):
                 self.analyzer = EnhancedControlAnalyzer(config_path)
                 self.status_bar.showMessage(f"Loaded configuration from {config_path}")
             else:
-                self.analyzer = EnhancedControlAnalyzer()
-                self.status_bar.showMessage("Using default configuration")
+                # Fallback to the other config file
+                fallback_config = os.path.join(project_root, "config", "control_analyzer.yaml")
+                if os.path.exists(fallback_config):
+                    self.analyzer = EnhancedControlAnalyzer(fallback_config)
+                    self.status_bar.showMessage(f"Loaded configuration from {fallback_config}")
+                else:
+                    self.analyzer = EnhancedControlAnalyzer()
+                    self.status_bar.showMessage("Using default configuration")
         except Exception as e:
             self.show_error(f"Error initializing analyzer: {str(e)}")
             self.analyzer = None
@@ -448,15 +455,15 @@ class ControlAnalyzerGUI(QMainWindow):
         # Score range filter
         filter_layout.addWidget(QLabel("Min Score:"))
         self.min_score_filter = QSpinBox()
-        self.min_score_filter.setRange(0, 100)
+        self.min_score_filter.setRange(0, 200)
         self.min_score_filter.setValue(0)
         self.min_score_filter.valueChanged.connect(self.apply_result_filters)
         filter_layout.addWidget(self.min_score_filter)
 
         filter_layout.addWidget(QLabel("Max Score:"))
         self.max_score_filter = QSpinBox()
-        self.max_score_filter.setRange(0, 100)
-        self.max_score_filter.setValue(100)
+        self.max_score_filter.setRange(0, 200)
+        self.max_score_filter.setValue(200)
         self.max_score_filter.valueChanged.connect(self.apply_result_filters)
         filter_layout.addWidget(self.max_score_filter)
 
@@ -642,7 +649,7 @@ class ControlAnalyzerGUI(QMainWindow):
         """Reset all result filters to default values"""
         self.category_filter.setCurrentIndex(0)  # "All Categories"
         self.min_score_filter.setValue(0)
-        self.max_score_filter.setValue(100)
+        self.max_score_filter.setValue(200)
         self.leader_filter.setCurrentIndex(0)  # "All Leaders"
 
         # This will trigger apply_result_filters via the connected signals
@@ -671,6 +678,9 @@ class ControlAnalyzerGUI(QMainWindow):
         # Add to dropdown
         for leader in sorted(leaders):
             self.leader_filter.addItem(leader)
+        
+        # Ensure "All Leaders" is selected after updating
+        self.leader_filter.setCurrentIndex(0)
 
     def show_result_details(self, row, column):
         """Show details for the selected control"""
