@@ -149,6 +149,11 @@ class PhraseBuilder:
                 if passive_tokens:
                     phrase_tokens = passive_tokens
 
+            # Handle compound verbs (e.g., "review and approve")
+            compound_verbs = self._detect_compound_verbs(token)
+            if compound_verbs:
+                phrase_tokens.extend(compound_verbs)
+
             # Process children with enhanced filtering
             for child in token.children:
                 # ALWAYS include direct objects (essential to action)
@@ -385,6 +390,41 @@ class PhraseBuilder:
 
         return any(phrase_lower.startswith(starter) for starter in purpose_starters)
 
+    def _detect_compound_verbs(self, token) -> List:
+        """Detect compound verbs like 'review and approve' to capture complete actions."""
+        compound_tokens = []
+        
+        try:
+            # Check if this verb has coordinated verbs (conj dependency)
+            for child in token.children:
+                if child.dep_ == "conj" and child.pos_ == "VERB":
+                    # Check if there's a conjunction word (and, or) between them
+                    conj_word = None
+                    for between_token in token.doc[token.i:child.i]:
+                        if between_token.pos_ == "CCONJ" and between_token.text.lower() in ["and", "or"]:
+                            conj_word = between_token
+                            break
+                    
+                    # Add the conjunction and the coordinated verb if found
+                    if conj_word:
+                        compound_tokens.extend([conj_word, child])
+                    else:
+                        # Even without explicit conjunction, add coordinated verb
+                        compound_tokens.append(child)
+            
+            # Also check if this verb is a coordination of another verb
+            if token.dep_ == "conj" and token.head.pos_ == "VERB":
+                # Find the conjunction word before this verb
+                for prev_token in token.doc[token.head.i:token.i]:
+                    if prev_token.pos_ == "CCONJ" and prev_token.text.lower() in ["and", "or"]:
+                        # Don't add tokens here as they'll be handled by the head verb
+                        break
+                        
+        except Exception as e:
+            print(f"Error detecting compound verbs for '{token.text}': {str(e)}")
+        
+        return compound_tokens
+
 
 class ConfidenceCalculator:
     """Handles confidence scoring for verb candidates"""
@@ -574,11 +614,16 @@ class VerbCandidateExtractor:
         return candidates
 
     def _find_sentence_verbs_enhanced(self, sent):
-        """Find relevant verbs with early purpose clause filtering"""
+        """Find relevant verbs with early purpose clause filtering and compound verb handling"""
         sent_verbs = []
+        processed_compound_verbs = set()  # Track verbs that are part of compounds
 
         for token in sent:
             if token.pos_ == "VERB" and token.lemma_.lower() in self.verb_analyzer.all_verbs:
+                # Skip if this verb is already processed as part of a compound
+                if token.i in processed_compound_verbs:
+                    continue
+                
                 # EARLY PURPOSE CLAUSE FILTERING
                 if self._is_purpose_clause_verb(token):
                     continue
@@ -590,6 +635,12 @@ class VerbCandidateExtractor:
                 # Skip "to be" verbs unless they're part of a valid construction
                 if token.lemma_ == "be" and not self._is_valid_be_construction(token):
                     continue
+
+                # Track compound verbs to avoid processing them separately
+                # If this verb has coordinated verbs, mark them as processed
+                for child in token.children:
+                    if child.dep_ == "conj" and child.pos_ == "VERB":
+                        processed_compound_verbs.add(child.i)
 
                 sent_verbs.append(token)
 

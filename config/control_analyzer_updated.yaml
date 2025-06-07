@@ -39,11 +39,11 @@ scoring:
   
   # Weight of 32 indicates highest importance in control analysis
   element_weights:
-    WHO: 32
-    WHAT: 25
-    WHEN: 20
-    WHY: 13
-    ESCALATION: 10
+    WHO: 25
+    WHAT: 35
+    WHEN: 22
+    WHY: 15
+    ESCALATION: 3
 
 # WHO Element Configuration
 who_element:
