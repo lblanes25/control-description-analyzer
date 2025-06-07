@@ -661,6 +661,26 @@ class EnhancedControlAnalyzer:
             element_config = config_elements.get(name, {})
             weight = element_config.get('weight', defaults['weight'])
             keywords = element_config.get('keywords', defaults['keywords'])
+            
+            # Special handling for WHO element - extract keywords from person_roles
+            if name == "WHO":
+                who_config = self.config.get('who_element', {})
+                person_roles = who_config.get('person_roles', {})
+                
+                # Flatten all person roles into keywords list
+                who_keywords = []
+                for role_category, roles in person_roles.items():
+                    who_keywords.extend(roles)
+                
+                # Also add group entities and human indicators
+                group_entities = who_config.get('group_entities', {})
+                for entity_category, entities in group_entities.items():
+                    who_keywords.extend(entities)
+                
+                human_indicators = who_config.get('human_indicators', [])
+                who_keywords.extend(human_indicators)
+                
+                keywords = who_keywords
 
             elements[name] = ControlElement(name, weight, keywords)
 
@@ -817,11 +837,54 @@ class EnhancedControlAnalyzer:
             validation_results["control_type_valid"] = False
             validation_results["control_type_message"] = "No control type value provided"
 
+        # Simple scoring logic - count elements that have matched keywords
+        # Use the same logic as missing_elements calculation for consistency
+        element_thresholds = self.config.get("scoring", {}).get("element_thresholds", {})
+        elements_with_content = []
+        for name, score in weighted_scores.items():
+            threshold = element_thresholds.get(name, 5.0)
+            if score >= threshold:
+                elements_with_content.append(name)
+        
+        element_count = len(elements_with_content)
+        total_elements = len(self.elements)  # Should be 5
+
+        # Enhance feedback for subthreshold elements
+        self._add_subthreshold_feedback(enhancement_feedback, normalized_scores, matched_keywords, element_thresholds)
+
+        # Get simple scoring configuration
+        simple_config = self.config.get('simple_scoring', {})
+        if simple_config.get('enabled', True):
+            # Get thresholds from config with defaults matching config file
+            thresholds = simple_config.get('thresholds', {})
+            excellent_threshold = thresholds.get('excellent', 4)  # Changed from 5 to 4
+            good_threshold = thresholds.get('good', 3)  # Changed from 4 to 3
+            
+            # Get category names from config with defaults
+            category_names = simple_config.get('category_names', {})
+            
+            # Determine simple category based on count
+            if element_count >= excellent_threshold:
+                simple_category = category_names.get('excellent', 'Excellent')
+            elif element_count >= good_threshold:
+                simple_category = category_names.get('good', 'Good')
+            else:
+                simple_category = category_names.get('needs_improvement', 'Needs Improvement')
+            
+            # Add to results
+            elements_found_count = f"{element_count}/{total_elements}"
+        else:
+            # Simple scoring disabled
+            elements_found_count = ""
+            simple_category = ""
+
         return {
             "control_id": control_id,
             "description": description,
             "total_score": total_score,
             "category": category,
+            "elements_found_count": elements_found_count,
+            "simple_category": simple_category,
             "missing_elements": missing_elements,
             "vague_terms_found": vague_terms_found,
             "weighted_scores": weighted_scores,
@@ -1727,19 +1790,44 @@ class EnhancedControlAnalyzer:
         Returns:
             Dictionary containing prepared DataFrames
         """
-        # Analysis Results DataFrame
-        basic_results = []
+        # ========== CLEAN ANALYSIS RESULTS (Main Tab) ==========
+        analysis_results = []
+        # ========== DETAILED SCORES & METADATA (Hidden Tab) ==========
+        scores_metadata = []
+        
         for r in results:
-            # Get basic data with defaults for safety
-            result_dict = {
-                "Control ID": self._safe_get(r, "control_id", ""),
-                "Description": self._safe_text(self._safe_get(r, "description", ""), 2000),
-                "Total Score": self._safe_get(r, "total_score", 0),
-                "Category": self._safe_get(r, "category", "Unknown"),
+            control_id = self._safe_get(r, "control_id", "")
+            description = self._safe_text(self._safe_get(r, "description", ""), 2000)
+            
+            # ========== Clean Analysis Results DataFrame ==========
+            analysis_dict = {
+                "Control ID": control_id,
+                "Description": description,
+                "Elements Found": self._safe_get(r, "elements_found_count", ""),
+                "Simple Category": self._safe_get(r, "simple_category", ""),
                 "Missing Elements": self._safe_text(", ".join(self._safe_get(r, "missing_elements", []))
                                                     if self._safe_get(r, "missing_elements") else "None"),
+                "WHO Keywords": self._safe_text(", ".join(self._safe_get(r, ["matched_keywords", "WHO"], []))
+                                               if self._safe_get(r, ["matched_keywords", "WHO"]) else "None"),
+                "WHEN Keywords": self._safe_text(", ".join(self._safe_get(r, ["matched_keywords", "WHEN"], []))
+                                                if self._safe_get(r, ["matched_keywords", "WHEN"]) else "None"),
+                "WHAT Keywords": self._safe_text(", ".join(self._safe_get(r, ["matched_keywords", "WHAT"], []))
+                                                if self._safe_get(r, ["matched_keywords", "WHAT"]) else "None"),
+                "WHY Keywords": self._safe_text(", ".join(self._safe_get(r, ["matched_keywords", "WHY"], []))
+                                               if self._safe_get(r, ["matched_keywords", "WHY"]) else "None"),
+                "ESCALATION Keywords": self._safe_text(", ".join(self._safe_get(r, ["matched_keywords", "ESCALATION"], []))
+                                                      if self._safe_get(r, ["matched_keywords", "ESCALATION"]) else "None"),
                 "Vague Terms": self._safe_text(", ".join(self._safe_get(r, "vague_terms_found", []))
                                                if self._safe_get(r, "vague_terms_found") else "None"),
+            }
+            analysis_results.append(analysis_dict)
+            
+            # ========== Detailed Scores & Metadata DataFrame ==========
+            metadata_dict = {
+                "Control ID": control_id,
+                "Control Description": description,
+                "Total Score": self._safe_get(r, "total_score", 0),
+                "Category": self._safe_get(r, "category", "Unknown"),
                 "WHO Score": self._safe_get(r, ["normalized_scores", "WHO"], 0),
                 "WHEN Score": self._safe_get(r, ["normalized_scores", "WHEN"], 0),
                 "WHAT Score": self._safe_get(r, ["normalized_scores", "WHAT"], 0),
@@ -1747,72 +1835,35 @@ class EnhancedControlAnalyzer:
                 "ESCALATION Score": self._safe_get(r, ["normalized_scores", "ESCALATION"], 0),
             }
 
-            # Add enhanced multi-control indicators
+            # Add enhanced multi-control indicators to metadata
             multi_detected = self._safe_get(r, ["multi_control_indicators", "detected"], False)
             multi_count = self._safe_get(r, ["multi_control_indicators", "count"], 0)
-            result_dict["Multiple Controls"] = f"Yes ({multi_count})" if multi_detected else "No"
+            metadata_dict["Multiple Controls"] = f"Yes ({multi_count})" if multi_detected else "No"
 
             # Add additional multi-control information from enhanced detection
             if 'confidence' in r.get("multi_control_indicators", {}):
-                result_dict["Multi-Control Confidence"] = r["multi_control_indicators"]["confidence"]
-
-            if 'timing_groups' in r.get("multi_control_indicators", {}):
-                groups = r["multi_control_indicators"]["timing_groups"]
-                if isinstance(groups, list):
-                    result_dict["Timing Groups"] = ", ".join(str(g) for g in groups)
+                metadata_dict["Multi-Control Confidence"] = r["multi_control_indicators"]["confidence"]
 
             if 'has_multi_frequency' in r.get("multi_control_indicators", {}):
-                result_dict["Multiple Frequencies"] = "Yes" if r["multi_control_indicators"][
+                metadata_dict["Multiple Frequencies"] = "Yes" if r["multi_control_indicators"][
                     "has_multi_frequency"] else "No"
-
-            if 'has_sequence_markers' in r.get("multi_control_indicators", {}):
-                result_dict["Sequence Markers"] = "Yes" if r["multi_control_indicators"][
-                    "has_sequence_markers"] else "No"
 
             # Add validation results if applicable
             if include_frequency:
                 freq_valid = self._safe_get(r, ["validation_results", "frequency_valid"], False)
                 freq_message = self._safe_get(r, ["validation_results", "frequency_message"], "")
-                result_dict["Frequency Valid"] = "Yes" if freq_valid else "No"
-                result_dict["Frequency Message"] = self._safe_text(freq_message)
+                metadata_dict["Frequency Valid"] = "Yes" if freq_valid else "No"
+                metadata_dict["Frequency Message"] = self._safe_text(freq_message)
 
             if include_control_type:
                 type_valid = self._safe_get(r, ["validation_results", "control_type_valid"], False)
                 type_message = self._safe_get(r, ["validation_results", "control_type_message"], "")
-                result_dict["Control Type Valid"] = "Yes" if type_valid else "No"
-                result_dict["Control Type Message"] = self._safe_text(type_message)
+                metadata_dict["Control Type Valid"] = "Yes" if type_valid else "No"
+                metadata_dict["Control Type Message"] = self._safe_text(type_message)
 
-            # Add risk alignment feedback if available
-            if include_risk_alignment:
-                why_feedback = self._safe_get(r, ["enhancement_feedback", "WHY"], None)
-                if why_feedback:
-                    result_dict["Risk Alignment Feedback"] = self._safe_text(why_feedback)
+            scores_metadata.append(metadata_dict)
 
-            basic_results.append(result_dict)
-
-        df_results = pd.DataFrame(basic_results)
-
-        # Keywords DataFrame
-        keyword_results = []
-        for r in results:
-            kw_dict = {
-                "Control ID": self._safe_get(r, "control_id", ""),
-                "WHO Keywords": self._safe_text(
-                    self._join_keywords(self._safe_get(r, ["matched_keywords", "WHO"], []))),
-                "WHEN Keywords": self._safe_text(
-                    self._join_keywords(self._safe_get(r, ["matched_keywords", "WHEN"], []))),
-                "WHAT Keywords": self._safe_text(
-                    self._join_keywords(self._safe_get(r, ["matched_keywords", "WHAT"], []))),
-                "WHY Keywords": self._safe_text(
-                    self._join_keywords(self._safe_get(r, ["matched_keywords", "WHY"], []))),
-                "ESCALATION Keywords": self._safe_text(
-                    self._join_keywords(self._safe_get(r, ["matched_keywords", "ESCALATION"], [])))
-            }
-            keyword_results.append(kw_dict)
-
-        df_keywords = pd.DataFrame(keyword_results)
-
-        # Enhancement Feedback DataFrame - the problematic one
+        # Enhancement Feedback DataFrame (keep existing structure for other tabs)
         feedback_results = []
         for r in results:
             fb_dict = {"Control ID": self._safe_get(r, "control_id", "")}
@@ -1821,27 +1872,85 @@ class EnhancedControlAnalyzer:
             for element in ["WHO", "WHEN", "WHAT", "WHY", "ESCALATION"]:
                 feedback = self._safe_get(r, ["enhancement_feedback", element], None)
 
-                # Format based on type, with extra safety
+                # Format based on type, with extra safety and consistent "None" handling
                 if isinstance(feedback, list):
-                    # Join list items with semicolons, max length 500
-                    fb_dict[f"{element} Feedback"] = self._safe_text(
-                        "; ".join(str(item) for item in feedback), 500)
+                    if feedback:  # Non-empty list
+                        # Join list items with semicolons, max length 500
+                        fb_dict[f"{element} Feedback"] = self._safe_text(
+                            "; ".join(str(item) for item in feedback), 500)
+                    else:  # Empty list
+                        fb_dict[f"{element} Feedback"] = "None"
                 elif isinstance(feedback, str):
-                    # Limit string length to 500
-                    fb_dict[f"{element} Feedback"] = self._safe_text(feedback, 500)
-                else:
+                    if feedback.strip():  # Non-empty string
+                        # Limit string length to 500
+                        fb_dict[f"{element} Feedback"] = self._safe_text(feedback, 500)
+                    else:  # Empty or whitespace-only string
+                        fb_dict[f"{element} Feedback"] = "None"
+                else:  # None or other types
                     fb_dict[f"{element} Feedback"] = "None"
 
             feedback_results.append(fb_dict)
 
         df_feedback = pd.DataFrame(feedback_results)
 
-        # Return all prepared DataFrames
+        # Create DataFrames
+        df_analysis_results = pd.DataFrame(analysis_results)
+        df_scores_metadata = pd.DataFrame(scores_metadata)
+
+        # Return restructured DataFrames
         return {
-            "df_results": df_results,
-            "df_keywords": df_keywords,
-            "df_feedback": df_feedback
+            "df_analysis_results": df_analysis_results,  # Clean main tab
+            "df_scores_metadata": df_scores_metadata,    # Hidden detailed tab
+            "df_feedback": df_feedback                   # Keep existing feedback tab
         }
+
+    def _add_subthreshold_feedback(self, enhancement_feedback: Dict, normalized_scores: Dict, 
+                                   matched_keywords: Dict, element_thresholds: Dict):
+        """
+        Add feedback for elements that have matched keywords but score below threshold.
+        
+        Args:
+            enhancement_feedback: Dictionary to modify with additional feedback
+            normalized_scores: Dictionary of element normalized scores
+            matched_keywords: Dictionary of matched keywords by element
+            element_thresholds: Dictionary of score thresholds by element
+        """
+        for element_name in ['WHO', 'WHEN', 'WHAT', 'WHY', 'ESCALATION']:
+            score = normalized_scores.get(element_name, 0)
+            keywords = matched_keywords.get(element_name, [])
+            threshold = element_thresholds.get(element_name, 5.0)
+            
+            # Check if element has keywords but score is below threshold
+            # Include cases where score is 0 but keywords were detected (heavily penalized)
+            if keywords and score < threshold:
+                # Get the first/best keyword for context
+                top_keyword = keywords[0] if keywords else "content"
+                
+                # Create element-specific feedback message
+                if element_name == "WHO":
+                    message = f"Keyword '{top_keyword}' detected but score below threshold — consider specifying a more defined role."
+                elif element_name == "WHEN":
+                    message = f"Matched '{top_keyword}', but too vague to meet scoring threshold — specify a frequency like 'monthly'."
+                elif element_name == "WHAT":
+                    message = f"Action '{top_keyword}' detected but score below threshold — consider strengthening action specificity."
+                elif element_name == "WHY":
+                    message = f"Purpose '{top_keyword}' detected but score below threshold — clarify the business objective or control purpose."
+                elif element_name == "ESCALATION":
+                    message = f"Escalation indicator '{top_keyword}' detected but score below threshold — specify escalation roles and thresholds."
+                
+                # Get existing feedback for this element
+                existing_feedback = enhancement_feedback.get(element_name, [])
+                
+                # Handle different feedback formats (ensure it's a list)
+                if existing_feedback is None:
+                    enhancement_feedback[element_name] = [message]
+                elif isinstance(existing_feedback, str):
+                    enhancement_feedback[element_name] = [existing_feedback, message]
+                elif isinstance(existing_feedback, list):
+                    enhancement_feedback[element_name] = existing_feedback + [message]
+                else:
+                    # Fallback - convert to string and create list
+                    enhancement_feedback[element_name] = [str(existing_feedback), message]
 
     def _calculate_summary_statistics(self, results: List[Dict]) -> Dict:
         """
@@ -1909,9 +2018,9 @@ class EnhancedControlAnalyzer:
             Excel workbook object
         """
         # Extract DataFrames
-        df_results = report_data["df_results"]
-        df_keywords = report_data["df_keywords"]
-        df_feedback = report_data["df_feedback"]
+        df_analysis_results = report_data["df_analysis_results"]  # Clean main tab
+        df_scores_metadata = report_data["df_scores_metadata"]    # Hidden detailed tab
+        df_feedback = report_data["df_feedback"]                  # Keep existing feedback tab
 
         # Extract summary stats
         total_controls = summary_stats["total_controls"]
@@ -1929,7 +2038,7 @@ class EnhancedControlAnalyzer:
 
         if include_frequency:
             valid_freq_count = sum(
-                1 for r in df_results["Frequency Valid"] if r == "Yes")
+                1 for r in df_scores_metadata["Frequency Valid"] if r == "Yes") if "Frequency Valid" in df_scores_metadata.columns else 0
             freq_validation_stats = {
                 "Valid": valid_freq_count,
                 "Invalid": total_controls - valid_freq_count,
@@ -1938,7 +2047,7 @@ class EnhancedControlAnalyzer:
 
         if include_control_type:
             valid_type_count = sum(
-                1 for r in df_results["Control Type Valid"] if r == "Yes")
+                1 for r in df_scores_metadata["Control Type Valid"] if r == "Yes") if "Control Type Valid" in df_scores_metadata.columns else 0
             control_type_validation_stats = {
                 "Valid": valid_type_count,
                 "Invalid": total_controls - valid_type_count,
@@ -1948,20 +2057,23 @@ class EnhancedControlAnalyzer:
         # Create workbook
         wb = Workbook()
 
-        # Analysis Results sheet
+        # ========== CLEAN ANALYSIS RESULTS SHEET (Main Tab) ==========
         ws_results = wb.active
         ws_results.title = "Analysis Results"
 
-        for r_idx, row in enumerate(dataframe_to_rows(df_results, index=False, header=True), 1):
+        for r_idx, row in enumerate(dataframe_to_rows(df_analysis_results, index=False, header=True), 1):
             for c_idx, value in enumerate(row, 1):
                 ws_results.cell(row=r_idx, column=c_idx, value=value)
 
-        # Keywords sheet
-        ws_keywords = wb.create_sheet(title="Keyword Matches")
-
-        for r_idx, row in enumerate(dataframe_to_rows(df_keywords, index=False, header=True), 1):
+        # ========== ELEMENT SCORES & METADATA SHEET (Hidden Tab) ==========
+        ws_metadata = wb.create_sheet(title="Element Scores & Metadata")
+        
+        for r_idx, row in enumerate(dataframe_to_rows(df_scores_metadata, index=False, header=True), 1):
             for c_idx, value in enumerate(row, 1):
-                ws_keywords.cell(row=r_idx, column=c_idx, value=value)
+                ws_metadata.cell(row=r_idx, column=c_idx, value=value)
+        
+        # Hide the metadata sheet by default
+        ws_metadata.sheet_state = 'hidden'
 
         # Feedback sheet (potentially problematic)
         ws_feedback = wb.create_sheet(title="Enhancement Feedback")
@@ -1984,7 +2096,8 @@ class EnhancedControlAnalyzer:
                     ws_feedback.cell(row=r_idx, column=c_idx, value=safe_value)
 
         # Multi-Control Candidates sheet (if any detected)
-        self._add_multi_control_sheet(wb, multi_control_count)
+        # Commented out - sheet is often empty and not needed
+        # self._add_multi_control_sheet(wb, multi_control_count)
 
         # Executive Summary sheet
         ws_summary = wb.create_sheet(title="Executive Summary")
@@ -2000,17 +2113,18 @@ class EnhancedControlAnalyzer:
                 ws_summary.cell(row=r_idx, column=c_idx, value=value)
 
         # Methodology sheet
-        ws_method = wb.create_sheet(title="Methodology")
-
-        # Prepare methodology text
-        methodology_text = self._get_methodology_text(
-            include_frequency, include_control_type, include_risk_alignment
-        )
-
-        # Write methodology data
-        for r_idx, row in enumerate(methodology_text, 1):
-            for c_idx, value in enumerate(row, 1):
-                ws_method.cell(row=r_idx, column=c_idx, value=value)
+        # Commented out - methodology doesn't reflect current YAML weights
+        # ws_method = wb.create_sheet(title="Methodology")
+        #
+        # # Prepare methodology text
+        # methodology_text = self._get_methodology_text(
+        #     include_frequency, include_control_type, include_risk_alignment
+        # )
+        #
+        # # Write methodology data
+        # for r_idx, row in enumerate(methodology_text, 1):
+        #     for c_idx, value in enumerate(row, 1):
+        #         ws_method.cell(row=r_idx, column=c_idx, value=value)
 
         # Example Controls sheet
         ws_examples = wb.create_sheet(title="Example Controls")
@@ -2137,16 +2251,18 @@ class EnhancedControlAnalyzer:
         """
         from openpyxl.styles import Font, PatternFill, Alignment
 
-        # Get sheet references
-        ws_results = wb["Analysis Results"]
-        ws_keywords = wb["Keyword Matches"]
-        ws_feedback = wb["Enhancement Feedback"]
-        ws_summary = wb["Executive Summary"]
-        ws_method = wb["Methodology"]
-        ws_examples = wb["Example Controls"]
+        # Get sheet references for new structure (safely)
+        sheets_to_format = []
+        
+        if "Analysis Results" in wb.sheetnames:
+            sheets_to_format.append(wb["Analysis Results"])
+        if "Element Scores & Metadata" in wb.sheetnames:
+            sheets_to_format.append(wb["Element Scores & Metadata"])
+        if "Enhancement Feedback" in wb.sheetnames:
+            sheets_to_format.append(wb["Enhancement Feedback"])
 
         # Format headers for data sheets
-        for ws in [ws_results, ws_keywords, ws_feedback]:
+        for ws in sheets_to_format:
             header_fill = PatternFill(start_color="DDEBF7", end_color="DDEBF7", fill_type="solid")
             header_font = Font(bold=True)
 
@@ -2172,40 +2288,49 @@ class EnhancedControlAnalyzer:
                 adjusted_width = min((max_length + 2) * 1.1, 50)
                 ws.column_dimensions[column_letter].width = adjusted_width
 
-        # Additional formatting for summary sheet
-        ws_summary.column_dimensions['A'].width = 35
-        ws_summary.column_dimensions['B'].width = 20
+        # Additional formatting for summary sheet (if it exists)
+        if "Executive Summary" in wb.sheetnames:
+            ws_summary = wb["Executive Summary"]
+            ws_summary.column_dimensions['A'].width = 35
+            ws_summary.column_dimensions['B'].width = 20
 
         # Set fonts for various sections
         title_font = Font(bold=True, size=14)
         section_font = Font(bold=True)
 
-        # Format summary sheet titles
-        ws_summary.cell(row=1, column=1).font = title_font
+        # Format summary sheet titles (if exists)
+        if "Executive Summary" in wb.sheetnames:
+            ws_summary = wb["Executive Summary"]
+            ws_summary.cell(row=1, column=1).font = title_font
+            
+            # Format section headers in summary
+            section_rows = [6, 11, 13]  # Key section start rows
+            for row in section_rows:
+                if row <= ws_summary.max_row:
+                    ws_summary.cell(row=row, column=1).font = section_font
 
-        # Format methodology sheet title
-        ws_method.column_dimensions['A'].width = 60
-        ws_method.cell(row=1, column=1).font = title_font
+        # Format methodology sheet title (if exists)
+        if "Methodology" in wb.sheetnames:
+            ws_method = wb["Methodology"]
+            ws_method.column_dimensions['A'].width = 60
+            ws_method.cell(row=1, column=1).font = title_font
+            
+            # Format section headers in methodology
+            method_section_rows = [3, 14, 24, 39]  # Key section start rows
+            for row in method_section_rows:
+                if row <= ws_method.max_row:
+                    ws_method.cell(row=row, column=1).font = section_font
 
-        # Format examples sheet title
-        ws_examples.column_dimensions['A'].width = 70
-        ws_examples.cell(row=1, column=1).font = title_font
+        # Format examples sheet title (if exists)
+        if "Example Controls" in wb.sheetnames:
+            ws_examples = wb["Example Controls"]
+            ws_examples.column_dimensions['A'].width = 70
+            ws_examples.cell(row=1, column=1).font = title_font
 
-        # Format section headers in summary
-        section_rows = [6, 11, 13]  # Key section start rows
-        for row in section_rows:
-            if row <= ws_summary.max_row:
-                ws_summary.cell(row=row, column=1).font = section_font
-
-        # Format section headers in methodology
-        method_section_rows = [3, 14, 24, 39]  # Key section start rows
-        for row in method_section_rows:
-            if row <= ws_method.max_row:
-                ws_method.cell(row=row, column=1).font = section_font
-
-        # Format section headers in examples
-        for row in [3, 6, 9, 12]:  # Key section start rows
-            ws_examples.cell(row=row, column=1).font = section_font
+            # Format section headers in examples
+            for row in [3, 6, 9, 12]:  # Key section start rows
+                if row <= ws_examples.max_row:
+                    ws_examples.cell(row=row, column=1).font = section_font
 
     def _save_workbook(self, wb: Workbook, output_file: str) -> bool:
         """
