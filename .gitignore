@@ -1,4 +1,3 @@
-
 # Python bytecode and cache
 __pycache__/
 *.py[cod]
@@ -31,3 +30,8 @@ venv/
 # OS-specific files
 .DS_Store
 Thumbs.db
+
+# Generated or export files
+*.html
+*.json
+*.log

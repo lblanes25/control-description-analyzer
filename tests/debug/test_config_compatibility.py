@@ -39,7 +39,7 @@ def test_config(config_file, name):
 if __name__ == "__main__":
     # Test both configurations
     test_config("config/control_analyzer.yaml", "OLD CONFIG FORMAT")
-    test_config("config/control_analyzer_updated.yaml", "NEW CONFIG FORMAT")
+    test_config("../../config/control_analyzer_updated.yaml", "NEW CONFIG FORMAT")
     
     print(f"\n{'='*60}")
     print("SUMMARY: Config migration completed successfully!")

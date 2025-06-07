@@ -5,11 +5,39 @@
   </component>
   <component name="ChangeListManager">
     <list default="true" id="e7deeee2-00f6-4740-8efd-2cc08fd51cb6" name="Changes" comment="">
-      <change afterPath="$PROJECT_DIR$/SimpleElementDisplay.md" afterDir="false" />
+      <change afterPath="$PROJECT_DIR$/tests/debug/__init__.py" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/.gitignore" beforeDir="false" afterPath="$PROJECT_DIR$/.gitignore" afterDir="false" />
       <change beforePath="$PROJECT_DIR$/.idea/workspace.xml" beforeDir="false" afterPath="$PROJECT_DIR$/.idea/workspace.xml" afterDir="false" />
-      <change beforePath="$PROJECT_DIR$/config/control_analyzer_updated.yaml" beforeDir="false" afterPath="$PROJECT_DIR$/config/control_analyzer_updated.yaml" afterDir="false" />
-      <change beforePath="$PROJECT_DIR$/src/core/analyzer.py" beforeDir="false" afterPath="$PROJECT_DIR$/src/core/analyzer.py" afterDir="false" />
-      <change beforePath="$PROJECT_DIR$/src/gui/main_window.py" beforeDir="false" afterPath="$PROJECT_DIR$/src/gui/main_window.py" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/Dual_Mode_Scoring_Project_Plan.md" beforeDir="false" />
+      <change beforePath="$PROJECT_DIR$/SimpleElementDisplay.md" beforeDir="false" />
+      <change beforePath="$PROJECT_DIR$/debug_analyzer.py" beforeDir="false" afterPath="$PROJECT_DIR$/tests/debug/debug_analyzer.py" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/debug_analyzer_output.py" beforeDir="false" afterPath="$PROJECT_DIR$/tests/debug/debug_analyzer_output.py" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/debug_element_analysis.py" beforeDir="false" afterPath="$PROJECT_DIR$/tests/debug/debug_element_analysis.py" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/debug_feedback_blanks.py" beforeDir="false" afterPath="$PROJECT_DIR$/tests/debug/debug_feedback_blanks.py" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/debug_filter_issue.py" beforeDir="false" afterPath="$PROJECT_DIR$/tests/debug/debug_filter_issue.py" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/debug_gui_results.py" beforeDir="false" afterPath="$PROJECT_DIR$/tests/debug/debug_gui_results.py" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/debug_scoring_thresholds.py" beforeDir="false" afterPath="$PROJECT_DIR$/tests/debug/debug_scoring_thresholds.py" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/debug_simple_scoring.py" beforeDir="false" afterPath="$PROJECT_DIR$/tests/debug/debug_simple_scoring.py" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/debug_staff_detection.py" beforeDir="false" afterPath="$PROJECT_DIR$/tests/debug/debug_staff_detection.py" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/debug_who_detection.py" beforeDir="false" afterPath="$PROJECT_DIR$/tests/debug/debug_who_detection.py" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/debug_who_keywords.py" beforeDir="false" afterPath="$PROJECT_DIR$/tests/debug/debug_who_keywords.py" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/enhancedwhov2" beforeDir="false" />
+      <change beforePath="$PROJECT_DIR$/final_simple_scoring_test.py" beforeDir="false" afterPath="$PROJECT_DIR$/tests/debug/final_simple_scoring_test.py" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/integrate_systems" beforeDir="false" afterPath="$PROJECT_DIR$/tests/debug/integrate_systems" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/test_config_compatibility.py" beforeDir="false" afterPath="$PROJECT_DIR$/tests/debug/test_config_compatibility.py" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/test_element_enhancements.py" beforeDir="false" afterPath="$PROJECT_DIR$/tests/debug/test_element_enhancements.py" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/test_finance_manager.py" beforeDir="false" afterPath="$PROJECT_DIR$/tests/debug/test_finance_manager.py" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/test_gui_config.py" beforeDir="false" afterPath="$PROJECT_DIR$/tests/debug/test_gui_config.py" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/test_gui_simple.py" beforeDir="false" afterPath="$PROJECT_DIR$/tests/debug/test_gui_simple.py" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/test_gui_simulation.py" beforeDir="false" afterPath="$PROJECT_DIR$/tests/debug/test_gui_simulation.py" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/test_restructured_excel.py" beforeDir="false" afterPath="$PROJECT_DIR$/tests/debug/test_restructured_excel.py" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/test_simple_enhancements.py" beforeDir="false" afterPath="$PROJECT_DIR$/tests/debug/test_simple_enhancements.py" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/test_simple_scoring.py" beforeDir="false" afterPath="$PROJECT_DIR$/tests/debug/test_simple_scoring.py" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/test_single_control_worker.py" beforeDir="false" afterPath="$PROJECT_DIR$/tests/debug/test_single_control_worker.py" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/test_spacy_parsing.py" beforeDir="false" afterPath="$PROJECT_DIR$/tests/debug/test_spacy_parsing.py" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/test_subthreshold_feedback.py" beforeDir="false" afterPath="$PROJECT_DIR$/tests/debug/test_subthreshold_feedback.py" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/test_syntax.py" beforeDir="false" afterPath="$PROJECT_DIR$/tests/debug/test_syntax.py" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/verify_excel_structure.py" beforeDir="false" afterPath="$PROJECT_DIR$/tests/debug/verify_excel_structure.py" afterDir="false" />
     </list>
     <option name="SHOW_DIALOG" value="false" />
     <option name="HIGHLIGHT_CONFLICTS" value="true" />
@@ -34,22 +62,23 @@
     <option name="hideEmptyMiddlePackages" value="true" />
     <option name="showLibraryContents" value="true" />
   </component>
-  <component name="PropertiesComponent">{
-  &quot;keyToString&quot;: {
-    &quot;Python.AnalyzerGUI.executor&quot;: &quot;Run&quot;,
-    &quot;Python.Run Analyzer.executor&quot;: &quot;Run&quot;,
-    &quot;Python.What Testing.executor&quot;: &quot;Run&quot;,
-    &quot;Python.When Testing.executor&quot;: &quot;Run&quot;,
-    &quot;Python.Who Testing.executor&quot;: &quot;Run&quot;,
-    &quot;Python.Why Testing.executor&quot;: &quot;Run&quot;,
-    &quot;RunOnceActivity.ShowReadmeOnStart&quot;: &quot;true&quot;,
-    &quot;RunOnceActivity.git.unshallow&quot;: &quot;true&quot;,
-    &quot;git-widget-placeholder&quot;: &quot;refactorupdate&quot;,
-    &quot;ignore.virus.scanning.warn.message&quot;: &quot;true&quot;,
-    &quot;last_opened_file_path&quot;: &quot;C:/Users/luria/OneDrive/Desktop/final_consolidated_analyzer&quot;,
-    &quot;settings.editor.selected.configurable&quot;: &quot;preferences.rainbow.brackets.disable.when&quot;
+  <component name="PropertiesComponent"><![CDATA[{
+  "keyToString": {
+    "ASKED_SHARE_PROJECT_CONFIGURATION_FILES": "true",
+    "Python.AnalyzerGUI.executor": "Run",
+    "Python.Run Analyzer.executor": "Run",
+    "Python.What Testing.executor": "Run",
+    "Python.When Testing.executor": "Run",
+    "Python.Who Testing.executor": "Run",
+    "Python.Why Testing.executor": "Run",
+    "RunOnceActivity.ShowReadmeOnStart": "true",
+    "RunOnceActivity.git.unshallow": "true",
+    "git-widget-placeholder": "main",
+    "ignore.virus.scanning.warn.message": "true",
+    "last_opened_file_path": "C:/Users/luria/OneDrive/Desktop/final_consolidated_analyzer",
+    "settings.editor.selected.configurable": "preferences.rainbow.brackets.disable.when"
   }
-}</component>
+}]]></component>
   <component name="RecentsManager">
     <key name="CopyFile.RECENT_KEYS">
       <recent name="C:\Users\luria\OneDrive\Desktop\final_consolidated_analyzer" />
@@ -198,11 +227,11 @@
     </configuration>
     <list>
       <item itemvalue="Python.AnalyzerGUI" />
-      <item itemvalue="Python.Run Analyzer" />
       <item itemvalue="Python.What Testing" />
       <item itemvalue="Python.When Testing" />
       <item itemvalue="Python.Who Testing" />
       <item itemvalue="Python.Why Testing" />
+      <item itemvalue="Python.Run Analyzer" />
     </list>
     <recent_temporary>
       <list>
