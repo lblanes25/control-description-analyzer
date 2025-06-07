@@ -5,16 +5,11 @@
   </component>
   <component name="ChangeListManager">
     <list default="true" id="e7deeee2-00f6-4740-8efd-2cc08fd51cb6" name="Changes" comment="">
+      <change afterPath="$PROJECT_DIR$/SimpleElementDisplay.md" afterDir="false" />
       <change beforePath="$PROJECT_DIR$/.idea/workspace.xml" beforeDir="false" afterPath="$PROJECT_DIR$/.idea/workspace.xml" afterDir="false" />
       <change beforePath="$PROJECT_DIR$/config/control_analyzer_updated.yaml" beforeDir="false" afterPath="$PROJECT_DIR$/config/control_analyzer_updated.yaml" afterDir="false" />
-      <change beforePath="$PROJECT_DIR$/src/analyzers/who.py" beforeDir="false" afterPath="$PROJECT_DIR$/src/analyzers/who.py" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/src/core/analyzer.py" beforeDir="false" afterPath="$PROJECT_DIR$/src/core/analyzer.py" afterDir="false" />
       <change beforePath="$PROJECT_DIR$/src/gui/main_window.py" beforeDir="false" afterPath="$PROJECT_DIR$/src/gui/main_window.py" afterDir="false" />
-      <change beforePath="$PROJECT_DIR$/src/gui/visualizations/dashboard.html" beforeDir="false" afterPath="$PROJECT_DIR$/src/gui/visualizations/dashboard.html" afterDir="false" />
-      <change beforePath="$PROJECT_DIR$/src/gui/visualizations/element_radar.html" beforeDir="false" afterPath="$PROJECT_DIR$/src/gui/visualizations/element_radar.html" afterDir="false" />
-      <change beforePath="$PROJECT_DIR$/src/gui/visualizations/leader_avg_score.html" beforeDir="false" afterPath="$PROJECT_DIR$/src/gui/visualizations/leader_avg_score.html" afterDir="false" />
-      <change beforePath="$PROJECT_DIR$/src/gui/visualizations/leader_missing_elements.html" beforeDir="false" afterPath="$PROJECT_DIR$/src/gui/visualizations/leader_missing_elements.html" afterDir="false" />
-      <change beforePath="$PROJECT_DIR$/src/gui/visualizations/missing_elements.html" beforeDir="false" afterPath="$PROJECT_DIR$/src/gui/visualizations/missing_elements.html" afterDir="false" />
-      <change beforePath="$PROJECT_DIR$/src/gui/visualizations/score_distribution.html" beforeDir="false" afterPath="$PROJECT_DIR$/src/gui/visualizations/score_distribution.html" afterDir="false" />
     </list>
     <option name="SHOW_DIALOG" value="false" />
     <option name="HIGHLIGHT_CONFLICTS" value="true" />
@@ -51,7 +46,7 @@
     &quot;RunOnceActivity.git.unshallow&quot;: &quot;true&quot;,
     &quot;git-widget-placeholder&quot;: &quot;refactorupdate&quot;,
     &quot;ignore.virus.scanning.warn.message&quot;: &quot;true&quot;,
-    &quot;last_opened_file_path&quot;: &quot;C:/Users/luria/OneDrive/Desktop/final_consolidated_analyzer/src/gui/main_window.py&quot;,
+    &quot;last_opened_file_path&quot;: &quot;C:/Users/luria/OneDrive/Desktop/final_consolidated_analyzer&quot;,
     &quot;settings.editor.selected.configurable&quot;: &quot;preferences.rainbow.brackets.disable.when&quot;
   }
 }</component>

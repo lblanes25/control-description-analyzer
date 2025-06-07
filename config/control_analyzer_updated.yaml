@@ -45,6 +45,20 @@ scoring:
     WHY: 15
     ESCALATION: 3
 
+# Simple scoring configuration
+simple_scoring:
+  enabled: true
+  thresholds:
+    excellent: 4      # 4+ elements required
+    good: 3          # 3+ elements required
+    # Anything below is "Needs Improvement"
+  
+  # Optional: Different names for categories
+  category_names:
+    excellent: "Meets expectations"
+    good: "Requires Attention"
+    needs_improvement: "Needs Improvement"
+
 # WHO Element Configuration
 who_element:
   # PersonRoleDetector configuration

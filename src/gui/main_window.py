@@ -582,6 +582,25 @@ class ControlAnalyzerGUI(QMainWindow):
         if not self.results:
             return
 
+        # Check if simple scoring is enabled and update columns accordingly
+        if self.analyzer and self.analyzer.config:
+            simple_config = self.analyzer.config.get('simple_scoring', {})
+            if simple_config.get('enabled', True):
+                # Update column count and headers for simple scoring
+                self.results_table.setColumnCount(10)  # Was 8, now 10
+                self.results_table.setHorizontalHeaderLabels([
+                    "Control ID", "Score", "Category", 
+                    "Elements Found", "Simple Category",  # New columns
+                    "WHO", "WHEN", "WHAT", "WHY", "ESCALATION"
+                ])
+            else:
+                # Keep original columns
+                self.results_table.setColumnCount(8)
+                self.results_table.setHorizontalHeaderLabels([
+                    "Control ID", "Score", "Category",
+                    "WHO", "WHEN", "WHAT", "WHY", "ESCALATION"
+                ])
+
         # Get filter values
         category_filter = self.category_filter.currentText()
         min_score = self.min_score_filter.value()
@@ -631,14 +650,43 @@ class ControlAnalyzerGUI(QMainWindow):
 
             self.results_table.setItem(row_idx, 2, category_item)
 
-            # Element scores
-            normalized_scores = result.get("normalized_scores", {})
-            weighted_scores = result.get("weighted_scores", {})
-            self.results_table.setItem(row_idx, 3, QTableWidgetItem(f"{normalized_scores.get('WHO', 0):.1f}"))
-            self.results_table.setItem(row_idx, 4, QTableWidgetItem(f"{normalized_scores.get('WHEN', 0):.1f}"))
-            self.results_table.setItem(row_idx, 5, QTableWidgetItem(f"{normalized_scores.get('WHAT', 0):.1f}"))
-            self.results_table.setItem(row_idx, 6, QTableWidgetItem(f"{normalized_scores.get('WHY', 0):.1f}"))
-            self.results_table.setItem(row_idx, 7, QTableWidgetItem(f"{normalized_scores.get('ESCALATION', 0):.1f}"))
+            # Check if simple scoring is enabled
+            simple_config = self.analyzer.config.get('simple_scoring', {}) if self.analyzer and self.analyzer.config else {}
+            if simple_config.get('enabled', True):
+                # Add simple scoring columns
+                elements_item = QTableWidgetItem(result.get("elements_found_count", ""))
+                self.results_table.setItem(row_idx, 3, elements_item)
+                
+                simple_category = result.get("simple_category", "")
+                simple_category_item = QTableWidgetItem(simple_category)
+                
+                # Apply color coding to simple category
+                if simple_category == "Excellent" or simple_category == "Meets expectations":
+                    simple_category_item.setBackground(Qt.green)
+                elif simple_category == "Good" or simple_category == "Requires Attention":
+                    simple_category_item.setBackground(Qt.yellow)
+                else:
+                    simple_category_item.setBackground(Qt.red)
+                
+                self.results_table.setItem(row_idx, 4, simple_category_item)
+                
+                # Element scores (shifted by 2)
+                normalized_scores = result.get("normalized_scores", {})
+                weighted_scores = result.get("weighted_scores", {})
+                self.results_table.setItem(row_idx, 5, QTableWidgetItem(f"{normalized_scores.get('WHO', 0):.1f}"))
+                self.results_table.setItem(row_idx, 6, QTableWidgetItem(f"{normalized_scores.get('WHEN', 0):.1f}"))
+                self.results_table.setItem(row_idx, 7, QTableWidgetItem(f"{normalized_scores.get('WHAT', 0):.1f}"))
+                self.results_table.setItem(row_idx, 8, QTableWidgetItem(f"{normalized_scores.get('WHY', 0):.1f}"))
+                self.results_table.setItem(row_idx, 9, QTableWidgetItem(f"{normalized_scores.get('ESCALATION', 0):.1f}"))
+            else:
+                # Element scores (original positions)
+                normalized_scores = result.get("normalized_scores", {})
+                weighted_scores = result.get("weighted_scores", {})
+                self.results_table.setItem(row_idx, 3, QTableWidgetItem(f"{normalized_scores.get('WHO', 0):.1f}"))
+                self.results_table.setItem(row_idx, 4, QTableWidgetItem(f"{normalized_scores.get('WHEN', 0):.1f}"))
+                self.results_table.setItem(row_idx, 5, QTableWidgetItem(f"{normalized_scores.get('WHAT', 0):.1f}"))
+                self.results_table.setItem(row_idx, 6, QTableWidgetItem(f"{normalized_scores.get('WHY', 0):.1f}"))
+                self.results_table.setItem(row_idx, 7, QTableWidgetItem(f"{normalized_scores.get('ESCALATION', 0):.1f}"))
 
             row_idx += 1
 
