@@ -1473,10 +1473,19 @@ def enhance_why_detection(text: str, nlp, risk_description: Optional[str] = None
 
 def _convert_result_to_dict(result: DetectionResult) -> Dict[str, Any]:
     """Convert DetectionResult to dictionary for backward compatibility."""
+    # Add inference transparency improvements
+    improvement_suggestions = result.improvement_suggestions.copy()
+    
+    # If the result is inferred, add specific feedback about explicit purpose statements
+    if result.is_inferred and result.top_match:
+        inference_feedback = "Consider adding explicit purpose statement (e.g., 'to ensure...', 'in order to...', 'for the purpose of...')"
+        if inference_feedback not in improvement_suggestions:
+            improvement_suggestions.append(inference_feedback)
+    
     return {
-        "explicit_why": [_convert_candidate_to_dict(c) for c in result.explicit_why],
-        "implicit_why": [_convert_candidate_to_dict(c) for c in result.implicit_why],
-        "top_match": _convert_candidate_to_dict(result.top_match) if result.top_match else None,
+        "explicit_why": [_convert_candidate_to_dict(c, is_inference=False) for c in result.explicit_why],
+        "implicit_why": [_convert_candidate_to_dict(c, is_inference=True) for c in result.implicit_why],
+        "top_match": _convert_candidate_to_dict(result.top_match, is_inference=result.is_inferred) if result.top_match else None,
         "why_category": result.why_category,
         "score": result.score,
         "is_inferred": result.is_inferred,
@@ -1487,22 +1496,28 @@ def _convert_result_to_dict(result: DetectionResult) -> Dict[str, Any]:
         "vague_why_phrases": result.vague_why_phrases,
         "is_actual_mitigation": result.is_actual_mitigation,
         "intent_category": result.intent_category,
-        "improvement_suggestions": result.improvement_suggestions,
+        "improvement_suggestions": improvement_suggestions,
         "is_multi_control": result.is_multi_control
     }
 
 
-def _convert_candidate_to_dict(candidate: Optional[PurposeCandidate]) -> Optional[Dict[str, Any]]:
-    """Convert PurposeCandidate to dictionary."""
+def _convert_candidate_to_dict(candidate: Optional[PurposeCandidate], is_inference: bool = False) -> Optional[Dict[str, Any]]:
+    """Convert PurposeCandidate to dictionary with inference labeling."""
     if not candidate:
         return None
 
+    # Add inference label to text if this is an inferred purpose
+    candidate_text = candidate.text
+    if is_inference and not candidate_text.lower().endswith("(inferred)"):
+        candidate_text = f"{candidate_text} (inferred)"
+
     result = {
-        "text": candidate.text,
+        "text": candidate_text,
         "method": candidate.method,
         "score": candidate.score,
         "span": candidate.span,
-        "context": candidate.context
+        "context": candidate.context,
+        "is_inference": is_inference
     }
 
     # Add optional fields if present

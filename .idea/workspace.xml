@@ -5,83 +5,19 @@
   </component>
   <component name="ChangeListManager">
     <list default="true" id="e7deeee2-00f6-4740-8efd-2cc08fd51cb6" name="Changes" comment="">
-      <change beforePath="$PROJECT_DIR$/.idea/.gitignore" beforeDir="false" />
-      <change beforePath="$PROJECT_DIR$/.idea/.name" beforeDir="false" />
-      <change beforePath="$PROJECT_DIR$/.idea/final_consolidated_analyzer.iml" beforeDir="false" />
-      <change beforePath="$PROJECT_DIR$/.idea/inspectionProfiles/profiles_settings.xml" beforeDir="false" />
-      <change beforePath="$PROJECT_DIR$/.idea/misc.xml" beforeDir="false" />
-      <change beforePath="$PROJECT_DIR$/.idea/modules.xml" beforeDir="false" />
-      <change beforePath="$PROJECT_DIR$/.idea/vcs.xml" beforeDir="false" />
-      <change beforePath="$PROJECT_DIR$/Control Description Analyzer - User Guide.txt" beforeDir="false" />
-      <change beforePath="$PROJECT_DIR$/Control_Test_Data2.xlsx" beforeDir="false" />
-      <change beforePath="$PROJECT_DIR$/EdgeCaseResults.xlsx" beforeDir="false" />
-      <change beforePath="$PROJECT_DIR$/README.md.txt" beforeDir="false" />
-      <change beforePath="$PROJECT_DIR$/README_updated.md" beforeDir="false" />
-      <change beforePath="$PROJECT_DIR$/System_Architecture.md" beforeDir="false" />
-      <change beforePath="$PROJECT_DIR$/Test Text.txt" beforeDir="false" />
-      <change beforePath="$PROJECT_DIR$/Test_Controls_for_Analyzer.csv" beforeDir="false" />
-      <change beforePath="$PROJECT_DIR$/auditor_review_template.py" beforeDir="false" />
-      <change beforePath="$PROJECT_DIR$/column_mapping_test.py" beforeDir="false" />
-      <change beforePath="$PROJECT_DIR$/config_manager.py" beforeDir="false" />
-      <change beforePath="$PROJECT_DIR$/control_analyzer.py" beforeDir="false" />
-      <change beforePath="$PROJECT_DIR$/control_analyzer_architecture.md" beforeDir="false" />
-      <change beforePath="$PROJECT_DIR$/control_analyzer_config_final_with_columns.yaml" beforeDir="false" />
-      <change beforePath="$PROJECT_DIR$/control_analyzer_gui.py" beforeDir="false" />
-      <change beforePath="$PROJECT_DIR$/convert_to_spacy_format.py" beforeDir="false" />
-      <change beforePath="$PROJECT_DIR$/debug_wrapper.py" beforeDir="false" />
-      <change beforePath="$PROJECT_DIR$/enhanced_diagnostic.py" beforeDir="false" />
-      <change beforePath="$PROJECT_DIR$/enhanced_escalation.py" beforeDir="false" />
-      <change beforePath="$PROJECT_DIR$/enhanced_multi_control.py" beforeDir="false" />
-      <change beforePath="$PROJECT_DIR$/enhanced_what.py" beforeDir="false" />
-      <change beforePath="$PROJECT_DIR$/enhanced_when.py" beforeDir="false" />
-      <change beforePath="$PROJECT_DIR$/enhanced_who.py" beforeDir="false" />
-      <change beforePath="$PROJECT_DIR$/enhanced_why.py" beforeDir="false" />
-      <change beforePath="$PROJECT_DIR$/generate_review_template.py" beforeDir="false" />
-      <change beforePath="$PROJECT_DIR$/generated_controls_for_testing.xlsx" beforeDir="false" />
-      <change beforePath="$PROJECT_DIR$/generated_controls_for_testing_edge_cases.xlsx" beforeDir="false" />
-      <change beforePath="$PROJECT_DIR$/generated_controls_for_testing_realistic.xlsx" beforeDir="false" />
-      <change beforePath="$PROJECT_DIR$/gitignore" beforeDir="false" />
-      <change beforePath="$PROJECT_DIR$/integration.py" beforeDir="false" />
-      <change beforePath="$PROJECT_DIR$/integration_verbose.py" beforeDir="false" />
-      <change beforePath="$PROJECT_DIR$/migration_plan.md" beforeDir="false" />
-      <change beforePath="$PROJECT_DIR$/package.py" beforeDir="false" />
-      <change beforePath="$PROJECT_DIR$/project_scaffold_README.md" beforeDir="false" />
-      <change beforePath="$PROJECT_DIR$/simple_diagnostic.py" beforeDir="false" />
-      <change beforePath="$PROJECT_DIR$/tableau-hyper-integration.py" beforeDir="false" />
-      <change beforePath="$PROJECT_DIR$/tableau_workbook_generator.py" beforeDir="false" />
-      <change beforePath="$PROJECT_DIR$/test_controls_enhanced_modules.xlsx" beforeDir="false" />
-      <change beforePath="$PROJECT_DIR$/test_controls_enhanced_modules_analysis_results.xlsx" beforeDir="false" />
-      <change beforePath="$PROJECT_DIR$/test_controls_enhanced_modules_analysis_results1.xlsx" beforeDir="false" />
-      <change beforePath="$PROJECT_DIR$/test_controls_enhanced_modules_analysis_results2.xlsx" beforeDir="false" />
-      <change beforePath="$PROJECT_DIR$/test_controls_enhanced_modules_analysis_results_backup.xlsx" beforeDir="false" />
-      <change beforePath="$PROJECT_DIR$/test_controls_enhanced_modules_analysis_results_visualizations/dashboard.html" beforeDir="false" />
-      <change beforePath="$PROJECT_DIR$/test_controls_enhanced_modules_analysis_results_visualizations/element_radar.html" beforeDir="false" />
-      <change beforePath="$PROJECT_DIR$/test_controls_enhanced_modules_analysis_results_visualizations/leader_avg_score.html" beforeDir="false" />
-      <change beforePath="$PROJECT_DIR$/test_controls_enhanced_modules_analysis_results_visualizations/leader_missing_elements.html" beforeDir="false" />
-      <change beforePath="$PROJECT_DIR$/test_controls_enhanced_modules_analysis_results_visualizations/missing_elements.html" beforeDir="false" />
-      <change beforePath="$PROJECT_DIR$/test_controls_enhanced_modules_analysis_results_visualizations/score_distribution.html" beforeDir="false" />
-      <change beforePath="$PROJECT_DIR$/test_controls_enhanced_modules_analysis_results_visualizations/vague_terms.html" beforeDir="false" />
-      <change beforePath="$PROJECT_DIR$/test_controls_enhanced_modules_analysis_results_visualizations/worst_controls.html" beforeDir="false" />
-      <change beforePath="$PROJECT_DIR$/test_controls_multi_control.xlsx" beforeDir="false" />
-      <change beforePath="$PROJECT_DIR$/test_elements_suite.py" beforeDir="false" />
-      <change beforePath="$PROJECT_DIR$/test_enhanced_multi_control.py" beforeDir="false" />
-      <change beforePath="$PROJECT_DIR$/test_regression_controls.py" beforeDir="false" />
-      <change beforePath="$PROJECT_DIR$/train_spacy_model.py" beforeDir="false" />
-      <change beforePath="$PROJECT_DIR$/validate_spans.py" beforeDir="false" />
-      <change beforePath="$PROJECT_DIR$/visualization.py" beforeDir="false" />
-      <change beforePath="$PROJECT_DIR$/visualizations/dashboard.html" beforeDir="false" />
-      <change beforePath="$PROJECT_DIR$/visualizations/element_radar.html" beforeDir="false" />
-      <change beforePath="$PROJECT_DIR$/visualizations/leader_avg_score.html" beforeDir="false" />
-      <change beforePath="$PROJECT_DIR$/visualizations/leader_missing_elements.html" beforeDir="false" />
-      <change beforePath="$PROJECT_DIR$/visualizations/missing_elements.html" beforeDir="false" />
-      <change beforePath="$PROJECT_DIR$/visualizations/score_distribution.html" beforeDir="false" />
-      <change beforePath="$PROJECT_DIR$/visualizations/worst_controls.html" beforeDir="false" />
-      <change beforePath="$PROJECT_DIR$/visualize_entities.py" beforeDir="false" />
-      <change beforePath="$PROJECT_DIR$/what_test_controls.xlsx" beforeDir="false" />
-      <change beforePath="$PROJECT_DIR$/when_test_controls.xlsx" beforeDir="false" />
-      <change beforePath="$PROJECT_DIR$/when_test_controls_analysis_results.xlsx" beforeDir="false" />
-      <change beforePath="$PROJECT_DIR$/who_test_controls.xlsx" beforeDir="false" />
-      <change beforePath="$PROJECT_DIR$/why_test_controls.xlsx" beforeDir="false" />
+      <change beforePath="$PROJECT_DIR$/.idea/workspace.xml" beforeDir="false" afterPath="$PROJECT_DIR$/.idea/workspace.xml" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/README.md" beforeDir="false" afterPath="$PROJECT_DIR$/README.md" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/docs/config_migration_guide.md" beforeDir="false" afterPath="$PROJECT_DIR$/docs/ElementEnhancements_Guide.md" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/src/analyzers/what.py" beforeDir="false" afterPath="$PROJECT_DIR$/src/analyzers/what.py" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/src/analyzers/when.py" beforeDir="false" afterPath="$PROJECT_DIR$/src/analyzers/when.py" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/src/analyzers/why.py" beforeDir="false" afterPath="$PROJECT_DIR$/src/analyzers/why.py" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/src/gui/visualizations/dashboard.html" beforeDir="false" afterPath="$PROJECT_DIR$/src/gui/visualizations/dashboard.html" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/src/gui/visualizations/element_radar.html" beforeDir="false" afterPath="$PROJECT_DIR$/src/gui/visualizations/element_radar.html" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/src/gui/visualizations/leader_avg_score.html" beforeDir="false" afterPath="$PROJECT_DIR$/src/gui/visualizations/leader_avg_score.html" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/src/gui/visualizations/leader_missing_elements.html" beforeDir="false" afterPath="$PROJECT_DIR$/src/gui/visualizations/leader_missing_elements.html" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/src/gui/visualizations/missing_elements.html" beforeDir="false" afterPath="$PROJECT_DIR$/src/gui/visualizations/missing_elements.html" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/src/gui/visualizations/score_distribution.html" beforeDir="false" afterPath="$PROJECT_DIR$/src/gui/visualizations/score_distribution.html" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/src/gui/visualizations/worst_controls.html" beforeDir="false" afterPath="$PROJECT_DIR$/src/gui/visualizations/worst_controls.html" afterDir="false" />
     </list>
     <option name="SHOW_DIALOG" value="false" />
     <option name="HIGHLIGHT_CONFLICTS" value="true" />

@@ -100,7 +100,33 @@ class TimingDetector:
 
     def get_vague_term_suggestion(self, vague_term: str) -> str:
         """Get specific alternative suggestion for vague timing terms."""
-        return self.vague_suggestions.get(vague_term.lower(), "a specific timeframe or frequency")
+        # Check configured suggestions first
+        configured_suggestion = self.vague_suggestions.get(vague_term.lower())
+        if configured_suggestion:
+            return configured_suggestion
+        
+        # Fallback to default specific suggestions based on the enhancement guide
+        default_suggestions = {
+            'periodically': 'specific frequency (daily, weekly, monthly, quarterly)',
+            'regularly': 'specific frequency (daily, weekly, monthly, quarterly)', 
+            'occasionally': 'specific frequency (monthly, quarterly, annually) or event-based timing (upon notification, after review)',
+            'as needed': 'specific trigger events (upon request, when threshold exceeded, if issues identified)',
+            'when needed': 'specific trigger events (upon request, when threshold exceeded, if issues identified)',
+            'if needed': 'specific trigger events (upon request, when threshold exceeded, if issues identified)',
+            'as appropriate': 'specific timing criteria (monthly, quarterly, or upon specific events)',
+            'when appropriate': 'specific timing criteria (monthly, quarterly, or upon specific events)',
+            'if appropriate': 'specific timing criteria (monthly, quarterly, or upon specific events)',
+            'as required': 'specific requirements or triggers (weekly, monthly, or upon notification)',
+            'when required': 'specific requirements or triggers (weekly, monthly, or upon notification)',
+            'if required': 'specific requirements or triggers (weekly, monthly, or upon notification)',
+            'from time to time': 'specific frequency (monthly, quarterly, semi-annually)',
+            'on demand': 'specific request processes (upon formal request, within X business days)',
+            'as and when': 'specific triggering conditions and timing',
+            'upon request': 'specific request processing timeframe (within X business days)',
+            'when requested': 'specific request processing timeframe (within X business days)'
+        }
+        
+        return default_suggestions.get(vague_term.lower(), "a specific timeframe or frequency")
 
     def _create_empty_result(self) -> TimingDetectionResult:
         """Create empty result for when no text is provided."""
@@ -605,12 +631,7 @@ class TimingDetector:
                         detected_frequencies.append(candidate.frequency)
                     specific_timing_found = True
 
-            # Timeline pattern detection
-            if self._should_check_additional_patterns(timing_candidates, detected_frequencies):
-                timeline_candidates = self._detect_timeline_patterns(normalized_text, vague_terms_found)
-                timing_candidates.extend(timeline_candidates)
-                if timeline_candidates:
-                    specific_timing_found = True
+            # Timeline pattern detection removed - "within X days" patterns are handled elsewhere
 
             # Business cycle and event pattern detection
             if self._should_check_additional_patterns(timing_candidates, detected_frequencies):
@@ -711,6 +732,21 @@ class TimingDetector:
 
         except Exception as e:
             print(f"Error in WHEN detection: {str(e)}")
+            
+            # Provide more specific error feedback based on the type of error
+            error_message = f"Error in analysis: {str(e)}"
+            improvement_suggestions = []
+            
+            # Check for common error scenarios and provide targeted feedback
+            if "NoneType" in str(e):
+                improvement_suggestions.append("Text processing failed. Ensure input text is properly formatted.")
+            elif "spacy" in str(e).lower() or "nlp" in str(e).lower():
+                improvement_suggestions.append("Language processing error. Check that text contains valid timing information.")
+            elif "regex" in str(e).lower() or "pattern" in str(e).lower():
+                improvement_suggestions.append("Pattern matching error. Text may contain unusual formatting or characters.")
+            else:
+                improvement_suggestions.append(f"Analysis failed: {str(e)}. Please verify text format and content.")
+            
             return TimingDetectionResult(
                 candidates=[],
                 top_match=None,
@@ -718,9 +754,11 @@ class TimingDetector:
                 extracted_keywords=[],
                 multi_frequency_detected=False,
                 frequencies=[],
-                validation=ValidationResult(is_valid=False, message=f"Error in analysis: {str(e)}"),
+                validation=ValidationResult(is_valid=False, message=error_message),
                 vague_terms=[],
-                improvement_suggestions=["Unable to analyze timing due to an error."]
+                improvement_suggestions=improvement_suggestions,
+                specific_timing_found=False,
+                primary_vague_term=False
             )
 
 
