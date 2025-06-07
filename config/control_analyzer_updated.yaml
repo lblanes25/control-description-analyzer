@@ -37,13 +37,14 @@ scoring:
     excellent: 75
     good: 50
   
-  # Weight of 32 indicates highest importance in control analysis
+  # Weight distribution adjusted to include WHERE element
   element_weights:
-    WHO: 25
-    WHAT: 35
-    WHEN: 22
-    WHY: 15
-    ESCALATION: 3
+    WHO: 25      # Accountability (unchanged)
+    WHAT: 30     # Core action (reduced from 35)
+    WHEN: 20     # Timing (reduced from 22) 
+    WHERE: 10    # Location (new element)
+    WHY: 12      # Purpose (reduced from 15)
+    ESCALATION: 3  # Exception handling (unchanged)
 
 # Simple scoring configuration
 simple_scoring:
@@ -677,6 +678,13 @@ what_element:
     moderate_action_only: 0.8
     weak_action_only: 0.6
     no_clear_action: 0.4
+    
+  # WHERE component configuration for WHAT element
+  where_importance_factor: 0.1  # How much WHERE affects WHAT scoring
+  where_boost_range:
+    min: 1.05  # Minimum boost for any WHERE
+    max: 1.15  # Maximum boost for perfect WHERE
+  maintain_where_in_phrase: true  # Keep WHERE in action phrases
 
 # WHY Element Configuration
 why_element:
@@ -1012,3 +1020,87 @@ column_mapping:
     - Responsible Individual
     - Process Owner
     - Control Responsible
+
+# Shared WHERE Configuration
+# Used by both WHAT and WHERE analyzers for consistent location detection
+shared_where_config:
+  detection_patterns:
+    systems:
+      erp_systems:
+        keywords: [sap, oracle, peoplesoft, jde, dynamics, netsuite, quickbooks, sage]
+        boost_factor: 1.2
+      collaboration:
+        keywords: [sharepoint, teams, slack, confluence, jira, servicenow, salesforce]
+        boost_factor: 1.1
+      financial_systems:
+        keywords: [hyperion, essbase, cognos, tableau, power bi, qlik, alteryx]
+        boost_factor: 1.15
+      custom_systems:
+        keywords: [system, application, platform, software, database, repository, portal]
+        boost_factor: 0.9
+        
+    locations:
+      physical:
+        keywords: [office, facility, branch, headquarters, hq, building, floor, room, desk, workstation]
+        context_required: true
+        boost_factor: 1.0
+      geographic:
+        keywords: [region, country, state, city, global, domestic, international, local, remote]
+        boost_factor: 0.95
+      virtual:
+        keywords: [cloud, server, network, vpn, remote, online, digital, virtual]
+        boost_factor: 1.05
+        
+    organizational:
+      departments:
+        keywords: [finance, accounting, hr, human resources, it, information technology, operations, sales, marketing, legal, compliance, audit]
+        case_sensitive: false
+        boost_factor: 1.1
+      levels:
+        keywords: [corporate, divisional, regional, local, group, team, unit, department, function]
+        hierarchical: true
+        boost_factor: 0.95
+      entities:
+        keywords: [subsidiary, affiliate, joint venture, partnership, parent company, holding company]
+        boost_factor: 1.05
+
+  # Confidence scoring rules for WHERE detection
+  confidence_factors:
+    explicit_preposition: 1.2  # "in SAP"
+    implicit_reference: 0.8    # "SAP report"
+    contextual_mention: 0.6    # "the system" (after SAP mentioned)
+    proper_noun: 1.1          # Proper noun usage
+    acronym: 0.9              # All-caps acronyms
+
+# WHERE Element Configuration
+where_element:
+  weight: 10
+  min_score_threshold: 0.3
+  vague_location_penalty: 0.5
+  
+  # Control type relevance multipliers
+  control_type_relevance:
+    IT: 
+      systems: 1.5
+      locations: 0.7
+      organizational: 1.0
+    Automated:
+      systems: 1.4
+      locations: 0.8
+      organizational: 1.0
+    Physical:
+      systems: 0.7
+      locations: 1.5
+      organizational: 1.0
+    Manual:
+      systems: 0.8
+      locations: 1.2
+      organizational: 1.3
+    Financial:
+      systems: 1.0
+      locations: 0.8
+      organizational: 1.3
+    Compliance:
+      systems: 1.1
+      locations: 0.9
+      organizational: 1.2

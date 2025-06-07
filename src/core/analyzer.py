@@ -36,6 +36,7 @@ from src.utils.config_adapter import ConfigAdapter
 from src.analyzers.who import enhanced_who_detection_v2
 from src.analyzers.what import analyze_control_actions, mark_possible_standalone_controls  # Updated import
 from src.analyzers.when import enhance_when_detection
+from src.analyzers.where import enhance_where_detection
 from src.analyzers.why import enhance_why_detection
 from src.analyzers.escalation import enhance_escalation_detection
 from src.analyzers.multi_control import detect_multi_control
@@ -198,6 +199,17 @@ class ControlElement:
                         if filtered:
                             self.matched_keywords = filtered
 
+            elif self.name == "WHERE":
+                control_type = context.get("control_type")
+                config_adapter = context.get("config_adapter")
+                config = config_adapter.config if config_adapter else {}
+                
+                self.enhanced_results = enhance_where_detection(
+                    text, nlp, self.keywords, control_type, config)
+                self.score = self.enhanced_results.get("score", 0) if self.enhanced_results else 0
+                self.normalized_score = self.score * 100
+                self.matched_keywords = self.enhanced_results.get("matched_keywords", []) if self.enhanced_results else []
+
             elif self.name == "ESCALATION":
                 self.enhanced_results = enhance_escalation_detection(text, nlp, self.keywords)
                 self.score = self.enhanced_results.get("score", 0) if self.enhanced_results else 0
@@ -283,6 +295,8 @@ class ControlElement:
             return self.enhanced_results.get("suggestions", [])
         elif self.name == "WHEN":
             return self.enhanced_results.get("improvement_suggestions", [])
+        elif self.name == "WHERE":
+            return self.enhanced_results.get("suggestions", [])
         elif self.name == "WHY":
             return self.enhanced_results.get("feedback")
         elif self.name == "ESCALATION":
@@ -648,11 +662,13 @@ class EnhancedControlAnalyzer:
         config_elements = self.config.get('elements', {})
 
         # Default element configuration if not specified in YAML
+        # Weights adjusted to include WHERE element
         default_elements = {
-            "WHO": {"weight": 32, "keywords": []},
-            "WHEN": {"weight": 22, "keywords": []},
-            "WHAT": {"weight": 32, "keywords": []},
-            "WHY": {"weight": 11, "keywords": []},
+            "WHO": {"weight": 25, "keywords": []},
+            "WHAT": {"weight": 30, "keywords": []},
+            "WHEN": {"weight": 20, "keywords": []},
+            "WHERE": {"weight": 10, "keywords": []},
+            "WHY": {"weight": 12, "keywords": []},
             "ESCALATION": {"weight": 3, "keywords": []}
         }
 

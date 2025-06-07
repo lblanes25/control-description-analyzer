@@ -4,10 +4,13 @@ Enhanced WHAT Detection Module - COMPLETE FIXED VERSION
 This module implements a sophisticated detection system for the WHAT element in control descriptions.
 It identifies actions being performed in controls using a layered approach of detection methods
 with explicit fallback strategies, and also handles WHERE components within action phrases.
+
+Updated to use shared WHERE detection service for consistent location detection.
 """
 
 from typing import Dict, List, Any, Optional, Tuple, Set
 import re
+from .where_service import WhereDetectionService
 
 
 class WhatDetectionConfig:
@@ -20,6 +23,10 @@ class WhatDetectionConfig:
         self.control_type = control_type
         self.config = config or {}
         self.debug_mode = self._get_config_value("debug_mode", False)
+        
+        # Initialize shared WHERE service
+        self.where_service = WhereDetectionService(config)
+        self.where_importance_factor = self._get_config_value("where_importance_factor", 0.1)
 
     def _get_config_value(self, key: str, default_value: Any) -> Any:
         """Helper function to safely get configuration values with defaults"""
@@ -287,19 +294,38 @@ class PhraseBuilder:
         return False
 
     def _detect_where_in_prep_phrase(self, prep_token) -> Optional[Dict]:
-        """Detect WHERE components with better patterns"""
+        """Detect WHERE components using shared WHERE service"""
         try:
-            where_systems = self.config._get_config_value("where_systems", [
-                "system", "application", "database", "platform", "sharepoint", "sap", "oracle"
-            ])
-
-            prep_text = " ".join(t.text.lower() for t in prep_token.subtree)
-
-            for indicator in where_systems:
+            # Get the prepositional phrase text
+            prep_phrase = " ".join(t.text for t in prep_token.subtree)
+            
+            # Use shared WHERE service for detection
+            where_results = self.config.where_service.detect_where_components(
+                prep_phrase, self.config.spacy_doc
+            )
+            
+            # Check if any WHERE components were found
+            if where_results.get('primary_component'):
+                primary = where_results['primary_component']
+                return {
+                    "text": primary['text'],
+                    "type": primary['type'],
+                    "confidence": primary.get('confidence', 0.5),
+                    "category": primary.get('category', 'unknown')
+                }
+            
+            # Fallback to basic detection for backward compatibility
+            prep_text = prep_phrase.lower()
+            basic_indicators = ["system", "application", "database", "platform", 
+                              "sharepoint", "sap", "oracle"]
+            
+            for indicator in basic_indicators:
                 if indicator in prep_text:
                     return {
-                        "text": prep_text,
-                        "type": "system"
+                        "text": prep_phrase,
+                        "type": "system",
+                        "confidence": 0.6,
+                        "category": "basic_detection"
                     }
 
             return None
@@ -493,11 +519,22 @@ class ConfidenceCalculator:
         if self.config.debug_mode:
             print(f"  After completeness: {confidence:.2f}")
 
-        # WHERE component boost
+        # WHERE component boost (enhanced with confidence-based scaling)
         if has_where_component:
-            confidence *= self.WHERE_COMPONENT_BOOST
+            # Default boost if has_where_component is just a boolean
+            where_boost = self.WHERE_COMPONENT_BOOST
+            
+            # Enhanced boost if has_where_component contains confidence data
+            if isinstance(has_where_component, dict) and 'confidence' in has_where_component:
+                # Scale boost based on WHERE confidence (0.6 to 1.0 confidence -> 1.05 to 1.15 boost)
+                where_confidence = has_where_component.get('confidence', 0.5)
+                min_boost = self.config._get_config_value('where_boost_range', {}).get('min', 1.05)
+                max_boost = self.config._get_config_value('where_boost_range', {}).get('max', 1.15)
+                where_boost = min_boost + (max_boost - min_boost) * where_confidence
+                
+            confidence *= where_boost
             if self.config.debug_mode:
-                print(f"  After WHERE boost: {confidence:.2f}")
+                print(f"  After WHERE boost ({where_boost:.2f}): {confidence:.2f}")
 
         # Root verb boost
         if token.dep_ == "ROOT":
