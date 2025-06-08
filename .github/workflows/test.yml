@@ -18,12 +18,12 @@ jobs:
     - uses: actions/checkout@v4
     
     - name: Set up Python ${{ matrix.python-version }}
-      uses: actions/setup-python@v4
+      uses: actions/setup-python@v5
       with:
         python-version: ${{ matrix.python-version }}
     
     - name: Cache pip dependencies
-      uses: actions/cache@v3
+      uses: actions/cache@v4
       with:
         path: ~/.cache/pip
         key: ${{ runner.os }}-pip-${{ matrix.python-version }}-${{ hashFiles('**/requirements*.txt') }}
@@ -76,7 +76,7 @@ jobs:
         pytest tests/unit/ tests/integration/ --cov=src --cov-report=xml --cov-report=html --cov-report=term-missing --cov-fail-under=85
     
     - name: Upload coverage to Codecov
-      uses: codecov/codecov-action@v3
+      uses: codecov/codecov-action@v4
       with:
         file: ./coverage.xml
         flags: unittests
@@ -84,7 +84,7 @@ jobs:
         fail_ci_if_error: false
     
     - name: Archive test results
-      uses: actions/upload-artifact@v3
+      uses: actions/upload-artifact@v4
       if: always()
       with:
         name: test-results-${{ matrix.python-version }}
@@ -94,7 +94,7 @@ jobs:
           .coverage
     
     - name: Archive performance results
-      uses: actions/upload-artifact@v3
+      uses: actions/upload-artifact@v4
       if: success()
       with:
         name: performance-results-${{ matrix.python-version }}
@@ -110,7 +110,7 @@ jobs:
     - uses: actions/checkout@v4
     
     - name: Set up Python 3.11
-      uses: actions/setup-python@v4
+      uses: actions/setup-python@v5
       with:
         python-version: "3.11"
     
@@ -126,7 +126,7 @@ jobs:
         pytest tests/performance/ -v --tb=short -m "slow" --timeout=300
     
     - name: Archive slow test results
-      uses: actions/upload-artifact@v3
+      uses: actions/upload-artifact@v4
       if: always()
       with:
         name: slow-test-results
@@ -141,7 +141,7 @@ jobs:
     - uses: actions/checkout@v4
     
     - name: Set up Python 3.11
-      uses: actions/setup-python@v4
+      uses: actions/setup-python@v5
       with:
         python-version: "3.11"
     
@@ -171,7 +171,7 @@ jobs:
         mypy src/ --ignore-missing-imports || echo "MyPy check completed"
     
     - name: Archive quality results
-      uses: actions/upload-artifact@v3
+      uses: actions/upload-artifact@v4
       if: always()
       with:
         name: quality-check-results
@@ -188,7 +188,7 @@ jobs:
     - uses: actions/checkout@v4
     
     - name: Set up Python 3.11
-      uses: actions/setup-python@v4
+      uses: actions/setup-python@v5
       with:
         python-version: "3.11"
     
@@ -204,7 +204,7 @@ jobs:
         pytest tests/performance/ --benchmark-only --benchmark-json=benchmark_results.json || echo "Benchmark tests completed"
     
     - name: Archive benchmark results
-      uses: actions/upload-artifact@v3
+      uses: actions/upload-artifact@v4
       with:
         name: benchmark-results
         path: benchmark_results.json
