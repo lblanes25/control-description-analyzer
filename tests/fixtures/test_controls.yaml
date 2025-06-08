@@ -1,0 +1,335 @@
+# Test Control Library for Control Description Analyzer
+# Comprehensive test cases covering all scenarios from testing strategy
+
+good_controls:
+  - id: "GOOD_001"
+    description: "The Finance Manager reviews and approves journal entries in SAP daily"
+    automation_field: "hybrid"
+    expected_elements: ["WHO", "WHAT", "WHERE", "WHEN"]
+    expected_category: "Effective"
+    expected_classification: "system"
+    expected_where_points: 10
+    expected_core_scores:
+      WHO: 27.0  # Strong WHO element
+      WHAT: 35.0  # Strong WHAT element  
+      WHEN: 35.0  # Strong WHEN element
+
+  - id: "GOOD_002"  
+    description: "Security guard performs physical vault inspection at each branch office weekly"
+    automation_field: "manual"
+    expected_elements: ["WHO", "WHAT", "WHERE", "WHEN"]
+    expected_category: "Effective"
+    expected_classification: "location_dependent"
+    expected_where_points: 5
+    expected_core_scores:
+      WHO: 30.0
+      WHAT: 35.0
+      WHEN: 35.0
+
+  - id: "GOOD_003"
+    description: "System validates transaction limits and flags exceptions for manager review"
+    automation_field: "manual"
+    expected_elements: ["WHO", "WHAT", "WHERE", "WHEN"]
+    expected_category: "Adequate"
+    expected_classification: "system"
+    expected_where_points: 10
+    expected_upgraded: true
+    expected_core_scores:
+      WHO: 30.0
+      WHAT: 35.0
+      WHEN: 0.0  # Missing explicit timing
+
+  - id: "GOOD_004"
+    description: "The Internal Audit Manager conducts quarterly risk assessments using standardized procedures"
+    automation_field: "manual"
+    expected_elements: ["WHO", "WHAT", "WHEN"]
+    expected_category: "Adequate"
+    expected_classification: "other"
+    expected_where_points: 0
+
+problematic_controls:
+  - id: "PROB_001"
+    description: "Management periodically reviews reports as appropriate and timely addresses issues"
+    automation_field: "manual"
+    expected_vague_terms: ["periodically", "appropriate", "timely", "issues"]
+    expected_demerits: -8  # 4 terms * -2 each
+    expected_category: "Needs Improvement"
+    expected_classification: "other"
+    expected_where_points: 0
+
+  - id: "PROB_002"
+    description: "Staff performs various reconciliations and reviews when necessary"
+    automation_field: "manual"
+    expected_vague_terms: ["various", "when necessary"]
+    expected_demerits: -4
+    expected_issues: ["vague_who", "vague_what", "vague_timing"]
+    expected_category: "Needs Improvement"
+
+  - id: "PROB_003"
+    description: "Someone occasionally checks things if needed and reports issues appropriately"
+    automation_field: "manual"
+    expected_vague_terms: ["occasionally", "if needed", "issues", "appropriately"]
+    expected_demerits: -8
+    expected_category: "Needs Improvement"
+    expected_missing_elements: ["WHO", "WHAT", "WHEN", "WHERE"]
+
+  - id: "PROB_004"
+    description: "Regular monitoring occurs and actions are taken as deemed necessary by relevant personnel"
+    automation_field: "manual"
+    expected_vague_terms: ["as deemed necessary", "relevant"]
+    expected_demerits: -4
+    expected_issues: ["vague_who", "vague_what", "vague_timing"]
+
+edge_cases:
+  - id: "EDGE_001"
+    description: ""
+    automation_field: "manual"
+    expected_category: "Needs Improvement"
+    expected_classification: "other"
+    expected_total_score: 0
+
+  - id: "EDGE_002"
+    description: "X"
+    automation_field: "manual"
+    expected_category: "Needs Improvement"
+    expected_classification: "other"
+    expected_total_score: 0
+
+  - id: "EDGE_003"
+    description: "Very long control description with multiple sentences and complex structure that tests the system's ability to handle extended text input and identify elements across multiple clauses and subclauses. This control involves comprehensive analysis of financial data across various systems including SAP ERP for transaction processing, Oracle database for data storage, and SharePoint for document management. The Finance Manager collaborates with the Accounting Team to perform detailed monthly reconciliations of all general ledger accounts, validating transaction accuracy through systematic comparison of system-generated reports with external documentation. Upon identification of discrepancies, immediate investigation procedures are initiated, involving root cause analysis and corrective action implementation. All findings are thoroughly documented in standardized templates and escalated through appropriate management channels for review and approval before period-end close procedures."
+    automation_field: "hybrid"
+    expected_category: "Effective"
+    expected_classification: "system"
+    expected_performance: "< 2 seconds"
+    expected_where_points: 10
+
+  - id: "EDGE_004"
+    description: "NULL"
+    automation_field: null
+    expected_category: "Needs Improvement"
+    expected_classification: "other"
+
+classification_test_cases:
+  automated_controls:
+    - id: "AUTO_001"
+      description: "Automated system generates daily transaction reports"
+      automation_field: "automated"
+      expected_classification: "system"
+      expected_upgraded: false
+      expected_where_points: 10
+
+    - id: "AUTO_002"
+      description: "Application automatically calculates interest and posts entries"
+      automation_field: "automated"
+      expected_classification: "system"
+      expected_upgraded: false
+
+  manual_upgrade_cases:
+    - id: "UPGRADE_001"
+      description: "System validates transaction limits and flags exceptions"
+      automation_field: "manual"
+      expected_classification: "system"
+      expected_upgraded: true
+      expected_reason: "control-participating system interaction"
+
+    - id: "UPGRADE_002"
+      description: "Oracle calculates balances and generates variance reports"
+      automation_field: "manual"
+      expected_classification: "system"
+      expected_upgraded: true
+
+    - id: "UPGRADE_003"
+      description: "Application identifies duplicate transactions and alerts users"
+      automation_field: "manual"
+      expected_classification: "system"
+      expected_upgraded: true
+
+  documentation_only_cases:
+    - id: "DOC_001"
+      description: "Branch manager reviews daily exception report and saves findings in SharePoint"
+      automation_field: "manual"
+      expected_classification: "other"
+      expected_upgraded: false
+      expected_reason: "documentation only"
+
+    - id: "DOC_002"
+      description: "Analyst stores reconciliation results in database"
+      automation_field: "manual"
+      expected_classification: "other"
+      expected_upgraded: false
+
+    - id: "DOC_003"
+      description: "User uploads supporting documents to file system"
+      automation_field: "manual"
+      expected_classification: "other"
+      expected_upgraded: false
+
+  location_dependent_cases:
+    - id: "LOC_001"
+      description: "Security guard performs physical vault inspection"
+      automation_field: "manual"
+      expected_classification: "location_dependent"
+      expected_upgraded: false
+      expected_where_points: 5
+
+    - id: "LOC_002"
+      description: "Teller performs cash count at branch location"
+      automation_field: "manual"
+      expected_classification: "location_dependent"
+      expected_upgraded: false
+
+    - id: "LOC_003"
+      description: "Facilities manager inspects physical premises weekly"
+      automation_field: "manual"
+      expected_classification: "location_dependent"
+      expected_upgraded: false
+
+  hybrid_prominence_cases:
+    - id: "HYB_SYS_001"
+      description: "System calculates balances while analyst validates results at branch"
+      automation_field: "hybrid"
+      expected_classification: "system"
+      expected_prominence: "system"
+
+    - id: "HYB_LOC_001"
+      description: "Manager physically inspects vault using system checklist"
+      automation_field: "hybrid"
+      expected_classification: "location_dependent"
+      expected_prominence: "location"
+
+    - id: "HYB_OTHER_001"
+      description: "Team reviews reports using various tools"
+      automation_field: "hybrid"
+      expected_classification: "other"
+      expected_prominence: "neither"
+
+vague_term_test_cases:
+  - id: "VAGUE_001"
+    description: "Management periodically reviews appropriate reports"
+    expected_vague_terms: ["periodically", "appropriate"]
+    expected_count: 2
+
+  - id: "VAGUE_002"
+    description: "Staff regularly performs necessary validations as needed"
+    expected_vague_terms: ["regularly", "necessary", "as needed"]
+    expected_count: 3
+
+  - id: "VAGUE_003"
+    description: "Timely resolution of issues occurs promptly when required"
+    expected_vague_terms: ["timely", "issues", "promptly", "when required"]
+    expected_count: 4
+
+  - id: "VAGUE_004"
+    description: "Appropriate measures are taken to address various concerns adequately"
+    expected_vague_terms: ["appropriate", "various", "adequately"]
+    expected_count: 3
+
+  - id: "VAGUE_005"
+    description: "The Finance Manager validates invoices accurately in SAP daily"
+    expected_vague_terms: []
+    expected_count: 0
+
+performance_test_controls:
+  single_control:
+    - id: "PERF_001"
+      description: "The Finance Manager reviews and approves journal entries in SAP monthly"
+      expected_max_time_ms: 100
+      expected_category: "Effective"
+
+  batch_controls_10:
+    count: 10
+    base_description: "Manager reviews transaction {id} and validates accuracy daily in system"
+    expected_max_time_seconds: 1
+
+  batch_controls_100:
+    count: 100
+    base_description: "The {role} performs {action} of {object} {frequency} in {system}"
+    roles: ["Finance Manager", "Accounting Supervisor", "Internal Auditor", "Risk Analyst"]
+    actions: ["review", "validation", "reconciliation", "analysis"]
+    objects: ["transactions", "reports", "balances", "statements"]
+    frequencies: ["daily", "weekly", "monthly", "quarterly"]
+    systems: ["SAP", "Oracle", "Excel", "SharePoint"]
+    expected_max_time_seconds: 10
+
+element_detection_test_cases:
+  who_element_tests:
+    - id: "WHO_001"
+      description: "The Finance Manager reviews transactions daily"
+      expected_who_type: "specific_role"
+      expected_who_confidence: "high"
+
+    - id: "WHO_002"
+      description: "Accounting team validates balances monthly"
+      expected_who_type: "team"
+      expected_who_confidence: "medium"
+
+    - id: "WHO_003"
+      description: "Management reviews reports quarterly"
+      expected_who_type: "vague"
+      expected_who_confidence: "low"
+
+  what_element_tests:
+    - id: "WHAT_001"
+      description: "Manager reviews and approves journal entries"
+      expected_what_strength: "strong"
+      expected_what_verbs: ["reviews", "approves"]
+
+    - id: "WHAT_002"
+      description: "Staff ensures compliance with procedures"
+      expected_what_strength: "moderate"
+      expected_what_verbs: ["ensures"]
+
+    - id: "WHAT_003"
+      description: "Team considers various options"
+      expected_what_strength: "weak"
+      expected_what_verbs: ["considers"]
+
+  when_element_tests:
+    - id: "WHEN_001"
+      description: "Manager reviews reports daily"
+      expected_when_type: "explicit_frequency"
+      expected_when_confidence: "high"
+
+    - id: "WHEN_002"
+      description: "Team performs reconciliation at month-end"
+      expected_when_type: "period_end"
+      expected_when_confidence: "high"
+
+    - id: "WHEN_003"
+      description: "Staff validates data when necessary"
+      expected_when_type: "conditional"
+      expected_when_confidence: "low"
+
+  where_element_tests:
+    - id: "WHERE_001"
+      description: "Manager validates transactions in SAP"
+      expected_where_type: "system"
+      expected_where_confidence: "high"
+
+    - id: "WHERE_002"
+      description: "Guard inspects vault at branch office"
+      expected_where_type: "physical_location"
+      expected_where_confidence: "high"
+
+    - id: "WHERE_003"
+      description: "Team works across multiple departments"
+      expected_where_type: "organizational"
+      expected_where_confidence: "medium"
+
+multi_control_test_cases:
+  - id: "MULTI_001"
+    description: "Manager reviews transactions, validates amounts, approves entries, and generates reports while maintaining documentation"
+    expected_multiple_controls: true
+    expected_action_count: 5
+    expected_demerits: -10
+
+  - id: "MULTI_002"
+    description: "The Finance Manager reviews and approves journal entries daily"
+    expected_multiple_controls: false
+    expected_action_count: 2
+
+  - id: "MULTI_003"
+    description: "Staff performs reconciliation. Then validates balances. Finally generates variance reports. Additionally, documents findings and escalates exceptions."
+    expected_multiple_controls: true
+    expected_action_count: 6
+    expected_demerits: -10

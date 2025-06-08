@@ -40,6 +40,7 @@ from src.analyzers.where import enhance_where_detection
 from src.analyzers.why import enhance_why_detection
 from src.analyzers.escalation import enhance_escalation_detection
 from src.analyzers.multi_control import detect_multi_control
+from src.analyzers.control_classifier import ControlTypeClassifier
 
 # Set up logging
 logger = logging.getLogger("control_analyzer")
@@ -661,15 +662,16 @@ class EnhancedControlAnalyzer:
         elements = {}
         config_elements = self.config.get('elements', {})
 
-        # Default element configuration if not specified in YAML
-        # Weights adjusted to include WHERE element
+        # Default element configuration for new conditional scoring model
+        # Core elements with updated weights (WHO:30, WHAT:35, WHEN:35)
+        # WHERE is now conditional, WHY/ESCALATION are feedback-only
         default_elements = {
-            "WHO": {"weight": 25, "keywords": []},
-            "WHAT": {"weight": 30, "keywords": []},
-            "WHEN": {"weight": 20, "keywords": []},
-            "WHERE": {"weight": 10, "keywords": []},
-            "WHY": {"weight": 12, "keywords": []},
-            "ESCALATION": {"weight": 3, "keywords": []}
+            "WHO": {"weight": 30, "keywords": [], "type": "core"},
+            "WHAT": {"weight": 35, "keywords": [], "type": "core"},
+            "WHEN": {"weight": 35, "keywords": [], "type": "core"},
+            "WHERE": {"weight": 0, "keywords": [], "type": "conditional"},  # Conditional scoring
+            "WHY": {"weight": 0, "keywords": [], "type": "feedback"},      # Feedback-only
+            "ESCALATION": {"weight": 0, "keywords": [], "type": "feedback"} # Feedback-only
         }
 
         # Merge defaults with configuration
@@ -702,10 +704,237 @@ class EnhancedControlAnalyzer:
 
         return elements
 
+    def _calculate_conditional_score(self, elements: Dict[str, Any], control_description: str,
+                                   automation_field: Optional[str] = None) -> Dict[str, Any]:
+        """
+        Calculate score using the new conditional WHERE scoring model.
+        
+        Implements the ScoringUpdate.md methodology:
+        - Core elements: WHO (30%) + WHAT (35%) + WHEN (35%) = 100%
+        - Conditional WHERE: 0-10 points based on control type
+        - Demerits: Uncapped penalties for quality issues
+        - WHY/ESCALATION: Feedback-only
+        
+        Args:
+            elements: Dictionary of analyzed control elements
+            control_description: Original control description
+            automation_field: Control_Automation field value
+            
+        Returns:
+            Dictionary with scoring results
+        """
+        # Initialize control type classifier
+        classifier = ControlTypeClassifier(self.config)
+        
+        # Classify the control type
+        classification = classifier.classify_control(
+            control_description, automation_field
+        )
+        
+        # Get scoring configuration
+        scoring_config = self.config.get('scoring', {})
+        core_weights = scoring_config.get('core_elements', {
+            'WHO': 30, 'WHAT': 35, 'WHEN': 35
+        })
+        conditional_config = scoring_config.get('conditional_elements', {}).get('WHERE', {
+            'system_controls': 10, 'location_dependent': 5, 'other': 0
+        })
+        
+        # Map control types to config keys
+        control_type_mapping = {
+            'system': 'system_controls',
+            'location_dependent': 'location_dependent', 
+            'other': 'other'
+        }
+        demerits_config = scoring_config.get('demerits', {})
+        
+        # Calculate core element scores (WHO + WHAT + WHEN)
+        core_score = 0
+        element_scores = {}
+        
+        for element_name, weight in core_weights.items():
+            if element_name in elements:
+                element = elements[element_name]
+                # Convert normalized score (0-100) to weighted contribution
+                weighted_score = (element.normalized_score * weight) / 100
+                core_score += weighted_score
+                element_scores[element_name] = weighted_score
+            else:
+                element_scores[element_name] = 0
+        
+        # Calculate conditional WHERE score
+        where_points = 0
+        control_type = classification['final_type']
+        
+        if 'WHERE' in elements:
+            where_element = elements['WHERE']
+            
+            # Award points based on control type if WHERE element is detected
+            # Use any positive score as indication of WHERE presence
+            if where_element.normalized_score > 0:  # Any WHERE detection
+                config_key = control_type_mapping.get(control_type, 'other')
+                where_points = conditional_config.get(config_key, 0)
+            else:
+                where_points = 0  # No WHERE element detected = 0 points
+        
+        element_scores['WHERE'] = where_points
+        
+        # Calculate demerits
+        total_demerits = self._calculate_demerits(
+            elements, control_description, demerits_config
+        )
+        
+        # Calculate final score
+        final_score = core_score + where_points + total_demerits
+        final_score = max(0, final_score)  # Ensure non-negative
+        
+        # Determine category
+        category_thresholds = scoring_config.get('category_thresholds', {
+            'effective': 75, 'adequate': 50
+        })
+        
+        if final_score >= category_thresholds.get('effective', 75):
+            category = "Effective"
+        elif final_score >= category_thresholds.get('adequate', 50):
+            category = "Adequate"
+        else:
+            category = "Needs Improvement"
+        
+        return {
+            'total_score': final_score,
+            'category': category,
+            'core_score': core_score,
+            'where_points': where_points,
+            'total_demerits': total_demerits,
+            'element_scores': element_scores,
+            'control_classification': classification,
+            'scoring_breakdown': {
+                'WHO': element_scores.get('WHO', 0),
+                'WHAT': element_scores.get('WHAT', 0), 
+                'WHEN': element_scores.get('WHEN', 0),
+                'WHERE': where_points,
+                'demerits': total_demerits
+            }
+        }
+    
+    def _calculate_demerits(self, elements: Dict[str, Any], control_description: str,
+                           demerits_config: Dict[str, Any]) -> float:
+        """
+        Calculate uncapped demerits based on control quality issues.
+        
+        Args:
+            elements: Analyzed control elements
+            control_description: Original control description
+            demerits_config: Demerit configuration
+            
+        Returns:
+            Total demerit points (negative value)
+        """
+        total_demerits = 0
+        
+        # Vague terms penalty (uncapped)
+        vague_terms = self._detect_vague_terms(control_description)
+        vague_penalty = len(vague_terms) * demerits_config.get('vague_terms', -2)
+        total_demerits += vague_penalty
+        
+        # Multiple controls penalty
+        if self._detect_multiple_controls(control_description):
+            total_demerits += demerits_config.get('multiple_controls', -10)
+        
+        # Missing accountability penalty
+        if self._has_missing_accountability(elements):
+            total_demerits += demerits_config.get('missing_accountability', -5)
+        
+        # Untestable timing penalty
+        if self._has_untestable_timing(elements):
+            total_demerits += demerits_config.get('untestable_timing', -5)
+        
+        return total_demerits
+    
+    def _detect_vague_terms(self, text: str) -> List[str]:
+        """Detect vague terms in control description."""
+        vague_terms = [
+            'periodically', 'regularly', 'timely', 'promptly', 'appropriate',
+            'adequate', 'sufficient', 'reasonable', 'necessary', 'proper',
+            'various', 'multiple', 'several', 'some', 'any', 'all',
+            'as needed', 'when necessary', 'if required', 'issues'
+        ]
+        
+        found_terms = []
+        text_lower = text.lower()
+        
+        # Use word boundaries to ensure we match whole words
+        import re
+        for term in vague_terms:
+            pattern = r'\b' + re.escape(term) + r'\b'
+            if re.search(pattern, text_lower):
+                found_terms.append(term)
+        
+        return found_terms
+    
+    def _detect_multiple_controls(self, text: str) -> bool:
+        """Detect if multiple controls are combined in one description."""
+        # Enhanced detection - look for multiple action sequences
+        sentences = text.split('.')
+        action_count = 0
+        
+        # Comprehensive list of control action verbs
+        action_verbs = [
+            'review', 'approve', 'validate', 'verify', 'reconcile', 
+            'analyze', 'investigate', 'assess', 'evaluate', 'test',
+            'generate', 'escalate', 'perform', 'conduct', 'execute',
+            'monitor', 'track', 'compare', 'confirm', 'ensure',
+            'identify', 'flag', 'calculate', 'process', 'prepare'
+        ]
+        
+        for sentence in sentences:
+            sentence_lower = sentence.lower()
+            if any(verb in sentence_lower for verb in action_verbs):
+                action_count += 1
+        
+        return action_count > 2  # More than 2 distinct actions suggests multiple controls
+    
+    def _has_missing_accountability(self, elements: Dict[str, Any]) -> bool:
+        """Check if WHO element has clear accountability."""
+        if 'WHO' not in elements:
+            return True
+        
+        who_element = elements['WHO']
+        if who_element.normalized_score < 30:  # Low WHO score indicates poor accountability
+            return True
+        
+        # Check for vague WHO terms
+        who_keywords = who_element.matched_keywords
+        vague_who_terms = ['management', 'team', 'staff', 'personnel', 'someone']
+        
+        if any(term.lower() in vague_who_terms for term in who_keywords):
+            return True
+        
+        return False
+    
+    def _has_untestable_timing(self, elements: Dict[str, Any]) -> bool:
+        """Check if WHEN element provides testable timing."""
+        if 'WHEN' not in elements:
+            return True
+        
+        when_element = elements['WHEN']
+        if when_element.normalized_score < 30:  # Low WHEN score indicates poor timing
+            return True
+        
+        # Check for untestable timing terms
+        when_keywords = when_element.matched_keywords
+        untestable_terms = ['periodically', 'regularly', 'as needed', 'when necessary']
+        
+        if any(term.lower() in untestable_terms for term in when_keywords):
+            return True
+        
+        return False
+
     def analyze_control(self, control_id: str, description: str,
                         frequency: Optional[str] = None,
                         control_type: Optional[str] = None,
-                        risk_description: Optional[str] = None) -> Dict[str, Any]:
+                        risk_description: Optional[str] = None,
+                        automation_field: Optional[str] = None) -> Dict[str, Any]:
         """
         Analyze a single control description and return detailed results.
         Enhanced with specialized detection modules for each element.
@@ -778,40 +1007,23 @@ class EnhancedControlAnalyzer:
         # This ensures we have the element analysis results to feed into multi-control detection
         multi_control_indicators = self.detect_multi_control(description)
 
-        # Check for vague terms with PhraseMatcher
-        doc = self.nlp(description)
-        vague_matches = self.vague_matcher(doc)
-        vague_terms_found = []
+        # Check for vague terms with updated method
+        vague_terms_found = self._detect_vague_terms(description)
 
-        for match_id, start, end in vague_matches:
-            span = doc[start:end]
-            vague_terms_found.append(span.text)
-
-        # Remove duplicates
-        vague_terms_found = list(set(vague_terms_found))
-
-        # Calculate vague terms penalty based on config
-        vague_penalty = min(len(vague_terms_found) * self.vague_term_penalty, self.max_vague_penalty)
-
-        # Calculate total score
-        total_score = sum(weighted_scores.values()) - vague_penalty
-        total_score = max(0, total_score)  # Ensure score is not negative
-
-        # Apply multi-control penalty if detected, using config values
-        if multi_control_indicators["detected"]:
-            multi_control_penalty = min(
-                self.max_multi_control_penalty,
-                multi_control_indicators["count"] * self.points_per_control
-            )
-            total_score = max(0, total_score - multi_control_penalty)
-
-        # Determine category based on config thresholds
-        if total_score >= self.excellent_threshold:
-            category = "Excellent"
-        elif total_score >= self.good_threshold:
-            category = "Good"
-        else:
-            category = "Needs Improvement"
+        # Use new conditional WHERE scoring methodology
+        # Calculate score using new conditional methodology
+        scoring_results = self._calculate_conditional_score(
+            self.elements, description, automation_field
+        )
+        
+        # Extract results from new scoring
+        total_score = scoring_results['total_score']
+        category = scoring_results['category']
+        control_classification = scoring_results['control_classification']
+        scoring_breakdown = scoring_results['scoring_breakdown']
+        
+        # Update weighted_scores to match new scoring for backward compatibility
+        weighted_scores = scoring_results['element_scores']
 
         # Define threshold by element type
         element_thresholds = {
@@ -899,6 +1111,8 @@ class EnhancedControlAnalyzer:
             "description": description,
             "total_score": total_score,
             "category": category,
+            "control_classification": control_classification,  # New: Control type classification
+            "scoring_breakdown": scoring_breakdown,            # New: Detailed scoring breakdown
             "elements_found_count": elements_found_count,
             "simple_category": simple_category,
             "missing_elements": missing_elements,

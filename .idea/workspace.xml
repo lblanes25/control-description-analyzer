@@ -5,10 +5,9 @@
   </component>
   <component name="ChangeListManager">
     <list default="true" id="e7deeee2-00f6-4740-8efd-2cc08fd51cb6" name="Changes" comment="">
-      <change afterPath="$PROJECT_DIR$/SharedWhere.md" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/.claude/settings.local.json" beforeDir="false" afterPath="$PROJECT_DIR$/.claude/settings.local.json" afterDir="false" />
       <change beforePath="$PROJECT_DIR$/.idea/workspace.xml" beforeDir="false" afterPath="$PROJECT_DIR$/.idea/workspace.xml" afterDir="false" />
       <change beforePath="$PROJECT_DIR$/config/control_analyzer_updated.yaml" beforeDir="false" afterPath="$PROJECT_DIR$/config/control_analyzer_updated.yaml" afterDir="false" />
-      <change beforePath="$PROJECT_DIR$/src/analyzers/what.py" beforeDir="false" afterPath="$PROJECT_DIR$/src/analyzers/what.py" afterDir="false" />
       <change beforePath="$PROJECT_DIR$/src/core/analyzer.py" beforeDir="false" afterPath="$PROJECT_DIR$/src/core/analyzer.py" afterDir="false" />
     </list>
     <option name="SHOW_DIALOG" value="false" />

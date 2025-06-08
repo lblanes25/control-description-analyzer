@@ -30,21 +30,94 @@ constants:
     - instruction
     - manual
 
-# Scoring Configuration
+# Scoring Configuration - Updated for Conditional WHERE Model
 scoring:
   # Category thresholds for overall control scoring
   category_thresholds:
-    excellent: 75
-    good: 50
+    effective: 75    # Renamed from 'excellent' 
+    adequate: 50     # Renamed from 'good'
   
-  # Weight distribution adjusted to include WHERE element
-  element_weights:
-    WHO: 25      # Accountability (unchanged)
-    WHAT: 30     # Core action (reduced from 35)
-    WHEN: 20     # Timing (reduced from 22) 
-    WHERE: 10    # Location (new element)
-    WHY: 12      # Purpose (reduced from 15)
-    ESCALATION: 3  # Exception handling (unchanged)
+  # Core element weights (WHO + WHAT + WHEN = 100%)
+  core_elements:
+    WHO: 30          # Increased from 25% 
+    WHAT: 35         # Increased from 30%
+    WHEN: 35         # Increased from 20%
+  
+  # Conditional element scoring
+  conditional_elements:
+    WHERE:
+      system_controls: 10        # Full 10 points for system controls
+      location_dependent: 5      # 5 points for location-dependent controls
+      other: 0                  # 0 points for other controls
+  
+  # Feedback-only elements (no scoring impact)
+  feedback_elements:
+    WHY: true                   # Convert to feedback-only
+    ESCALATION: true            # Convert to soft flag
+  
+  # Uncapped demerit system
+  demerits:
+    vague_terms: -2             # Per term, uncapped
+    multiple_controls: -10      # Flat penalty
+    missing_accountability: -5   # When WHO is unclear
+    untestable_timing: -5       # When WHEN can't be tested
+
+# Control Type Classification for Conditional WHERE Scoring
+classification:
+  # System names for detection (customize for your organization)
+  system_names: 
+    - sap
+    - oracle
+    - peoplesoft
+    - jde
+    - dynamics
+    - netsuite
+    - quickbooks
+    - sharepoint
+    - teams
+    - slack
+    - confluence
+    - servicenow
+    - tableau
+    - power bi
+    - excel
+    - access
+    - hyperion
+    - essbase
+    - cognos
+    - qlik
+    - alteryx
+  
+  # Verbs that indicate system participation in control execution
+  control_participating_verbs:
+    - calculates
+    - validates
+    - approves
+    - alerts
+    - flags
+    - reconciles
+    - generates
+    - processes
+    - identifies
+    - matches
+    - automatically
+    - system
+  
+  # Verbs that indicate documentation only (not control participation)
+  documentation_verbs:
+    - saves
+    - stores
+    - documents
+    - records
+    - enters
+    - uploads
+    - maintains
+    - tracks
+    - files
+  
+  # Scoring weights for hybrid control prominence analysis
+  system_context_weight: 2      # Weight for system context indicators
+  location_context_weight: 1    # Weight for location context indicators
 
 # Simple scoring configuration
 simple_scoring:
