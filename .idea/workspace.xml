@@ -4,54 +4,7 @@
     <option name="autoReloadType" value="SELECTIVE" />
   </component>
   <component name="ChangeListManager">
-    <list default="true" id="e7deeee2-00f6-4740-8efd-2cc08fd51cb6" name="Changes" comment="">
-      <change beforePath="$PROJECT_DIR$/.claude/settings.local.json" beforeDir="false" afterPath="$PROJECT_DIR$/.claude/settings.local.json" afterDir="false" />
-      <change beforePath="$PROJECT_DIR$/.idea/workspace.xml" beforeDir="false" afterPath="$PROJECT_DIR$/.idea/workspace.xml" afterDir="false" />
-      <change beforePath="$PROJECT_DIR$/Control_Scoring_Methodology_Review.md" beforeDir="false" />
-      <change beforePath="$PROJECT_DIR$/Control_Scoring_Methodology_Review_Updated.md" beforeDir="false" />
-      <change beforePath="$PROJECT_DIR$/SharedWhere.md" beforeDir="false" />
-      <change beforePath="$PROJECT_DIR$/TODO_ELEMENT_DETECTION.md" beforeDir="false" />
-      <change beforePath="$PROJECT_DIR$/config/control_analyzer_updated.yaml" beforeDir="false" afterPath="$PROJECT_DIR$/config/control_analyzer.yaml" afterDir="false" />
-      <change beforePath="$PROJECT_DIR$/debug_classifier.py" beforeDir="false" />
-      <change beforePath="$PROJECT_DIR$/debug_vague_terms.py" beforeDir="false" />
-      <change beforePath="$PROJECT_DIR$/debug_why_escalation.py" beforeDir="false" />
-      <change beforePath="$PROJECT_DIR$/src/analyzers/who.py" beforeDir="false" afterPath="$PROJECT_DIR$/src/analyzers/who.py" afterDir="false" />
-      <change beforePath="$PROJECT_DIR$/src/cli.py" beforeDir="false" afterPath="$PROJECT_DIR$/src/cli.py" afterDir="false" />
-      <change beforePath="$PROJECT_DIR$/src/cli_verbose.py" beforeDir="false" afterPath="$PROJECT_DIR$/src/cli_verbose.py" afterDir="false" />
-      <change beforePath="$PROJECT_DIR$/src/core/analyzer.py" beforeDir="false" afterPath="$PROJECT_DIR$/src/core/analyzer.py" afterDir="false" />
-      <change beforePath="$PROJECT_DIR$/src/gui/main_window.py" beforeDir="false" afterPath="$PROJECT_DIR$/src/gui/main_window.py" afterDir="false" />
-      <change beforePath="$PROJECT_DIR$/src/utils/visualization.py" beforeDir="false" afterPath="$PROJECT_DIR$/src/utils/visualization.py" afterDir="false" />
-      <change beforePath="$PROJECT_DIR$/test_where_scoring.py" beforeDir="false" />
-      <change beforePath="$PROJECT_DIR$/tests/conftest.py" beforeDir="false" afterPath="$PROJECT_DIR$/tests/conftest.py" afterDir="false" />
-      <change beforePath="$PROJECT_DIR$/tests/debug/debug_analyzer.py" beforeDir="false" afterPath="$PROJECT_DIR$/tests/debug/debug_analyzer.py" afterDir="false" />
-      <change beforePath="$PROJECT_DIR$/tests/debug/debug_analyzer_output.py" beforeDir="false" afterPath="$PROJECT_DIR$/tests/debug/debug_analyzer_output.py" afterDir="false" />
-      <change beforePath="$PROJECT_DIR$/tests/debug/debug_element_analysis.py" beforeDir="false" afterPath="$PROJECT_DIR$/tests/debug/debug_element_analysis.py" afterDir="false" />
-      <change beforePath="$PROJECT_DIR$/tests/debug/debug_feedback_blanks.py" beforeDir="false" afterPath="$PROJECT_DIR$/tests/debug/debug_feedback_blanks.py" afterDir="false" />
-      <change beforePath="$PROJECT_DIR$/tests/debug/debug_filter_issue.py" beforeDir="false" afterPath="$PROJECT_DIR$/tests/debug/debug_filter_issue.py" afterDir="false" />
-      <change beforePath="$PROJECT_DIR$/tests/debug/debug_gui_results.py" beforeDir="false" afterPath="$PROJECT_DIR$/tests/debug/debug_gui_results.py" afterDir="false" />
-      <change beforePath="$PROJECT_DIR$/tests/debug/debug_scoring_thresholds.py" beforeDir="false" afterPath="$PROJECT_DIR$/tests/debug/debug_scoring_thresholds.py" afterDir="false" />
-      <change beforePath="$PROJECT_DIR$/tests/debug/debug_simple_scoring.py" beforeDir="false" afterPath="$PROJECT_DIR$/tests/debug/debug_simple_scoring.py" afterDir="false" />
-      <change beforePath="$PROJECT_DIR$/tests/debug/debug_staff_detection.py" beforeDir="false" afterPath="$PROJECT_DIR$/tests/debug/debug_staff_detection.py" afterDir="false" />
-      <change beforePath="$PROJECT_DIR$/tests/debug/debug_who_detection.py" beforeDir="false" afterPath="$PROJECT_DIR$/tests/debug/debug_who_detection.py" afterDir="false" />
-      <change beforePath="$PROJECT_DIR$/tests/debug/debug_who_keywords.py" beforeDir="false" afterPath="$PROJECT_DIR$/tests/debug/debug_who_keywords.py" afterDir="false" />
-      <change beforePath="$PROJECT_DIR$/tests/debug/final_simple_scoring_test.py" beforeDir="false" afterPath="$PROJECT_DIR$/tests/debug/final_simple_scoring_test.py" afterDir="false" />
-      <change beforePath="$PROJECT_DIR$/tests/debug/test_conditional_where_scoring.py" beforeDir="false" afterPath="$PROJECT_DIR$/tests/debug/test_conditional_where_scoring.py" afterDir="false" />
-      <change beforePath="$PROJECT_DIR$/tests/debug/test_config_compatibility.py" beforeDir="false" afterPath="$PROJECT_DIR$/tests/debug/test_config_compatibility.py" afterDir="false" />
-      <change beforePath="$PROJECT_DIR$/tests/debug/test_gui_config.py" beforeDir="false" afterPath="$PROJECT_DIR$/tests/debug/test_gui_config.py" afterDir="false" />
-      <change beforePath="$PROJECT_DIR$/tests/debug/test_gui_simulation.py" beforeDir="false" afterPath="$PROJECT_DIR$/tests/debug/test_gui_simulation.py" afterDir="false" />
-      <change beforePath="$PROJECT_DIR$/tests/debug/test_restructured_excel.py" beforeDir="false" afterPath="$PROJECT_DIR$/tests/debug/test_restructured_excel.py" afterDir="false" />
-      <change beforePath="$PROJECT_DIR$/tests/debug/test_simple_scoring.py" beforeDir="false" afterPath="$PROJECT_DIR$/tests/debug/test_simple_scoring.py" afterDir="false" />
-      <change beforePath="$PROJECT_DIR$/tests/debug/test_single_control_worker.py" beforeDir="false" afterPath="$PROJECT_DIR$/tests/debug/test_single_control_worker.py" afterDir="false" />
-      <change beforePath="$PROJECT_DIR$/tests/debug/test_subthreshold_feedback.py" beforeDir="false" afterPath="$PROJECT_DIR$/tests/debug/test_subthreshold_feedback.py" afterDir="false" />
-      <change beforePath="$PROJECT_DIR$/tests/debug/test_where_implementation.py" beforeDir="false" afterPath="$PROJECT_DIR$/tests/debug/test_where_implementation.py" afterDir="false" />
-      <change beforePath="$PROJECT_DIR$/tests/integration/test_conditional_scoring_integration.py" beforeDir="false" afterPath="$PROJECT_DIR$/tests/integration/test_conditional_scoring_integration.py" afterDir="false" />
-      <change beforePath="$PROJECT_DIR$/tests/integration/test_integration_points.py" beforeDir="false" afterPath="$PROJECT_DIR$/tests/integration/test_integration_points.py" afterDir="false" />
-      <change beforePath="$PROJECT_DIR$/tests/integration/test_regression.py" beforeDir="false" afterPath="$PROJECT_DIR$/tests/integration/test_regression.py" afterDir="false" />
-      <change beforePath="$PROJECT_DIR$/tests/performance/test_memory_usage.py" beforeDir="false" afterPath="$PROJECT_DIR$/tests/performance/test_memory_usage.py" afterDir="false" />
-      <change beforePath="$PROJECT_DIR$/tests/performance/test_performance_benchmarks.py" beforeDir="false" afterPath="$PROJECT_DIR$/tests/performance/test_performance_benchmarks.py" afterDir="false" />
-      <change beforePath="$PROJECT_DIR$/tests/unit/test_business_logic.py" beforeDir="false" afterPath="$PROJECT_DIR$/tests/unit/test_business_logic.py" afterDir="false" />
-      <change beforePath="$PROJECT_DIR$/tests/unit/test_core_analyzer.py" beforeDir="false" afterPath="$PROJECT_DIR$/tests/unit/test_core_analyzer.py" afterDir="false" />
-    </list>
+    <list default="true" id="e7deeee2-00f6-4740-8efd-2cc08fd51cb6" name="Changes" comment="" />
     <option name="SHOW_DIALOG" value="false" />
     <option name="HIGHLIGHT_CONFLICTS" value="true" />
     <option name="HIGHLIGHT_NON_ACTIVE_CHANGELIST" value="false" />

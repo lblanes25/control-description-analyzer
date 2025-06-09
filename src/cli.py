@@ -267,6 +267,22 @@ def analyze_file_with_batches(
         # Read the Excel file
         df = pd.read_excel(file_path, engine='openpyxl')
 
+        # Resolve column names from config if not provided
+        if id_column is None:
+            id_column = analyzer._get_column_name("id", None)
+        if desc_column is None:
+            desc_column = analyzer._get_column_name("description", None)
+        if freq_column is None:
+            freq_column = analyzer._get_column_name("frequency", None)
+        if type_column is None:
+            type_column = analyzer._get_column_name("control_type", None)
+        if risk_column is None:
+            risk_column = analyzer._get_column_name("risk", None)
+        if audit_leader_column is None:
+            audit_leader_column = analyzer._get_column_name("audit_leader", None)
+        if audit_entity_column is None:
+            audit_entity_column = analyzer._get_column_name("audit_entity", None)
+
         # Validate columns
         columns = validate_and_get_columns(
             df, id_column, desc_column, freq_column,

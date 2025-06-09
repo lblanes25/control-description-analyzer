@@ -1,16 +1,23 @@
 # Control Description Analyzer
 
-A sophisticated **natural language processing (NLP) tool** that analyzes control descriptions for completeness by detecting WHO, WHAT, WHEN, WHY, and ESCALATION elements. Built with **spaCy NLP** for enhanced context-aware detection beyond simple keyword matching.
+A sophisticated **natural language processing (NLP) tool** that analyzes control descriptions for completeness using the 5W framework (WHO, WHAT, WHEN, WHERE, WHY) plus ESCALATION detection. Built with **spaCy NLP** for enhanced context-aware detection beyond simple keyword matching.
 
 ## Project Overview
 
 ### Purpose
-The Control Description Analyzer automates the quality assessment of control descriptions by identifying and scoring five critical elements:
-- **WHO** (32%): Person, role, or system performing the control
-- **WHAT** (32%): Specific action being performed  
-- **WHEN** (22%): Timing or frequency of the control
-- **WHY** (11%): Purpose or objective of the control
-- **ESCALATION** (3%): Exception handling and escalation procedures
+The Control Description Analyzer automates the quality assessment of control descriptions by identifying and scoring critical elements using a **weighted scoring methodology**:
+
+#### Core Elements (100% of base score):
+- **WHO** (30%): Person, role, or system performing the control
+- **WHAT** (35%): Specific action being performed  
+- **WHEN** (35%): Timing or frequency of the control
+
+#### Conditional Elements:
+- **WHERE** (conditional scoring): Location/system information with relevance multipliers based on control type
+
+#### Feedback-Only Elements (no scoring impact):
+- **WHY**: Purpose or objective of the control (provides feedback but doesn't affect score)
+- **ESCALATION**: Exception handling and escalation procedures (provides feedback but doesn't affect score)
 
 ### Target Users
 - **Audit teams** conducting quality reviews of control portfolios
@@ -38,38 +45,50 @@ The Control Description Analyzer automates the quality assessment of control des
 
 ### Customizable Parameters
 
-#### Element Weights
+#### Scoring Configuration
 ```yaml
-elements:
-  WHO:
-    weight: 32  # Percentage weight in final score
-  WHAT:
-    weight: 32
-  WHEN:
-    weight: 22
-  WHY:
-    weight: 11
-  ESCALATION:
-    weight: 3
+scoring:
+  # Core element weights (WHO + WHAT + WHEN = 100%)
+  core_elements:
+    WHO: 30     # Accountability and ownership
+    WHAT: 35    # Control action and verb strength
+    WHEN: 35    # Timing and frequency
+    
+  # Conditional element scoring
+  conditional_elements:
+    WHERE:
+      system_controls: 1.10      # 10% bonus for system controls
+      location_dependent: 1.05   # 5% bonus for location-dependent controls
+      other: 1.00               # No bonus for other controls
+      
+  # Feedback-only elements (no scoring impact)
+  feedback_elements:
+    WHY: true         # Purpose analysis for feedback only
+    ESCALATION: true  # Exception handling for feedback only
+
+  # Category thresholds
+  category_thresholds:
+    meets_expectations: 75    # 75+ points = Meets Expectations
+    requires_attention: 50    # 50-74 points = Requires Attention
+    # <50 points = Needs Improvement
 ```
 
-#### Scoring Thresholds
+#### Control Type Relevance (WHERE Scoring)
 ```yaml
-category_thresholds:
-  excellent: 75  # 75+ points = Excellent
-  good: 50       # 50-74 points = Good, <50 = Poor
-```
-
-#### Element Keywords (Example for WHO)
-```yaml
-elements:
-  WHO:
-    keywords:
-      - manager
-      - director
-      - system
-      - application
-      # ... 200+ predefined terms
+where_element:
+  control_type_relevance:
+    Manual:
+      systems: 0.8        # Less dependent on specific systems
+      locations: 1.2      # More dependent on physical locations
+      organizational: 1.3  # Heavily dependent on organizational context
+    Automated:
+      systems: 1.4        # Highly dependent on specific systems
+      locations: 0.8      # Less dependent on physical locations
+      organizational: 1.0  # Standard organizational dependency
+    Hybrid:
+      systems: 1.1        # Moderate system dependency
+      locations: 1.0      # Standard location dependency
+      organizational: 1.1  # Slightly higher organizational dependency
 ```
 
 #### Vague Term Detection
@@ -81,22 +100,43 @@ vague_terms:
   # Custom penalties applied
 ```
 
-#### Multi-Control Detection
-```yaml
-multi_control:
-  points_per_control: 5    # Penalty per additional control
-  max_penalty: 10         # Maximum penalty cap
-```
-
 #### Column Mappings for Excel Files
 ```yaml
-columns:
-  id: "Control ID"                    # Required
-  description: "Control Description"  # Required  
-  frequency: "Control Frequency"      # Optional
-  type: "Control Type"               # Optional
-  risk: "Key Risk Description"       # Optional
-  audit_leader: "Audit Leader"       # Optional
+column_mapping:
+  primary_columns:
+    - Control Description    # Primary column name to look for
+    - Control_Description    # Alternative column name
+    - Control Statement      # Another alternative
+    
+  control_id_columns:
+    - Control ID
+    - Control_ID
+    - Control #
+    
+  control_type_columns:      # Maps to control nature (Preventive/Detective/Corrective)
+    - Control Type
+    - Control_Type
+    - Type
+    
+  control_automation_columns: # Maps to automation level (Manual/Hybrid/Automated)
+    - Control Automation
+    - Automation Type
+    - Manual/Automated
+    
+  risk_columns:
+    - Key Risk Description
+    - Risk Description
+    - Risk
+    
+  owner_columns:             # For audit leader information
+    - Audit Leader
+    - Control Owner
+    - Owner
+    
+  entity_columns:            # For organizational grouping
+    - Audit Entity
+    - Business Process
+    - Department
 ```
 
 ### How to Modify Configuration
@@ -114,24 +154,31 @@ elements:
 
 **Adjust scoring thresholds:**
 ```yaml
-category_thresholds:
-  excellent: 80  # Raise bar for excellent
-  good: 60       # Raise bar for good
+scoring:
+  category_thresholds:
+    meets_expectations: 80  # Raise bar for "Meets Expectations"
+    requires_attention: 60  # Raise bar for "Requires Attention"
 ```
 
-**Customize vague term suggestions:**
+**Modify control type relevance for WHERE scoring:**
 ```yaml
-who_detection:
-  vague_term_suggestions:
-    periodically: "specific frequency (daily, weekly, monthly, quarterly)"
-    your_term: "your specific suggestion"
+where_element:
+  control_type_relevance:
+    Manual:
+      systems: 0.9        # Adjust system relevance for manual controls
+      locations: 1.3      # Increase location importance
+      organizational: 1.4  # Increase organizational context importance
 ```
 
-**Change column mappings:**
+**Change column mappings (add your column names to the lists):**
 ```yaml
-columns:
-  id: "Your Control ID Column"
-  description: "Your Description Column"
+column_mapping:
+  primary_columns:
+    - Control Description
+    - Your Custom Description Column  # Add your column name
+  control_id_columns:
+    - Control ID
+    - Your Control ID Column         # Add your column name
 ```
 
 ### Config Validation
@@ -146,7 +193,9 @@ Each element has a dedicated enhanced detection module with sophisticated NLP ca
 - **`src/analyzers/who.py`**: Person/role/system detection with entity recognition
 - **`src/analyzers/what.py`**: Action detection with compound verb analysis  
 - **`src/analyzers/when.py`**: Timing detection with vague term identification
-- **`src/analyzers/why.py`**: Purpose detection with inference transparency
+- **`src/analyzers/where.py`**: Location/system detection with control type relevance
+- **`src/analyzers/where_service.py`**: Shared WHERE detection service used by WHAT and WHERE analyzers
+- **`src/analyzers/why.py`**: Purpose detection with inference transparency  
 - **`src/analyzers/escalation.py`**: Exception handling detection
 - **`src/analyzers/multi_control.py`**: Multi-control identification
 - **`src/analyzers/diagnostic.py`**: Comprehensive diagnostic analysis
@@ -178,19 +227,27 @@ python -m spacy download en_core_web_md
 
 ### Basic Usage
 ```bash
-# Analyze controls from Excel file
-python src/cli.py controls.xlsx --output-file results.xlsx
+# Analyze controls from Excel file (specify config file)
+python -m src.cli controls.xlsx --config config/control_analyzer.yaml --output-file results.xlsx
 
 # With custom column names
-python src/cli.py controls.xlsx \
+python -m src.cli controls.xlsx \
+  --config config/control_analyzer.yaml \
   --id-column "Control Number" \
   --desc-column "Description" \
   --output-file results.xlsx
 
 # Generate visualizations and open dashboard
-python src/cli.py controls.xlsx \
+python -m src.cli controls.xlsx \
+  --config config/control_analyzer.yaml \
   --output-file results.xlsx \
   --open-dashboard
+
+# For large files, use batch processing
+python -m src.cli controls.xlsx \
+  --config config/control_analyzer.yaml \
+  --output-file results.xlsx \
+  --use-batches --batch-size 500
 ```
 
 ### Required Input Columns (Configurable)
@@ -199,7 +256,8 @@ python src/cli.py controls.xlsx \
 
 ### Optional Input Columns  
 - **Control Frequency**: For timing validation (e.g., "Monthly", "Quarterly")
-- **Control Type**: For validation (e.g., "Preventive", "Detective") 
+- **Control Type**: For control nature validation (e.g., "Preventive", "Detective", "Corrective")
+- **Control Automation**: For automation level and WHERE scoring (e.g., "Manual", "Hybrid", "Automated")
 - **Risk Description**: For WHY element alignment analysis
 - **Audit Leader**: For portfolio reporting and filtering
 - **Audit Entity**: For organizational grouping
@@ -260,19 +318,30 @@ PyQt5>=5.15.0        # Desktop interface (if using GUI)
 ```
 src/
 ├── cli.py                    # Main command-line interface
+├── cli_verbose.py           # Alternative CLI with detailed output
 ├── core/
 │   └── analyzer.py          # Core analysis orchestration
 ├── analyzers/               # Element-specific detection modules
 │   ├── who.py              # WHO detection with NER
 │   ├── what.py             # WHAT detection with verb analysis
 │   ├── when.py             # WHEN detection with timing patterns
+│   ├── where.py            # WHERE detection as standalone element
+│   ├── where_service.py    # Shared WHERE detection service
 │   ├── why.py              # WHY detection with purpose inference
 │   ├── escalation.py       # Exception handling detection
 │   ├── multi_control.py    # Multi-control identification
-│   └── diagnostic.py       # Comprehensive diagnostics
+│   ├── diagnostic.py       # Comprehensive diagnostics
+│   └── control_classifier.py # Control classification utilities
 ├── utils/                   # Supporting utilities
 │   ├── config_adapter.py   # Configuration management
-│   └── visualization.py    # Chart generation
+│   ├── config_manager.py   # Legacy config manager
+│   ├── debug_wrapper.py    # Debug utilities
+│   ├── diagnostic_simple.py # Simple diagnostic tools
+│   └── visualization.py    # Chart and dashboard generation
+├── integrations/            # External system integrations
+│   ├── spacy_converter.py  # spaCy model conversion
+│   ├── tableau.py          # Tableau integration
+│   └── tableau_workbook.py # Tableau workbook generation
 └── gui/                     # Optional desktop interface
     └── main_window.py      # PyQt5 GUI (if available)
 
@@ -293,24 +362,35 @@ tests/                       # Test coverage
 
 ### Sample Control Descriptions
 
-**Excellent Control (80+ points):**
+**Meets Expectations (75+ points):**
 ```
 "The Finance Manager reviews and reconciles monthly bank statements 
 within 5 business days of month-end to ensure accuracy and identify 
 any unauthorized transactions. Discrepancies are investigated and 
 resolved within 2 business days, with findings reported to the CFO."
 ```
+- WHO: Finance Manager (clear role)
+- WHAT: reviews and reconciles (strong action verbs)
+- WHEN: within 5 business days of month-end (specific timing)
+- WHERE: bank statements (system/location context)
 
-**Good Control (60+ points):**
+**Requires Attention (50-74 points):**
 ```
 "Staff review monthly reconciliations to ensure accuracy. 
 Any exceptions are escalated to management for resolution."
 ```
+- WHO: Staff (somewhat vague)
+- WHAT: review (moderate action)
+- WHEN: monthly (basic timing)
+- ESCALATION: escalated to management (good)
 
-**Poor Control (<50 points):**
+**Needs Improvement (<50 points):**
 ```
 "Reconciliations are performed as needed."
 ```
+- WHO: Missing (who performs?)
+- WHAT: performed (weak action)
+- WHEN: as needed (vague timing)
 
 ### Validation Features
 - **Frequency Validation**: Cross-checks declared vs. detected timing
@@ -327,7 +407,9 @@ python -m pytest tests/unit/
 python -m pytest tests/integration/
 
 # Test with sample data
-python src/cli.py tests/fixtures/sample_controls.xlsx --output-file test_results.xlsx
+python -m src.cli tests/fixtures/sample_controls.xlsx \
+  --config config/control_analyzer.yaml \
+  --output-file test_results.xlsx
 ```
 
 ## 👥 Team Handoff Information
@@ -386,10 +468,11 @@ A new team member should be able to:
 ### Quick Start Checklist
 - [ ] Install dependencies: `pip install pandas spacy openpyxl pyyaml plotly`
 - [ ] Download spaCy model: `python -m spacy download en_core_web_md`
-- [ ] Test with sample: `python src/cli.py sample.xlsx --output-file test.xlsx`
+- [ ] Test with sample: `python -m src.cli sample.xlsx --config config/control_analyzer.yaml --output-file test.xlsx`
 - [ ] Review configuration: `config/control_analyzer.yaml`  
 - [ ] Generate visualizations: Add `--open-dashboard` flag
 - [ ] For large files: Add `--use-batches` flag
+- [ ] Ensure your Excel columns match the configuration or add them to `column_mapping` section
 
 ---
 
