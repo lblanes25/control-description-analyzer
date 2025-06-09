@@ -494,7 +494,7 @@ class ControlAnalyzerGUI(QMainWindow):
         self.results_table = QTableWidget()
         self.results_table.setColumnCount(8)
         self.results_table.setHorizontalHeaderLabels([
-            "Control ID", "Score", "Category", "WHO", "WHEN", "WHAT", "WHY", "ESCALATION"
+            "Control ID", "Quality Score (Official)", "Quality Category", "WHO", "WHEN", "WHAT", "WHY", "ESCALATION"
         ])
         self.results_table.horizontalHeader().setSectionResizeMode(QHeaderView.Stretch)
         self.results_table.setSelectionBehavior(QTableWidget.SelectRows)
@@ -589,15 +589,15 @@ class ControlAnalyzerGUI(QMainWindow):
                 # Update column count and headers for simple scoring
                 self.results_table.setColumnCount(10)  # Was 8, now 10
                 self.results_table.setHorizontalHeaderLabels([
-                    "Control ID", "Score", "Category", 
-                    "Elements Found", "Simple Category",  # New columns
+                    "Control ID", "Quality Score (Official)", "Quality Category", 
+                    "Element Count", "Element Check (Diagnostic)",  # Clear dual system labels
                     "WHO", "WHEN", "WHAT", "WHY", "ESCALATION"
                 ])
             else:
-                # Keep original columns
+                # Keep original columns with updated labels
                 self.results_table.setColumnCount(8)
                 self.results_table.setHorizontalHeaderLabels([
-                    "Control ID", "Score", "Category",
+                    "Control ID", "Quality Score (Official)", "Quality Category",
                     "WHO", "WHEN", "WHAT", "WHY", "ESCALATION"
                 ])
 
@@ -1300,8 +1300,8 @@ class ControlAnalyzerGUI(QMainWindow):
                 result_dict = {
                     "Control ID": r.get("control_id", ""),
                     "Description": r.get("description", ""),
-                    "Total Score": r.get("total_score", 0),
-                    "Category": r.get("category", ""),
+                    "Control Quality Score (Official)": r.get("total_score", 0),
+                    "Quality Category": r.get("category", ""),
                     "Missing Elements": ", ".join(r.get("missing_elements", [])) if r.get(
                         "missing_elements") else "None",
                     "Vague Terms": ", ".join(r.get("vague_terms_found", [])) if r.get("vague_terms_found") else "None",

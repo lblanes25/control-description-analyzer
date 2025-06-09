@@ -30,12 +30,22 @@ constants:
     - instruction
     - manual
 
-# Scoring Configuration - Updated for Conditional WHERE Model
+# Scoring Configuration - Primary weighted scoring methodology
 scoring:
+  # Positioning and purpose
+  status: "primary"               # Official scoring methodology
+  purpose: "Comprehensive control quality assessment"
+  
   # Category thresholds for overall control scoring
   category_thresholds:
     effective: 75    # Renamed from 'excellent' 
     adequate: 50     # Renamed from 'good'
+  
+  # Output labels for UI differentiation  
+  display_labels:
+    primary_label: "Control Quality Score"
+    secondary_label: "(Official Weighted Score)"
+    help_text: "Comprehensive assessment of control design and quality"
   
   # Core element weights (WHO + WHAT + WHEN = 100%)
   core_elements:
@@ -43,12 +53,12 @@ scoring:
     WHAT: 35         # Increased from 30%
     WHEN: 35         # Increased from 20%
   
-  # Conditional element scoring
+  # Conditional element scoring - Updated to percentage multipliers
   conditional_elements:
     WHERE:
-      system_controls: 10        # Full 10 points for system controls
-      location_dependent: 5      # 5 points for location-dependent controls
-      other: 0                  # 0 points for other controls
+      system_controls: 1.10      # 10% bonus multiplier for system controls
+      location_dependent: 1.05   # 5% bonus multiplier for location-dependent controls
+      other: 1.00               # No bonus (1.0x) for other controls
   
   # Feedback-only elements (no scoring impact)
   feedback_elements:
@@ -119,19 +129,27 @@ classification:
   system_context_weight: 2      # Weight for system context indicators
   location_context_weight: 1    # Weight for location context indicators
 
-# Simple scoring configuration
+# Simple scoring configuration - Supplementary diagnostic tool
 simple_scoring:
   enabled: true
+  status: "supplementary"  # Position as diagnostic tool, not primary
+  purpose: "Element completeness check"
   thresholds:
     excellent: 4      # 4+ elements required
     good: 3          # 3+ elements required
     # Anything below is "Needs Improvement"
   
-  # Optional: Different names for categories
+  # Category labels clearly differentiated from weighted scoring
   category_names:
-    excellent: "Meets expectations"
-    good: "Requires Attention"
-    needs_improvement: "Needs Improvement"
+    excellent: "Element Count: Complete"     # All elements present
+    good: "Element Count: Mostly Complete"   # Most elements present  
+    needs_improvement: "Element Count: Incomplete"  # Missing elements
+  
+  # Output labels for UI differentiation
+  display_labels:
+    primary_label: "Element Completeness Check"
+    secondary_label: "(Diagnostic Only)"
+    help_text: "Shows whether all control elements are present, not quality"
 
 # WHO Element Configuration
 who_element:

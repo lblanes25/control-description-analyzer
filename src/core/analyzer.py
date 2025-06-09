@@ -737,7 +737,7 @@ class EnhancedControlAnalyzer:
             'WHO': 30, 'WHAT': 35, 'WHEN': 35
         })
         conditional_config = scoring_config.get('conditional_elements', {}).get('WHERE', {
-            'system_controls': 10, 'location_dependent': 5, 'other': 0
+            'system_controls': 1.10, 'location_dependent': 1.05, 'other': 1.0
         })
         
         # Map control types to config keys
@@ -762,30 +762,36 @@ class EnhancedControlAnalyzer:
             else:
                 element_scores[element_name] = 0
         
-        # Calculate conditional WHERE score
-        where_points = 0
+        # Calculate demerits before WHERE multiplier
+        total_demerits = self._calculate_demerits(
+            elements, control_description, demerits_config
+        )
+        
+        # Calculate base score (core elements + demerits)
+        base_score = core_score + total_demerits
+        base_score = max(0, base_score)  # Ensure non-negative base
+        
+        # Apply conditional WHERE multiplier
+        where_multiplier = 1.0
         control_type = classification['final_type']
         
         if 'WHERE' in elements:
             where_element = elements['WHERE']
             
-            # Award points based on control type if WHERE element is detected
+            # Apply multiplier based on control type if WHERE element is detected
             # Use any positive score as indication of WHERE presence
             if where_element.normalized_score > 0:  # Any WHERE detection
                 config_key = control_type_mapping.get(control_type, 'other')
-                where_points = conditional_config.get(config_key, 0)
+                where_multiplier = conditional_config.get(config_key, 1.0)
             else:
-                where_points = 0  # No WHERE element detected = 0 points
+                where_multiplier = 1.0  # No WHERE element detected = no bonus
         
-        element_scores['WHERE'] = where_points
+        # Calculate final score with WHERE multiplier
+        final_score = base_score * where_multiplier
         
-        # Calculate demerits
-        total_demerits = self._calculate_demerits(
-            elements, control_description, demerits_config
-        )
-        
-        # Calculate final score
-        final_score = core_score + where_points + total_demerits
+        # Record WHERE impact for transparency
+        where_impact = final_score - base_score
+        element_scores['WHERE'] = where_impact
         final_score = max(0, final_score)  # Ensure non-negative
         
         # Determine category

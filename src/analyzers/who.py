@@ -367,8 +367,16 @@ def _process_main_subjects(main_subjects: List[Dict], params: DetectionParameter
     for subject in main_subjects:
         subject_text = subject["text"]
 
-        # Skip common non-performers
-        if any(term in subject_text.lower() for term in NON_PERFORMER_TERMS):
+        # Skip common non-performers (use word boundaries to avoid false matches)
+        subject_lower = subject_text.lower()
+        skip_candidate = False
+        for term in NON_PERFORMER_TERMS:
+            # Use word boundaries to avoid matching "data" within "database"
+            pattern = r'\b' + re.escape(term) + r'\b'
+            if re.search(pattern, subject_lower):
+                skip_candidate = True
+                break
+        if skip_candidate:
             continue
 
         # Classify the entity
@@ -421,7 +429,7 @@ def _detect_prepositional_phrases(doc, params: DetectionParameters) -> List[Dict
     """Find performers in prepositional phrases (e.g., 'by the team')"""
     by_phrases = []
     for token in doc:
-        if token.text.lower() == "by" and token.dep_ == "prep":
+        if token.text.lower() == "by" and token.dep_ in ["prep", "agent"]:
             for child in token.children:
                 if child.dep_ == "pobj":
                     # Get the full noun phrase
@@ -819,12 +827,29 @@ def classify_entity_type(text, nlp_model, custom_keywords=None):
     if _is_problem_phrase(normalized_text):
         return "non-performer"
 
-    # Check for non-performer indicators
-    if _contains_non_performer_indicators(normalized_text):
+    # Check for human indicators BEFORE non-performer indicators
+    # This prevents false positives like "Controller" being flagged as non-performer due to "control"
+    has_human_indicators = _contains_human_indicators(normalized_text, custom_keywords)
+    has_non_performer_indicators = _contains_non_performer_indicators(normalized_text)
+    
+    # If both human and non-performer indicators are present, prioritize human for role-like terms
+    if has_human_indicators and has_non_performer_indicators:
+        # Check if this looks like a specific role title
+        role_patterns = [
+            r'\b\w*controller\b', r'\b\w*manager\b', r'\b\w*director\b', r'\b\w*officer\b',
+            r'\b\w*supervisor\b', r'\b\w*analyst\b', r'\b\w*specialist\b', r'\b\w*auditor\b'
+        ]
+        if any(re.search(pattern, normalized_text) for pattern in role_patterns):
+            return "human"
+        else:
+            return "non-performer"
+    
+    # If only non-performer indicators
+    if has_non_performer_indicators:
         return "non-performer"
 
-    # Check for human indicators
-    if _contains_human_indicators(normalized_text, custom_keywords):
+    # If only human indicators
+    if has_human_indicators:
         return "human"
 
     # Check for system indicators
@@ -851,8 +876,23 @@ def _is_problem_phrase(normalized_text: str) -> bool:
     """Check for explicit non-performer problem phrases"""
     problem_phrases = [
         "monitor risk", "ensure compliance", "access levels", "risk limits",
-        "compliance", "access", "limit", "process", "control"
+        "compliance", "access", "limit", "process"
     ]
+    
+    # Check for "control" but exclude role titles like "controller"
+    if "control" in normalized_text:
+        # Allow "controller" and other role-related uses of "control"
+        role_exceptions = [
+            r'\b\w*controller\b',  # Any word ending in "controller"
+            r'\bcontrol\s+(?:manager|analyst|specialist|officer)\b'  # "control manager", etc.
+        ]
+        
+        # If any role exception matches, don't treat as problem phrase
+        if any(re.search(pattern, normalized_text) for pattern in role_exceptions):
+            pass  # Not a problem phrase
+        else:
+            return True  # Generic "control" usage - likely a problem phrase
+    
     return any(phrase in normalized_text for phrase in problem_phrases)
 
 

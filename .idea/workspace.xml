@@ -5,9 +5,17 @@
   </component>
   <component name="ChangeListManager">
     <list default="true" id="e7deeee2-00f6-4740-8efd-2cc08fd51cb6" name="Changes" comment="">
-      <change beforePath="$PROJECT_DIR$/.github/workflows/test.yml" beforeDir="false" afterPath="$PROJECT_DIR$/.github/workflows/test.yml" afterDir="false" />
+      <change afterPath="$PROJECT_DIR$/docs/spacy_analysis_slide.md" afterDir="false" />
       <change beforePath="$PROJECT_DIR$/.idea/workspace.xml" beforeDir="false" afterPath="$PROJECT_DIR$/.idea/workspace.xml" afterDir="false" />
-      <change beforePath="$PROJECT_DIR$/tests/unit/test_business_logic.py" beforeDir="false" afterPath="$PROJECT_DIR$/tests/unit/test_business_logic.py" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/config/control_analyzer_updated.yaml" beforeDir="false" afterPath="$PROJECT_DIR$/config/control_analyzer_updated.yaml" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/src/analyzers/what.py" beforeDir="false" afterPath="$PROJECT_DIR$/src/analyzers/what.py" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/src/analyzers/when.py" beforeDir="false" afterPath="$PROJECT_DIR$/src/analyzers/when.py" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/src/analyzers/where.py" beforeDir="false" afterPath="$PROJECT_DIR$/src/analyzers/where.py" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/src/analyzers/who.py" beforeDir="false" afterPath="$PROJECT_DIR$/src/analyzers/who.py" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/src/cli.py" beforeDir="false" afterPath="$PROJECT_DIR$/src/cli.py" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/src/cli_verbose.py" beforeDir="false" afterPath="$PROJECT_DIR$/src/cli_verbose.py" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/src/core/analyzer.py" beforeDir="false" afterPath="$PROJECT_DIR$/src/core/analyzer.py" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/src/gui/main_window.py" beforeDir="false" afterPath="$PROJECT_DIR$/src/gui/main_window.py" afterDir="false" />
     </list>
     <option name="SHOW_DIALOG" value="false" />
     <option name="HIGHLIGHT_CONFLICTS" value="true" />
@@ -46,7 +54,7 @@
     "git-widget-placeholder": "when__split__test",
     "ignore.virus.scanning.warn.message": "true",
     "last_opened_file_path": "C:/Users/luria/OneDrive/Desktop/final_consolidated_analyzer",
-    "settings.editor.selected.configurable": "preferences.rainbow.brackets.disable.when"
+    "settings.editor.selected.configurable": "com.jetbrains.python.configuration.PyActiveSdkModuleConfigurable"
   }
 }]]></component>
   <component name="RecentsManager">
@@ -54,8 +62,8 @@
       <recent name="C:\Users\luria\OneDrive\Desktop\final_consolidated_analyzer" />
     </key>
     <key name="MoveFile.RECENT_KEYS">
-      <recent name="C:\Users\luria\OneDrive\Desktop\final_consolidated_analyzer\tests\debug" />
       <recent name="C:\Users\luria\OneDrive\Desktop\final_consolidated_analyzer\docs" />
+      <recent name="C:\Users\luria\OneDrive\Desktop\final_consolidated_analyzer\tests\debug" />
     </key>
   </component>
   <component name="RunManager" selected="Python.AnalyzerGUI">

@@ -65,7 +65,8 @@ class VerbAnalyzer:
                 "track": 0.7, "document": 0.7, "record": 0.7, "maintain": 0.6,
                 "prepare": 0.6, "generate": 0.6, "update": 0.6, "calculate": 0.6,
                 "process": 0.6, "monitor": 0.65, "revoke": 0.7, "disable": 0.7,
-                "remove": 0.7, "limit": 0.7, "restrict": 0.7, "resolve": 0.7
+                "remove": 0.7, "limit": 0.7, "restrict": 0.7, "resolve": 0.7,
+                "ensure": 0.6
             },
             "low_strength_verbs": {
                 "look": 0.2, "observe": 0.3, "view": 0.2, "consider": 0.2,
@@ -460,6 +461,7 @@ class ConfidenceCalculator:
     HIGH_STRENGTH_PASSIVE_PENALTY = 0.9
     PROBLEMATIC_PASSIVE_PENALTY = 0.3
     STANDARD_PASSIVE_PENALTY = 0.7
+    CONDITIONAL_ACTION_PENALTY = 0.5  # For "may", "might", "could"
     SUBJECT_BOOST = 1.1
     OBJECT_SPECIFICITY_BOOST = 0.2
     WHERE_COMPONENT_BOOST = 1.1
@@ -479,6 +481,13 @@ class ConfidenceCalculator:
         if self.config.debug_mode:
             print(f"\nConfidence calculation for '{token.text}':")
             print(f"  Base verb strength: {confidence:.2f}")
+
+        # Check for conditional auxiliaries (may, might, could) - apply penalty
+        has_conditional = self._has_conditional_auxiliary(token)
+        if has_conditional:
+            confidence *= self.CONDITIONAL_ACTION_PENALTY
+            if self.config.debug_mode:
+                print(f"  After conditional penalty: {confidence:.2f}")
 
         # Future tense boost (they're valid controls)
         if has_future_aux:
@@ -619,6 +628,30 @@ class ConfidenceCalculator:
 
         return 0.7
 
+    def _has_conditional_auxiliary(self, token) -> bool:
+        """Check if the verb has conditional auxiliaries like 'may', 'might', 'could'"""
+        try:
+            # Check for conditional auxiliaries in the verb's context
+            conditional_auxiliaries = {'may', 'might', 'could', 'should'}
+            
+            # Check children for auxiliary verbs
+            for child in token.children:
+                if child.dep_ == "aux" and child.lemma_.lower() in conditional_auxiliaries:
+                    return True
+            
+            # Check if the verb has a head that's a conditional auxiliary
+            if token.head.lemma_.lower() in conditional_auxiliaries:
+                return True
+            
+            # Check preceding tokens (within 2 tokens before)
+            for i in range(max(0, token.i - 2), token.i):
+                if token.doc[i].lemma_.lower() in conditional_auxiliaries:
+                    return True
+                    
+            return False
+        except Exception:
+            return False
+
 
 class VerbCandidateExtractor:
     """Extracts verb candidates using different detection methods - ENHANCED"""
@@ -680,6 +713,20 @@ class VerbCandidateExtractor:
                         processed_compound_verbs.add(child.i)
 
                 sent_verbs.append(token)
+
+        # ENHANCED: Look for mis-parsed verbs in coordinated structures
+        # Check for patterns like "X and Y" where Y is a verb but X is mis-parsed as NOUN
+        for token in sent:
+            if token.pos_ == "VERB" and token.lemma_.lower() in self.verb_analyzer.all_verbs:
+                # Check if this verb has a head that might be a mis-parsed verb
+                if token.dep_ == "conj" and token.head.pos_ in ["NOUN", "PROPN"]:
+                    head_token = token.head
+                    # Check if the head token could be a verb (lemmatized form exists in our verb list)
+                    potential_verb_lemma = head_token.lemma_.lower()
+                    if potential_verb_lemma in self.verb_analyzer.all_verbs:
+                        # Add the mis-parsed verb if not already processed
+                        if head_token.i not in processed_compound_verbs and head_token not in sent_verbs:
+                            sent_verbs.append(head_token)
 
         return sent_verbs
 
@@ -900,7 +947,8 @@ class VerbCandidateExtractor:
 
     def _has_future_auxiliary(self, verb_token) -> bool:
         """Check if verb has future auxiliary (will, shall, etc.)"""
-        future_auxiliaries = ["will", "shall", "can", "may", "must", "should"]
+        # Separate true future auxiliaries from conditional ones
+        future_auxiliaries = ["will", "shall"]  # Removed conditional auxiliaries
 
         # Check children for auxiliary
         for child in verb_token.children:

@@ -50,8 +50,8 @@ def enhance_where_detection(text: str, nlp, existing_keywords: List[str] = None,
     if not text or not text.strip():
         return _empty_where_result()
         
-    # Initialize shared WHERE service
-    where_service = WhereDetectionService(config)
+    # Initialize shared WHERE service with default config handling
+    where_service = WhereDetectionService(config if config is not None else {})
     
     # Process text with spaCy
     doc = nlp(text)
@@ -95,7 +95,7 @@ def enhance_where_detection(text: str, nlp, existing_keywords: List[str] = None,
 
 
 def calculate_where_score(components: Dict[str, Any], control_type: str, 
-                         config: Dict) -> float:
+                         config: Dict = None) -> float:
     """
     Calculate WHERE element score based on detected components.
     
@@ -108,7 +108,9 @@ def calculate_where_score(components: Dict[str, Any], control_type: str,
     if not components or not components.get('all_components'):
         return 0.0
         
-    # Get WHERE element configuration
+    # Get WHERE element configuration with default handling
+    if config is None:
+        config = {}
     where_config = config.get('elements', {}).get('WHERE', {})
     min_threshold = where_config.get('min_score_threshold', 0.3)
     

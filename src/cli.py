@@ -660,8 +660,8 @@ def write_excel_report(results: List[Dict[str, Any]], output_file: str) -> None:
         result_dict = {
             "Control ID": r.get("control_id", "Unknown"),
             "Description": r.get("description", ""),
-            "Total Score": r.get("total_score", 0),
-            "Category": r.get("category", "Unknown"),
+            "Control Quality Score (Official)": r.get("total_score", 0),
+            "Quality Category": r.get("category", "Unknown"),
             "Missing Elements": ", ".join(r.get("missing_elements", [])) if r.get("missing_elements") else "None",
             "Vague Terms": ", ".join(r.get("vague_terms_found", [])) if r.get("vague_terms_found") else "None"
         }

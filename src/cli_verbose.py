@@ -100,8 +100,8 @@ def main():
                 print("\nFirst result:")
                 first = results[0]
                 print(f"Control ID: {first.get('control_id')}")
-                print(f"Score: {first.get('total_score'):.1f}")
-                print(f"Category: {first.get('category')}")
+                print(f"Control Quality Score (Official): {first.get('total_score'):.1f}")
+                print(f"Quality Category: {first.get('category')}")
                 print(f"Missing Elements: {first.get('missing_elements')}")
 
             # Generate visualizations
