@@ -902,12 +902,13 @@ class EnhancedControlAnalyzer:
     
     def _detect_vague_terms(self, text: str) -> List[str]:
         """Detect vague terms in control description."""
-        vague_terms = [
+        # Get vague terms from config, with fallback to hardcoded list
+        vague_terms = self.config.get('global_vague_terms', [
             'periodically', 'regularly', 'timely', 'promptly', 'appropriate',
             'adequate', 'sufficient', 'reasonable', 'necessary', 'proper',
             'various', 'multiple', 'several', 'some', 'any', 'all',
             'as needed', 'when necessary', 'if required', 'issues'
-        ]
+        ])
         
         found_terms = []
         text_lower = text.lower()

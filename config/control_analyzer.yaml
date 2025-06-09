@@ -290,6 +290,36 @@ system_registry:
     # Add your industry-specific systems here:
     # - your_industry_system
 
+# Global Vague Terms - Terms that should be flagged across all elements
+# Add your organization's vague terms here
+global_vague_terms:
+  - periodically
+  - regularly
+  - timely
+  - promptly
+  - appropriate
+  - adequate
+  - sufficient
+  - reasonable
+  - necessary
+  - proper
+  - various
+  - multiple
+  - several
+  - some
+  - any
+  - all
+  - as needed
+  - when necessary
+  - if required
+  - issues
+  - process
+  - control process
+  - procedures in place
+  - process in place
+  # Add your organization's vague terms here:
+  # - your_vague_term
+
 # Centralized System Registry - Single source of truth for all system names
 # Add your organization's complete system list here
 system_registry:

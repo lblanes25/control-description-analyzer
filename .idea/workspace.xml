@@ -4,12 +4,7 @@
     <option name="autoReloadType" value="SELECTIVE" />
   </component>
   <component name="ChangeListManager">
-    <list default="true" id="e7deeee2-00f6-4740-8efd-2cc08fd51cb6" name="Changes" comment="">
-      <change beforePath="$PROJECT_DIR$/config/control_analyzer.yaml" beforeDir="false" afterPath="$PROJECT_DIR$/config/control_analyzer.yaml" afterDir="false" />
-      <change beforePath="$PROJECT_DIR$/src/analyzers/control_classifier.py" beforeDir="false" afterPath="$PROJECT_DIR$/src/analyzers/control_classifier.py" afterDir="false" />
-      <change beforePath="$PROJECT_DIR$/src/analyzers/where_service.py" beforeDir="false" afterPath="$PROJECT_DIR$/src/analyzers/where_service.py" afterDir="false" />
-      <change beforePath="$PROJECT_DIR$/src/analyzers/who.py" beforeDir="false" afterPath="$PROJECT_DIR$/src/analyzers/who.py" afterDir="false" />
-    </list>
+    <list default="true" id="e7deeee2-00f6-4740-8efd-2cc08fd51cb6" name="Changes" comment="" />
     <option name="SHOW_DIALOG" value="false" />
     <option name="HIGHLIGHT_CONFLICTS" value="true" />
     <option name="HIGHLIGHT_NON_ACTIVE_CHANGELIST" value="false" />
