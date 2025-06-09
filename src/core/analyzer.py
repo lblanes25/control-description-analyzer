@@ -118,11 +118,11 @@ class ControlElement:
         # Use enhanced detection if available
         if enhanced_mode:
             if self.name == "WHO":
-                control_type = context.get("control_type")
+                automation_field = context.get("automation_field")  # WHO analyzer expects automation type
                 frequency = context.get("frequency")
                 config_adapter = context.get("config_adapter")
                 self.enhanced_results = enhanced_who_detection_v2(
-                    text, nlp, control_type, frequency, self.keywords, config_adapter)
+                    text, nlp, automation_field, frequency, self.keywords, config_adapter)
                 self.score = self.enhanced_results.get("confidence", 0) if self.enhanced_results else 0
                 self.normalized_score = self.score * 100
                 self.matched_keywords = [
@@ -131,7 +131,7 @@ class ControlElement:
 
             elif self.name == "WHAT":
                 # Updated to use the new function name and signature
-                control_type = context.get("control_type")
+                control_type = context.get("control_type")  # WHAT analyzer expects control nature type
                 config = getattr(context, 'analyzer_config', None)  # Get config if available
 
                 self.enhanced_results = analyze_control_actions(
@@ -201,12 +201,12 @@ class ControlElement:
                             self.matched_keywords = filtered
 
             elif self.name == "WHERE":
-                control_type = context.get("control_type")
+                automation_field = context.get("automation_field")  # WHERE analyzer expects automation type
                 config_adapter = context.get("config_adapter")
                 config = config_adapter.config if config_adapter else {}
                 
                 self.enhanced_results = enhance_where_detection(
-                    text, nlp, self.keywords, control_type, config)
+                    text, nlp, self.keywords, automation_field, config)
                 self.score = self.enhanced_results.get("score", 0) if self.enhanced_results else 0
                 self.normalized_score = self.score * 100
                 self.matched_keywords = self.enhanced_results.get("matched_keywords", []) if self.enhanced_results else []
@@ -581,7 +581,10 @@ class EnhancedControlAnalyzer:
             yaml_columns = self.config_adapter.get_column_defaults()
             if yaml_columns:
                 logger.info(f"Loaded column mappings from YAML: {yaml_columns}")
-                column_mappings = yaml_columns
+                
+                # Convert from new YAML structure (lists) to old structure (single values)
+                # Use the first item in each list as the default
+                column_mappings = self._convert_yaml_column_mapping(yaml_columns)
             else:
                 logger.info("No column mappings found in YAML file, using defaults")
 
@@ -591,6 +594,37 @@ class EnhancedControlAnalyzer:
             logger.debug(f"  {key}: {value}")
 
         return column_mappings
+    
+    def _convert_yaml_column_mapping(self, yaml_mapping: Dict[str, Any]) -> Dict[str, str]:
+        """
+        Convert YAML column mapping structure to analyzer-expected structure.
+        
+        Args:
+            yaml_mapping: YAML structure with lists of possible column names
+            
+        Returns:
+            Dictionary mapping internal keys to first column name in each list
+        """
+        converted = {}
+        
+        # Map YAML keys to internal analyzer keys
+        yaml_to_internal = {
+            'primary_columns': 'description',
+            'control_id_columns': 'id', 
+            'frequency_columns': 'frequency',
+            'owner_columns': 'audit_leader',
+            'entity_columns': 'audit_entity',
+            'control_type_columns': 'control_type',        # Preventive/Detective/Corrective
+            'control_automation_columns': 'automation',    # Automated/Hybrid/Manual
+            'risk_columns': 'risk'
+        }
+        
+        for yaml_key, internal_key in yaml_to_internal.items():
+            if yaml_key in yaml_mapping and yaml_mapping[yaml_key]:
+                # Use the first item in the list as the default
+                converted[internal_key] = yaml_mapping[yaml_key][0]
+                
+        return converted
 
     def _initialize_spacy_model(self):
         """
@@ -631,14 +665,15 @@ class EnhancedControlAnalyzer:
         Returns:
             Actual column name to use
         """
-        # Default column mappings for fallback
+        # Default column mappings for fallback (matching YAML first entries)
         default_column_mappings = {
             "id": "Control ID",
-            "description": "Control Description",
-            "frequency": "Control Frequency",
-            "type": "Control Type",
+            "description": "Control Description", 
+            "frequency": "Frequency",
+            "control_type": "Control Type",              # Preventive/Detective/Corrective
+            "automation": "Control_Automation",          # Automated/Hybrid/Manual
             "risk": "Key Risk Description",
-            "audit_leader": "Audit Leader from AE",
+            "audit_leader": "Audit Leader",
             "audit_entity": "Audit Entity"
         }
 
@@ -650,7 +685,14 @@ class EnhancedControlAnalyzer:
             return self.column_mappings[column_key]
 
         # Fall back to default mapping
-        return default_column_mappings.get(column_key)
+        result = default_column_mappings.get(column_key)
+        
+        # Debug logging for risk column issue
+        if column_key == "risk":
+            logger.debug(f"Risk column resolution: key={column_key}, override={override_value}, "
+                        f"from_config={self.column_mappings.get(column_key)}, default={result}")
+        
+        return result
 
     def _initialize_elements(self) -> Dict[str, ControlElement]:
         """
@@ -796,13 +838,13 @@ class EnhancedControlAnalyzer:
         
         # Determine category
         category_thresholds = scoring_config.get('category_thresholds', {
-            'effective': 75, 'adequate': 50
+            'meets_expectations': 75, 'requires_attention': 50
         })
         
-        if final_score >= category_thresholds.get('effective', 75):
-            category = "Effective"
-        elif final_score >= category_thresholds.get('adequate', 50):
-            category = "Adequate"
+        if final_score >= category_thresholds.get('meets_expectations', 75):
+            category = "Meets Expectations"
+        elif final_score >= category_thresholds.get('requires_attention', 50):
+            category = "Requires Attention"
         else:
             category = "Needs Improvement"
         
@@ -810,7 +852,7 @@ class EnhancedControlAnalyzer:
             'total_score': final_score,
             'category': category,
             'core_score': core_score,
-            'where_points': where_points,
+            'where_points': where_impact,
             'total_demerits': total_demerits,
             'element_scores': element_scores,
             'control_classification': classification,
@@ -818,7 +860,7 @@ class EnhancedControlAnalyzer:
                 'WHO': element_scores.get('WHO', 0),
                 'WHAT': element_scores.get('WHAT', 0), 
                 'WHEN': element_scores.get('WHEN', 0),
-                'WHERE': where_points,
+                'WHERE': where_impact,
                 'demerits': total_demerits
             }
         }
@@ -983,7 +1025,8 @@ class EnhancedControlAnalyzer:
 
         # Create context for element analysis
         context = {
-            "control_type": control_type,
+            "control_type": control_type,        # For WHAT analyzer (preventive/detective/corrective)
+            "automation_field": automation_field, # For WHO analyzer (automated/hybrid/manual)
             "frequency": frequency,
             "risk_description": risk_description,
             "analyzer_config": self.config,  # Pass config to elements
@@ -1091,19 +1134,19 @@ class EnhancedControlAnalyzer:
         if simple_config.get('enabled', True):
             # Get thresholds from config with defaults matching config file
             thresholds = simple_config.get('thresholds', {})
-            excellent_threshold = thresholds.get('excellent', 4)  # Changed from 5 to 4
-            good_threshold = thresholds.get('good', 3)  # Changed from 4 to 3
+            meets_expectations_threshold = thresholds.get('meets_expectations', 4)  # 4+ elements = Meets Expectations
+            requires_attention_threshold = thresholds.get('requires_attention', 3)  # 3 elements = Requires Attention
             
             # Get category names from config with defaults
             category_names = simple_config.get('category_names', {})
             
             # Determine simple category based on count
-            if element_count >= excellent_threshold:
-                simple_category = category_names.get('excellent', 'Excellent')
-            elif element_count >= good_threshold:
-                simple_category = category_names.get('good', 'Good')
+            if element_count >= meets_expectations_threshold:
+                simple_category = category_names.get('meets_expectations', 'Element Count: Meets Expectations')
+            elif element_count >= requires_attention_threshold:
+                simple_category = category_names.get('requires_attention', 'Element Count: Requires Attention')
             else:
-                simple_category = category_names.get('needs_improvement', 'Needs Improvement')
+                simple_category = category_names.get('needs_improvement', 'Element Count: Needs Improvement')
             
             # Add to results
             elements_found_count = f"{element_count}/{total_elements}"
@@ -1346,7 +1389,8 @@ class EnhancedControlAnalyzer:
 
     def analyze_file(self, file_path: str, id_column: Optional[str] = None,
                      desc_column: Optional[str] = None, freq_column: Optional[str] = None,
-                     type_column: Optional[str] = None, risk_column: Optional[str] = None,
+                     control_type_column: Optional[str] = None, automation_column: Optional[str] = None,
+                     risk_column: Optional[str] = None,
                      audit_leader_column: Optional[str] = None,
                      audit_entity_column: Optional[str] = None,
                      output_file: Optional[str] = None) -> List[Dict[str, Any]]:
@@ -1358,7 +1402,8 @@ class EnhancedControlAnalyzer:
             id_column: Column containing control IDs (overrides config)
             desc_column: Column containing control descriptions (overrides config)
             freq_column: Column containing frequency values (overrides config)
-            type_column: Column containing control type values (overrides config)
+            control_type_column: Column containing control type (Preventive/Detective/Corrective) (overrides config)
+            automation_column: Column containing automation type (Automated/Hybrid/Manual) (overrides config)
             risk_column: Column containing risk descriptions (overrides config)
             audit_leader_column: Column containing audit leader info (overrides config)
             audit_entity_column: Column containing audit entity info (overrides config)
@@ -1371,14 +1416,16 @@ class EnhancedControlAnalyzer:
         id_column = self._get_column_name("id", id_column)
         desc_column = self._get_column_name("description", desc_column)
         freq_column = self._get_column_name("frequency", freq_column)
-        type_column = self._get_column_name("type", type_column)
+        control_type_column = self._get_column_name("control_type", control_type_column)
+        automation_column = self._get_column_name("automation", automation_column)
         risk_column = self._get_column_name("risk", risk_column)
         audit_leader_column = self._get_column_name("audit_leader", audit_leader_column)
         audit_entity_column = self._get_column_name("audit_entity", audit_entity_column)
 
         logger.info(f"Reading file: {file_path}")
         logger.info(f"Using columns: ID={id_column}, Description={desc_column}, "
-                    f"Frequency={freq_column}, Type={type_column}, Risk={risk_column}, "
+                    f"Frequency={freq_column}, Control Type={control_type_column}, "
+                    f"Automation={automation_column}, Risk={risk_column}, "
                     f"Audit Leader={audit_leader_column}, Audit Entity={audit_entity_column}")
 
         try:
@@ -1402,12 +1449,12 @@ class EnhancedControlAnalyzer:
                 )
                 freq_column = None
 
-            if type_column and type_column not in df.columns:
+            if control_type_column and control_type_column not in df.columns:
                 logger.warning(
-                    f"Control type column '{type_column}' not found in file. "
+                    f"Control type column '{control_type_column}' not found in file. "
                     "Control type validation will be skipped."
                 )
-                type_column = None
+                control_type_column = None
 
             if risk_column and risk_column not in df.columns:
                 logger.warning(
@@ -1436,9 +1483,9 @@ class EnhancedControlAnalyzer:
 
                 # Process this control
                 result = self._process_single_control(row, id_column, desc_column,
-                                                      freq_column, type_column,
-                                                      risk_column, audit_leader_column,
-                                                      audit_entity_column)
+                                                      freq_column, control_type_column, 
+                                                      automation_column, risk_column, 
+                                                      audit_leader_column, audit_entity_column)
                 results.append(result)
 
             # Create output file if specified
@@ -1447,7 +1494,7 @@ class EnhancedControlAnalyzer:
                     results,
                     output_file,
                     freq_column is not None,
-                    type_column is not None,
+                    control_type_column is not None,
                     risk_column is not None
                 )
                 logger.info(f"Analysis complete. Results saved to {output_file}")
@@ -1489,7 +1536,8 @@ class EnhancedControlAnalyzer:
 
     def _process_single_control(self, row: pd.Series, id_column: str, desc_column: str,
                                 freq_column: Optional[str] = None,
-                                type_column: Optional[str] = None,
+                                control_type_column: Optional[str] = None,
+                                automation_column: Optional[str] = None,
                                 risk_column: Optional[str] = None,
                                 audit_leader_column: Optional[str] = None,
                                 audit_entity_column: Optional[str] = None) -> Dict[str, Any]:
@@ -1501,7 +1549,8 @@ class EnhancedControlAnalyzer:
             id_column: Column containing control ID
             desc_column: Column containing control description
             freq_column: Column containing frequency value
-            type_column: Column containing control type
+            control_type_column: Column containing control type (Preventive/Detective/Corrective)
+            automation_column: Column containing automation type (Automated/Hybrid/Manual)
             risk_column: Column containing risk description
             audit_leader_column: Column containing audit leader
             audit_entity_column: Column containing audit entity
@@ -1520,10 +1569,16 @@ class EnhancedControlAnalyzer:
                 frequency = str(freq_value) if not isinstance(freq_value, str) else freq_value
 
         control_type = None
-        if type_column and type_column in row:
-            type_value = row[type_column]
+        if control_type_column and control_type_column in row:
+            type_value = row[control_type_column]
             if pd.notna(type_value):  # Check if not NaN
                 control_type = str(type_value) if not isinstance(type_value, str) else type_value
+        
+        automation_field = None
+        if automation_column and automation_column in row:
+            automation_value = row[automation_column]
+            if pd.notna(automation_value):  # Check if not NaN
+                automation_field = str(automation_value) if not isinstance(automation_value, str) else automation_value
 
         risk_description = None
         if risk_column and risk_column in row:
@@ -1532,7 +1587,7 @@ class EnhancedControlAnalyzer:
                 risk_description = str(risk_value) if not isinstance(risk_value, str) else risk_value
 
         # Analyze control
-        result = self.analyze_control(control_id, description, frequency, control_type, risk_description)
+        result = self.analyze_control(control_id, description, frequency, control_type, risk_description, automation_field)
 
         # Add Audit Leader if available
         if audit_leader_column and audit_leader_column in row:
@@ -1551,7 +1606,8 @@ class EnhancedControlAnalyzer:
     def analyze_file_with_batches(self, file_path: str, id_column: Optional[str] = None,
                                   desc_column: Optional[str] = None,
                                   freq_column: Optional[str] = None,
-                                  type_column: Optional[str] = None,
+                                  control_type_column: Optional[str] = None,
+                                  automation_column: Optional[str] = None,
                                   risk_column: Optional[str] = None,
                                   audit_leader_column: Optional[str] = None,
                                   audit_entity_column: Optional[str] = None,
@@ -1794,7 +1850,8 @@ class EnhancedControlAnalyzer:
                 # Process this control
                 result = self._process_single_control(
                     row, id_column, desc_column, freq_column,
-                    type_column, risk_column, audit_leader_column
+                    control_type_column, automation_column, risk_column, 
+                    audit_leader_column, audit_entity_column
                 )
                 batch_results.append(result)
             except Exception as e:
@@ -2962,26 +3019,32 @@ def main() -> int:
         if args.use_batches:
             # Use batch processing for large files
             analyzer.analyze_file_with_batches(
-                args.file,
-                args.id_column,
-                args.desc_column,
-                args.freq_column,
-                args.type_column,
-                args.risk_column,
-                args.output_file,
-                args.batch_size,
-                args.temp_dir
+                file_path=args.file,
+                id_column=args.id_column,
+                desc_column=args.desc_column,
+                freq_column=args.freq_column,
+                control_type_column=args.type_column,
+                automation_column=None,  # Will be derived from config
+                risk_column=args.risk_column,
+                audit_leader_column=None,  # Not supported in module CLI
+                audit_entity_column=None,  # Not supported in module CLI
+                output_file=args.output_file,
+                batch_size=args.batch_size,
+                temp_dir=args.temp_dir
             )
         else:
             # Use standard processing
             analyzer.analyze_file(
-                args.file,
-                args.id_column,
-                args.desc_column,
-                args.freq_column,
-                args.type_column,
-                args.risk_column,
-                args.output_file
+                file_path=args.file,
+                id_column=args.id_column,
+                desc_column=args.desc_column,
+                freq_column=args.freq_column,
+                control_type_column=args.type_column,
+                automation_column=None,  # Will be derived from config
+                risk_column=args.risk_column,
+                audit_leader_column=None,  # Not supported in module CLI
+                audit_entity_column=None,  # Not supported in module CLI
+                output_file=args.output_file
             )
 
         logger.info("Analysis completed successfully")

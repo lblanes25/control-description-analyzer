@@ -248,7 +248,7 @@ class TestConditionalScoringIntegration:
         
         # Verify result is valid
         assert result['total_score'] >= 0
-        assert result['category'] in ['Effective', 'Adequate', 'Needs Improvement']
+        assert result['category'] in ['Meets Expectations', 'Requires Attention', 'Needs Improvement']
 
     def test_error_handling_integration(self, analyzer_with_config):
         """Test error handling in complete workflow (P1 Critical)"""

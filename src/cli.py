@@ -561,14 +561,16 @@ def resume_from_checkpoint(
             )
         else:
             remaining_results = analyzer.analyze_file(
-                temp_path,
-                args.id_column,
-                args.desc_column,
-                args.freq_column,
-                args.type_column,
-                args.risk_column,
-                args.audit_leader_column,
-                temp_output
+                file_path=temp_path,
+                id_column=args.id_column,
+                desc_column=args.desc_column,
+                freq_column=args.freq_column,
+                control_type_column=args.type_column,
+                automation_column=None,  # Will be derived from config
+                risk_column=args.risk_column,
+                audit_leader_column=args.audit_leader_column,
+                audit_entity_column=args.audit_entity_column,
+                output_file=temp_output
             )
 
         # Combine results
@@ -904,7 +906,8 @@ def main() -> int:
             id_column=args.id_column,
             desc_column=args.desc_column,
             freq_column=args.freq_column,
-            type_column=args.type_column,
+            control_type_column=args.type_column,
+            automation_column=None,  # Will be derived from config
             risk_column=args.risk_column,
             audit_leader_column=args.audit_leader_column,
             audit_entity_column=args.audit_entity_column,

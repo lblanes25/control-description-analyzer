@@ -9,7 +9,7 @@ import json
 
 # Initialize analyzer
 script_dir = os.path.dirname(os.path.abspath(__file__))
-config_path = os.path.join(script_dir, 'config', 'control_analyzer_updated.yaml')
+config_path = os.path.join(script_dir, 'config', 'control_analyzer.yaml')
 analyzer = EnhancedControlAnalyzer(config_path)
 
 print("🔍 Testing Enhanced Subthreshold Feedback System")

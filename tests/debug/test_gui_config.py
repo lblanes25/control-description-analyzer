@@ -9,7 +9,7 @@ import os
 # Test the config path that GUI will use
 script_dir = os.path.dirname(os.path.abspath('src/gui/main_window.py'))
 project_root = os.path.dirname(os.path.dirname(script_dir))
-config_path = os.path.join(project_root, 'config', 'control_analyzer_updated.yaml')
+config_path = os.path.join(project_root, 'config', 'control_analyzer.yaml')
 
 print(f'Config path: {config_path}')
 print(f'Exists: {os.path.exists(config_path)}')

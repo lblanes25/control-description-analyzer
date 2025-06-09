@@ -88,12 +88,12 @@ MINIMUM_FALLBACK_CONFIDENCE = 0.3
 @dataclass
 class DetectionParameters:
     """Parameter object for WHO detection configuration"""
-    control_type: Optional[str] = None
+    automation_field: Optional[str] = None
     frequency: Optional[str] = None
     existing_keywords: Optional[List[str]] = None
 
 
-def enhanced_who_detection_v2(text: str, nlp_model, control_type: Optional[str] = None,
+def enhanced_who_detection_v2(text: str, nlp_model, automation_field: Optional[str] = None,
                               frequency: Optional[str] = None, existing_keywords: Optional[List[str]] = None,
                               config_adapter=None):
     """
@@ -114,7 +114,7 @@ def enhanced_who_detection_v2(text: str, nlp_model, control_type: Optional[str] 
 
     try:
         doc = nlp_model(text)
-        params = DetectionParameters(control_type, frequency, existing_keywords)
+        params = DetectionParameters(automation_field, frequency, existing_keywords)
 
         # Skip new detector classes for now - they don't have detect_in_text method
         # TODO: Implement detect_in_text method in PersonRoleDetector and SystemDetector
@@ -391,7 +391,7 @@ def _process_main_subjects(main_subjects: List[Dict], params: DetectionParameter
             "text": subject_text,
             "type": entity_type,
             "is_passive": subject.get("is_passive", False)
-        }, params.control_type, params.frequency) * MAIN_SUBJECT_BOOST
+        }, params.automation_field, params.frequency) * MAIN_SUBJECT_BOOST
 
         # Determine role
         role = "primary"
@@ -457,7 +457,7 @@ def _detect_prepositional_phrases(doc, params: DetectionParameters) -> List[Dict
             "text": entity_text,
             "type": entity_type,
             "is_passive": False
-        }, params.control_type, params.frequency) * BY_PHRASE_BOOST
+        }, params.automation_field, params.frequency) * BY_PHRASE_BOOST
 
         candidate = {
             "text": entity_text,
@@ -499,7 +499,7 @@ def _detect_explicit_responsibility(doc, params: DetectionParameters) -> List[Di
                                     "text": entity_text,
                                     "type": entity_type,
                                     "is_passive": False
-                                }, params.control_type, params.frequency) * RESPONSIBILITY_BOOST
+                                }, params.automation_field, params.frequency) * RESPONSIBILITY_BOOST
 
                                 candidate = {
                                     "text": entity_text,
@@ -553,7 +553,7 @@ def _detect_temporal_patterns(text: str, params: DetectionParameters) -> List[Di
                 "text": team_text,
                 "type": entity_type,
                 "is_passive": False
-            }, params.control_type, params.frequency) * TEMPORAL_BOOST
+            }, params.automation_field, params.frequency) * TEMPORAL_BOOST
 
             candidate = {
                 "text": team_text,  # Just "the [Team Name]"
@@ -602,7 +602,7 @@ def _fallback_noun_chunk_analysis(doc, params: DetectionParameters) -> List[Dict
                     "text": chunk_text,
                     "type": entity_type,
                     "is_passive": False
-                }, params.control_type, params.frequency) * FALLBACK_PENALTY
+                }, params.automation_field, params.frequency) * FALLBACK_PENALTY
 
                 if confidence > MINIMUM_FALLBACK_CONFIDENCE:
                     candidate = {
@@ -647,7 +647,7 @@ def _fallback_regex_patterns(text: str, params: DetectionParameters) -> List[Dic
                 "text": match_text,
                 "type": entity_type,
                 "is_passive": False
-            }, params.control_type, params.frequency) * REGEX_FALLBACK_PENALTY
+            }, params.automation_field, params.frequency) * REGEX_FALLBACK_PENALTY
 
             if confidence > MINIMUM_FALLBACK_CONFIDENCE:
                 candidate = {
@@ -744,7 +744,7 @@ def _assemble_final_result(who_candidates: List[Dict], params: DetectionParamete
             unique_secondary.append(candidate)
 
     # Generate message
-    message = _generate_consistency_message(primary, params.control_type)
+    message = _generate_consistency_message(primary, params.automation_field)
 
     return {
         "primary": primary,
@@ -755,17 +755,17 @@ def _assemble_final_result(who_candidates: List[Dict], params: DetectionParamete
     }
 
 
-def _generate_consistency_message(primary: Dict, control_type: Optional[str]) -> str:
-    """Generate message checking for consistency with control type"""
+def _generate_consistency_message(primary: Dict, automation_field: Optional[str]) -> str:
+    """Generate message checking for consistency with automation type"""
     message = ""
 
-    if control_type and primary["type"] != "unknown":
-        control_type_lower = control_type.strip().lower()
+    if automation_field and primary["type"] != "unknown":
+        automation_lower = automation_field.strip().lower()
         performer_type = primary["type"]
 
-        if control_type_lower == "automated" and performer_type == "human":
+        if automation_lower == "automated" and performer_type == "human":
             message = "Warning: Human performer detected for automated control"
-        elif control_type_lower == "manual" and performer_type == "system":
+        elif automation_lower == "manual" and performer_type == "system":
             message = "Warning: System performer detected for manual control"
 
     return message
@@ -944,7 +944,7 @@ def _contains_system_indicators(normalized_text: str) -> bool:
     return False
 
 
-def calculate_who_confidence(entity_info, control_type=None, frequency=None):
+def calculate_who_confidence(entity_info, automation_field=None, frequency=None):
     """
     Calculates confidence score based on entity characteristics and context.
 
@@ -964,8 +964,8 @@ def calculate_who_confidence(entity_info, control_type=None, frequency=None):
     if entity_info.get("is_passive", False):
         base_score -= PASSIVE_VOICE_PENALTY
 
-    # Apply control type consistency adjustments
-    base_score = _apply_control_type_consistency(base_score, entity_info, control_type)
+    # Apply automation type consistency adjustments
+    base_score = _apply_automation_consistency(base_score, entity_info, automation_field)
 
     # Apply frequency consistency adjustments  
     base_score = _apply_frequency_consistency(base_score, entity_info, frequency)
@@ -1019,20 +1019,20 @@ def _apply_entity_type_scoring(base_score: float, entity_info: Dict) -> float:
     return base_score
 
 
-def _apply_control_type_consistency(base_score: float, entity_info: Dict, control_type: Optional[str]) -> float:
-    """Apply adjustments for control type consistency"""
-    if not control_type:
+def _apply_automation_consistency(base_score: float, entity_info: Dict, automation_field: Optional[str]) -> float:
+    """Apply adjustments for automation type consistency"""
+    if not automation_field:
         return base_score
 
-    control_type_lower = control_type.lower()
+    automation_lower = automation_field.lower()
 
-    if "automated" in control_type_lower and entity_info["type"] == "system":
+    if "automated" in automation_lower and entity_info["type"] == "system":
         base_score += AUTOMATED_CONTROL_BOOST
-    elif "automated" in control_type_lower and entity_info["type"] == "human":
+    elif "automated" in automation_lower and entity_info["type"] == "human":
         base_score -= AUTOMATED_CONTROL_BOOST
-    elif "manual" in control_type_lower and entity_info["type"] == "human":
+    elif "manual" in automation_lower and entity_info["type"] == "human":
         base_score += MANUAL_CONTROL_BOOST
-    elif "manual" in control_type_lower and entity_info["type"] == "system":
+    elif "manual" in automation_lower and entity_info["type"] == "system":
         base_score -= MANUAL_CONTROL_BOOST
 
     return base_score

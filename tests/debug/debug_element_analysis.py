@@ -9,7 +9,7 @@ import os
 # Initialize analyzer
 script_dir = os.path.dirname(os.path.abspath('src/gui/main_window.py'))
 project_root = os.path.dirname(os.path.dirname(script_dir))
-config_path = os.path.join(project_root, 'config', 'control_analyzer_updated.yaml')
+config_path = os.path.join(project_root, 'config', 'control_analyzer.yaml')
 
 analyzer = EnhancedControlAnalyzer(config_path)
 test_text = "The Finance Manager reviews monthly statements"

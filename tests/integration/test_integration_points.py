@@ -61,7 +61,7 @@ class TestFileIOOperations:
         """Test Excel file error handling (P3 Integration)"""
         from src.core.analyzer import EnhancedControlAnalyzer
         
-        analyzer = EnhancedControlAnalyzer('config/control_analyzer_updated.yaml')
+        analyzer = EnhancedControlAnalyzer('config/control_analyzer.yaml')
         
         # Test non-existent file
         non_existent_file = tmp_path / "nonexistent.xlsx"
@@ -71,7 +71,7 @@ class TestFileIOOperations:
 
     def test_configuration_file_loading(self, analyzer_with_config):
         """Test configuration file loading (P3 Integration)"""
-        config_path = Path('config/control_analyzer_updated.yaml')
+        config_path = Path('config/control_analyzer.yaml')
         assert config_path.exists(), "Configuration file should exist"
         
         # Verify analyzer loads configuration successfully
@@ -84,7 +84,7 @@ class TestFileIOOperations:
             {
                 'control_id': 'TEST_001',
                 'description': 'Finance Manager reviews journal entries daily in SAP',
-                'expected_category': 'Effective'
+                'expected_category': 'Meets Expectations'
             },
             {
                 'control_id': 'TEST_002', 
@@ -254,8 +254,8 @@ class TestOutputFormatGeneration:
         """Test data generation for visualizations (P3 Integration)"""
         # Analyze multiple controls for visualization
         test_controls = [
-            ('VIZ_001', 'Finance Manager reviews transactions daily in SAP', 'Effective'),
-            ('VIZ_002', 'Analyst validates balances monthly', 'Adequate'),
+            ('VIZ_001', 'Finance Manager reviews transactions daily in SAP', 'Meets Expectations'),
+            ('VIZ_002', 'Analyst validates balances monthly', 'Requires Attention'),
             ('VIZ_003', 'Someone does something sometimes', 'Needs Improvement')
         ]
         
@@ -305,8 +305,8 @@ class TestOutputFormatGeneration:
         
         summary = {
             'total_controls_analyzed': total_controls,
-            'effective_count': categories.count('Effective'),
-            'adequate_count': categories.count('Adequate'),
+            'effective_count': categories.count('Meets Expectations'),
+            'adequate_count': categories.count('Requires Attention'),
             'needs_improvement_count': categories.count('Needs Improvement'),
             'average_score': sum(r['total_score'] for r in results) / total_controls,
             'min_score': min(r['total_score'] for r in results),
@@ -410,7 +410,7 @@ class TestCLIArgumentProcessing:
     def test_cli_configuration_handling(self):
         """Test CLI configuration file handling (P3 Integration)"""
         # Test configuration file argument processing
-        config_path = 'config/control_analyzer_updated.yaml'
+        config_path = 'config/control_analyzer.yaml'
         
         # Verify config file exists
         assert Path(config_path).exists(), "Configuration file should exist for CLI testing"
@@ -500,7 +500,7 @@ class TestGUIComponentIntegration:
                 {
                     'control_id': 'VIZ_001',
                     'total_score': 85.5,
-                    'category': 'Effective',
+                    'category': 'Meets Expectations',
                     'who_score': 25.0,
                     'what_score': 30.0,
                     'when_score': 20.5,
@@ -509,7 +509,7 @@ class TestGUIComponentIntegration:
                 {
                     'control_id': 'VIZ_002', 
                     'total_score': 65.0,
-                    'category': 'Adequate',
+                    'category': 'Requires Attention',
                     'who_score': 20.0,
                     'what_score': 25.0,
                     'when_score': 15.0,

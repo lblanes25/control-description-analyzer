@@ -32,7 +32,7 @@ def project_root_path():
 @pytest.fixture(scope="session")
 def test_config_path(project_root_path):
     """Return path to test configuration file"""
-    return project_root_path / 'config' / 'control_analyzer_updated.yaml'
+    return project_root_path / 'config' / 'control_analyzer.yaml'
 
 
 @pytest.fixture
@@ -381,9 +381,9 @@ def assert_category_consistency(result: Dict[str, Any]):
     category = result['category']
     
     if score >= 75:
-        assert category == 'Effective', f"Score {score} should be Effective, got {category}"
+        assert category == 'Meets Expectations', f"Score {score} should be Meets Expectations, got {category}"
     elif score >= 50:
-        assert category == 'Adequate', f"Score {score} should be Adequate, got {category}"
+        assert category == 'Requires Attention', f"Score {score} should be Requires Attention, got {category}"
     else:
         assert category == 'Needs Improvement', f"Score {score} should be Needs Improvement, got {category}"
 

@@ -101,7 +101,7 @@ def test_conditional_where_scoring():
     print("=" * 60)
     
     try:
-        config_path = os.path.join(project_root, 'config', 'control_analyzer_updated.yaml')
+        config_path = os.path.join(project_root, 'config', 'control_analyzer.yaml')
         analyzer = EnhancedControlAnalyzer(config_path)
         
         test_cases = [
@@ -109,7 +109,7 @@ def test_conditional_where_scoring():
                 'id': 'TEST001',
                 'description': "System validates transaction limits and flags exceptions for manager review",
                 'automation': 'manual',
-                'expected_category': 'Adequate',
+                'expected_category': 'Requires Attention',
                 'expected_where_points': 10,  # Should be classified as 'system'
                 'expected_classification': 'system'
             },
@@ -117,7 +117,7 @@ def test_conditional_where_scoring():
                 'id': 'TEST002',
                 'description': "Branch manager reviews daily exception report and saves findings in SharePoint", 
                 'automation': 'manual',
-                'expected_category': 'Effective',  # Core elements score ~99 points
+                'expected_category': 'Meets Expectations',  # Core elements score ~99 points
                 'expected_where_points': 0,  # Should be classified as 'other'
                 'expected_classification': 'other'
             },
@@ -125,7 +125,7 @@ def test_conditional_where_scoring():
                 'id': 'TEST003',
                 'description': "Security guard performs physical vault inspection daily",
                 'automation': 'manual',
-                'expected_category': 'Effective',  # Core + WHERE = 84 points
+                'expected_category': 'Meets Expectations',  # Core + WHERE = 84 points
                 'expected_where_points': 5,  # Should be classified as 'location_dependent'
                 'expected_classification': 'location_dependent'
             },
@@ -133,7 +133,7 @@ def test_conditional_where_scoring():
                 'id': 'TEST004',
                 'description': "The Finance Manager reviews and approves journal entries in SAP monthly",
                 'automation': 'hybrid',
-                'expected_category': 'Effective',
+                'expected_category': 'Meets Expectations',
                 'expected_where_points': 10,  # Should be classified as 'system'
                 'expected_classification': 'system'
             }
@@ -198,7 +198,7 @@ def test_demerit_system():
     print("=" * 60)
     
     try:
-        config_path = os.path.join(project_root, 'config', 'control_analyzer_updated.yaml')
+        config_path = os.path.join(project_root, 'config', 'control_analyzer.yaml')
         analyzer = EnhancedControlAnalyzer(config_path)
         
         test_cases = [

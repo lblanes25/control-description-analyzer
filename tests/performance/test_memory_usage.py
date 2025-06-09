@@ -29,7 +29,7 @@ class TestMemoryEfficiency:
     @pytest.fixture(scope="class")
     def analyzer(self):
         """Create analyzer instance for memory testing"""
-        return EnhancedControlAnalyzer('config/control_analyzer_updated.yaml')
+        return EnhancedControlAnalyzer('config/control_analyzer.yaml')
 
     @pytest.fixture
     def process(self):

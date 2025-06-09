@@ -8,7 +8,7 @@ import os
 
 # Initialize analyzer
 script_dir = os.path.dirname(os.path.abspath(__file__))
-config_path = os.path.join(script_dir, 'config', 'control_analyzer_updated.yaml')
+config_path = os.path.join(script_dir, 'config', 'control_analyzer.yaml')
 analyzer = EnhancedControlAnalyzer(config_path)
 
 print("🎯 Final Simple Scoring Test")
@@ -65,5 +65,5 @@ print()
 print("Summary:")
 print("- Elements Found count = number of elements with weighted score ≥ 5.0")
 print("- Missing Elements list = elements with weighted score < 5.0") 
-print("- Simple Category based on thresholds: 4+ = Meets expectations, 3+ = Requires Attention, <3 = Needs Improvement")
+print("- Simple Category based on thresholds: 4+ = Meets Expectations, 3+ = Requires Attention, <3 = Needs Improvement")
 print("- Keywords detected but penalized for vagueness still count as 'detected' but may not meet scoring threshold")

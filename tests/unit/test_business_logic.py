@@ -138,8 +138,8 @@ class TestCategoryThresholdDetermination:
     """Test suite for category threshold determination (P2 Business Logic)"""
 
     def test_effective_category_thresholds(self, analyzer_with_config):
-        """Test 'Effective' category threshold determination (P2 Business Logic)"""
-        # High-quality control should be 'Effective' (75+ points)
+        """Test 'Meets Expectations' category threshold determination (P2 Business Logic)"""
+        # High-quality control should be 'Meets Expectations' (75+ points)
         effective_control = """
         The Finance Manager reviews and validates journal entries in SAP daily 
         to ensure accuracy and compliance with accounting standards
@@ -147,25 +147,25 @@ class TestCategoryThresholdDetermination:
         
         result = analyzer_with_config.analyze_control('EFFECTIVE_001', effective_control)
         
-        # Should be classified as Effective
-        assert result['category'] == 'Effective', f"High-quality control should be Effective: {result['category']}"
-        assert result['total_score'] >= 75, f"Effective controls should score 75+: {result['total_score']}"
+        # Should be classified as Meets Expectations
+        assert result['category'] == 'Meets Expectations', f"High-quality control should be Meets Expectations: {result['category']}"
+        assert result['total_score'] >= 75, f"Meets Expectations controls should score 75+: {result['total_score']}"
 
     def test_adequate_category_thresholds(self, analyzer_with_config):
-        """Test 'Adequate' category threshold determination (P2 Business Logic)"""
-        # Medium-quality control should be 'Adequate' (50-74 points)
+        """Test 'Requires Attention' category threshold determination (P2 Business Logic)"""
+        # Medium-quality control should be 'Requires Attention' (50-74 points)
         adequate_control = """
         Manager reviews monthly reports and validates balances
         """
         
         result = analyzer_with_config.analyze_control('ADEQUATE_001', adequate_control)
         
-        # Should be classified as Adequate or better
-        assert result['category'] in ['Adequate', 'Effective'], f"Reasonable control should be Adequate+: {result['category']}"
+        # Should be classified as Requires Attention or better
+        assert result['category'] in ['Requires Attention', 'Meets Expectations'], f"Reasonable control should be Requires Attention+: {result['category']}"
         
-        # If Adequate, should be in 50-74 range
-        if result['category'] == 'Adequate':
-            assert 50 <= result['total_score'] < 75, f"Adequate should be 50-74: {result['total_score']}"
+        # If Requires Attention, should be in 50-74 range
+        if result['category'] == 'Requires Attention':
+            assert 50 <= result['total_score'] < 75, f"Requires Attention should be 50-74: {result['total_score']}"
 
     def test_needs_improvement_thresholds(self, analyzer_with_config):
         """Test 'Needs Improvement' category threshold determination (P2 Business Logic)"""
@@ -185,12 +185,12 @@ class TestCategoryThresholdDetermination:
             {
                 'description': 'Manager validates transactions monthly',
                 'expected_min_score': 40,  # Should be reasonable
-                'expected_category': ['Effective', 'Adequate', 'Needs Improvement']  # System is generous
+                'expected_category': ['Meets Expectations', 'Requires Attention', 'Needs Improvement']  # System is generous
             },
             {
                 'description': 'The Senior Financial Analyst reviews and reconciles bank statements daily in the accounting system',
                 'expected_min_score': 60,  # Should be good
-                'expected_category': ['Adequate', 'Effective']
+                'expected_category': ['Requires Attention', 'Meets Expectations']
             }
         ]
         
@@ -217,9 +217,9 @@ class TestCategoryThresholdDetermination:
             
             # Verify category matches score thresholds
             if score >= 75:
-                assert category == 'Effective', f"Score {score} should be Effective, got {category}"
+                assert category == 'Meets Expectations', f"Score {score} should be Meets Expectations, got {category}"
             elif score >= 50:
-                assert category == 'Adequate', f"Score {score} should be Adequate, got {category}"
+                assert category == 'Requires Attention', f"Score {score} should be Requires Attention, got {category}"
             else:
                 assert category == 'Needs Improvement', f"Score {score} should be Needs Improvement, got {category}"
 
@@ -473,4 +473,4 @@ class TestFeedbackOnlyElements:
         assert abs(result['total_score'] - core_total) < 1, "Total should equal core elements only"
         
         # Should be high-quality control
-        assert result['category'] in ['Adequate', 'Effective'], f"Comprehensive control should be good quality: {result['category']}"
+        assert result['category'] in ['Requires Attention', 'Meets Expectations'], f"Comprehensive control should be good quality: {result['category']}"

@@ -125,7 +125,7 @@ def test_full_integration():
     
     try:
         # Initialize the analyzer
-        config_path = os.path.join(project_root, 'config', 'control_analyzer_updated.yaml')
+        config_path = os.path.join(project_root, 'config', 'control_analyzer.yaml')
         analyzer = EnhancedControlAnalyzer(config_path)
         
         # Test control descriptions

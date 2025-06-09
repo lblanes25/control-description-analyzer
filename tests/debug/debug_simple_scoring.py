@@ -8,7 +8,7 @@ import os
 
 # Initialize analyzer
 script_dir = os.path.dirname(os.path.abspath(__file__))
-config_path = os.path.join(script_dir, 'config', 'control_analyzer_updated.yaml')
+config_path = os.path.join(script_dir, 'config', 'control_analyzer.yaml')
 analyzer = EnhancedControlAnalyzer(config_path)
 
 # Test cases that show issues in your results
@@ -17,9 +17,9 @@ test_cases = [
         "id": "TEST1",
         "description": "Exceptions are routed to the appropriate team as needed. Access is restricted to authorized users. The system automatically ages receivables monthly.",
         "expected_elements": 5,
-        "expected_category": "Meets expectations",
+        "expected_category": "Meets Expectations",
         "reported_elements": "5/5",
-        "reported_category": "Meets expectations",
+        "reported_category": "Meets Expectations",
         "issue": "Missing WHEN but shows 5/5"
     },
     {
@@ -54,8 +54,8 @@ test_cases = [
 print("🔍 Debugging Simple Scoring Implementation\n")
 print(f"Config: {config_path}")
 print(f"Simple scoring enabled: {analyzer.config.get('simple_scoring', {}).get('enabled', True)}")
-print(f"Thresholds: excellent={analyzer.config.get('simple_scoring', {}).get('thresholds', {}).get('excellent', 4)}, "
-      f"good={analyzer.config.get('simple_scoring', {}).get('thresholds', {}).get('good', 3)}")
+print(f"Thresholds: meets_expectations={analyzer.config.get('simple_scoring', {}).get('thresholds', {}).get('excellent', 4)}, "
+      f"requires_attention={analyzer.config.get('simple_scoring', {}).get('thresholds', {}).get('good', 3)}")
 print("\n" + "="*100 + "\n")
 
 # Analyze each test case
@@ -105,9 +105,9 @@ for test in test_cases:
     good_threshold = thresholds.get('good', 3)
     
     if elements_found >= excellent_threshold:
-        expected_cat = simple_config.get('category_names', {}).get('excellent', 'Excellent')
+        expected_cat = simple_config.get('category_names', {}).get('excellent', 'Meets Expectations')
     elif elements_found >= good_threshold:
-        expected_cat = simple_config.get('category_names', {}).get('good', 'Good')
+        expected_cat = simple_config.get('category_names', {}).get('good', 'Requires Attention')
     else:
         expected_cat = simple_config.get('category_names', {}).get('needs_improvement', 'Needs Improvement')
     

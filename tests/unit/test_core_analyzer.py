@@ -28,7 +28,7 @@ class TestEnhancedControlAnalyzer:
     @pytest.fixture
     def analyzer(self):
         """Create analyzer instance with test configuration"""
-        config_path = os.path.join(project_root, 'config', 'control_analyzer_updated.yaml')
+        config_path = os.path.join(project_root, 'config', 'control_analyzer.yaml')
         return EnhancedControlAnalyzer(config_path)
 
     @pytest.fixture
@@ -41,7 +41,7 @@ class TestEnhancedControlAnalyzer:
                 'automation': 'manual',
                 'expected_classification': 'system',
                 'expected_where_points': 10,
-                'expected_category': 'Adequate'
+                'expected_category': 'Requires Attention'
             },
             'location_control': {
                 'id': 'LOC_001', 
@@ -49,7 +49,7 @@ class TestEnhancedControlAnalyzer:
                 'automation': 'manual',
                 'expected_classification': 'location_dependent',
                 'expected_where_points': 5,
-                'expected_category': 'Effective'
+                'expected_category': 'Meets Expectations'
             },
             'other_control': {
                 'id': 'OTH_001',
@@ -57,7 +57,7 @@ class TestEnhancedControlAnalyzer:
                 'automation': 'manual', 
                 'expected_classification': 'other',
                 'expected_where_points': 0,
-                'expected_category': 'Effective'
+                'expected_category': 'Meets Expectations'
             },
             'vague_control': {
                 'id': 'VAG_001',
@@ -188,14 +188,14 @@ class TestEnhancedControlAnalyzer:
         test_cases = [
             {
                 'description': 'High scoring control with all elements',
-                'expected_min_score': 75,  # Should be Effective
-                'expected_category': 'Effective'
+                'expected_min_score': 75,  # Should be Meets Expectations
+                'expected_category': 'Meets Expectations'
             },
             {
                 'description': 'Medium control',
-                'expected_min_score': 50,  # Should be Adequate
+                'expected_min_score': 50,  # Should be Requires Attention
                 'expected_max_score': 74,
-                'expected_category': 'Adequate'
+                'expected_category': 'Requires Attention'
             }
         ]
         
@@ -273,7 +273,7 @@ class TestEnhancedControlAnalyzer:
         )
         
         # Should have lower score due to missing WHO
-        assert result['total_score'] < 75  # Likely not Effective
+        assert result['total_score'] < 75  # Likely not Meets Expectations
         
         # Control missing WHAT  
         result = analyzer.analyze_control(
@@ -308,7 +308,7 @@ class TestConditionalScoringMethodology:
     @pytest.fixture
     def analyzer(self):
         """Create analyzer instance"""
-        config_path = os.path.join(project_root, 'config', 'control_analyzer_updated.yaml')
+        config_path = os.path.join(project_root, 'config', 'control_analyzer.yaml')
         return EnhancedControlAnalyzer(config_path)
 
     def test_where_scoring_with_no_where_element(self, analyzer):

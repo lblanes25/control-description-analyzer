@@ -16,7 +16,7 @@ def test_analyzer_output():
     """Test what the analyzer actually returns"""
     
     # Initialize analyzer
-    config_path = os.path.join(os.path.dirname(__file__), "config", "control_analyzer_updated.yaml")
+    config_path = os.path.join(os.path.dirname(__file__), "config", "control_analyzer.yaml")
     if os.path.exists(config_path):
         analyzer = EnhancedControlAnalyzer(config_path)
     else:

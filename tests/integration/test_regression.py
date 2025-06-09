@@ -8,14 +8,14 @@ test_controls = [
         "control_id": "GOLD-001",
         "description": "The Accounting Manager reviews monthly bank reconciliations prepared by the Senior Accountant to ensure completeness and accuracy. Reconciliations are completed by the 5th business day. Unresolved items over $1,000 are escalated to the Controller.",
         "expected_score": 100,
-        "expected_category": "Excellent",
+        "expected_category": "Meets Expectations",
         "expected_missing": []
     },
     {
         "control_id": "GOOD-001",
         "description": "The Accounting Manager reviews reconciliations each month.",
         "expected_score_range": (45, 64),
-        "expected_category": "Good"
+        "expected_category": "Requires Attention"
     },
     {
         "control_id": "WEAK-001",

@@ -29,7 +29,7 @@ class TestAnalysisPerformance:
     @pytest.fixture(scope="class")
     def analyzer(self):
         """Create analyzer instance for performance testing"""
-        return EnhancedControlAnalyzer('config/control_analyzer_updated.yaml')
+        return EnhancedControlAnalyzer('config/control_analyzer.yaml')
 
     @pytest.fixture
     def sample_controls(self):
@@ -199,7 +199,7 @@ class TestAnalysisPerformance:
         for i, result in enumerate(results):
             assert result['control_id'] == f'BATCH100_{i:03d}'
             assert result['total_score'] >= 0
-            assert result['category'] in ['Effective', 'Adequate', 'Needs Improvement']
+            assert result['category'] in ['Meets Expectations', 'Requires Attention', 'Needs Improvement']
         
         # Check performance threshold
         print(f"\n100 controls analyzed in {execution_time:.2f} seconds")
@@ -265,7 +265,7 @@ class TestAnalysisPerformance:
         for i in range(0, 1000, 100):
             assert results[i]['control_id'] == f'BATCH1000_{i:04d}'
             assert results[i]['total_score'] >= 0
-            assert results[i]['category'] in ['Effective', 'Adequate', 'Needs Improvement']
+            assert results[i]['category'] in ['Meets Expectations', 'Requires Attention', 'Needs Improvement']
         
         # Calculate throughput
         controls_per_second = 1000 / execution_time

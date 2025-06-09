@@ -197,7 +197,7 @@ class ControlAnalyzerGUI(QMainWindow):
             # Look for config file in the config directory
             script_dir = os.path.dirname(os.path.abspath(__file__))
             project_root = os.path.dirname(os.path.dirname(script_dir))
-            config_path = os.path.join(project_root, "config", "control_analyzer_updated.yaml")
+            config_path = os.path.join(project_root, "config", "control_analyzer.yaml")
 
             if os.path.exists(config_path):
                 self.analyzer = EnhancedControlAnalyzer(config_path)

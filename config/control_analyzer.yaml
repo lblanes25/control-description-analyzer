@@ -30,47 +30,114 @@ constants:
     - instruction
     - manual
 
-# Scoring Configuration - Primary weighted scoring methodology
+# Scoring configuration
 scoring:
   # Positioning and purpose
   status: "primary"               # Official scoring methodology
   purpose: "Comprehensive control quality assessment"
-  
+
   # Category thresholds for overall control scoring
   category_thresholds:
-    effective: 75    # Renamed from 'excellent' 
-    adequate: 50     # Renamed from 'good'
-  
-  # Output labels for UI differentiation  
+    meets_expectations: 75    # 75+ points = Meets Expectations
+    requires_attention: 50    # 50-74 points = Requires Attention
+
+  # Output labels for UI differentiation
   display_labels:
     primary_label: "Control Quality Score"
     secondary_label: "(Official Weighted Score)"
     help_text: "Comprehensive assessment of control design and quality"
-  
+
   # Core element weights (WHO + WHAT + WHEN = 100%)
+  # Rationale: These three elements represent the minimum required for a testable control.
+  # Distribution reflects both regulatory emphasis and common audit finding patterns.
   core_elements:
-    WHO: 30          # Increased from 25% 
-    WHAT: 35         # Increased from 30%
-    WHEN: 35         # Increased from 20%
-  
-  # Conditional element scoring - Updated to percentage multipliers
+    WHO: 30    # Accountability is critical but shouldn't overshadow the operational elements.
+               # 30% ensures clear ownership while maintaining balance with action and timing.
+
+    WHAT: 35   # The control action is the heart of any control description. 35% weight reflects
+               # that unclear actions are a primary source of control failures. Includes verb
+               # strength analysis to distinguish between strong actions (validates, reconciles)
+               # and weak ones (reviews, ensures).
+
+    WHEN: 35   # Equal weight with WHAT because timing issues cause the majority of audit findings.
+               # Controls without specific, testable timing cannot be properly evaluated. This
+               # weight forces precision in frequency and deadlines, eliminating vague terms
+               # like "periodically" or "regularly."
+
+  # Conditional element scoring - Percentage multipliers ensure scoring equality
+  # Rationale: WHERE matters differently for different control types. Using multipliers
+  # instead of flat points prevents system controls from having an unfair scoring advantage
+  # while still rewarding location specificity where relevant.
   conditional_elements:
     WHERE:
-      system_controls: 1.10      # 10% bonus multiplier for system controls
-      location_dependent: 1.05   # 5% bonus multiplier for location-dependent controls
-      other: 1.00               # No bonus (1.0x) for other controls
-  
+      system_controls: 1.10      # 10% bonus recognizes that system/location specification
+                                # is critical for IT and automated controls
+
+      location_dependent: 1.05   # 5% bonus for controls requiring location context
+                                # (e.g., physical inventory counts, regional procedures)
+
+      other: 1.00               # No bonus for controls where location is irrelevant
+                                # (e.g., policy approvals, board oversight)
+
   # Feedback-only elements (no scoring impact)
+  # Rationale: These elements provide valuable context but shouldn't distort scoring.
+  # Including them in scoring encourages unnecessary verbosity without improving control quality.
   feedback_elements:
-    WHY: true                   # Convert to feedback-only
-    ESCALATION: true            # Convert to soft flag
-  
-  # Uncapped demerit system
+    WHY: true         # Purpose/risk alignment is important for understanding but shouldn't
+                      # drive scores. Analyzed and included in feedback to encourage
+                      # risk-conscious control design without creating gaming opportunities.
+
+    ESCALATION: true  # Exception handling is only relevant for ~20% of controls. Making
+                      # it a scored element would penalize controls that don't need
+                      # escalation procedures. Converted to soft flag for analytics.
+
+  # Demerit system - Penalties discourage specific bad practices
+  # Rationale: Penalty-only approach (no bonuses) reduces gaming opportunities and
+  # focuses teams on eliminating poor practices rather than optimizing for points.
   demerits:
-    vague_terms: -2             # Per term, uncapped
-    multiple_controls: -10      # Flat penalty
-    missing_accountability: -5   # When WHO is unclear
-    untestable_timing: -5       # When WHEN can't be tested
+    vague_terms: -2             # Per term, uncapped. Strong deterrent for lazy writing.
+                               # Common terms: periodically, timely, appropriate, various
+
+    multiple_controls: -10      # Flat penalty discourages combining controls, which
+                               # obscures accountability and makes testing difficult
+
+    missing_accountability: -5   # Targets controls with generic ownership (e.g., "management")
+                               # ensuring WHO element has meaningful content
+
+    untestable_timing: -5       # Reinforces WHEN importance by penalizing timing that
+                               # auditors cannot verify (e.g., "as needed")
+
+# Simple scoring configuration - Supplementary diagnostic tool
+simple_scoring:
+  enabled: true
+  status: "supplementary"  # Position as diagnostic tool, not primary
+  purpose: "Element completeness check"
+
+  # Threshold rationale: Set at 4+ and 3+ rather than requiring all 5 elements because:
+  # - WHERE may not apply to all control types (policy controls, governance controls)
+  # - WHY is often implied in well-written WHAT statements
+  # - This acknowledges real-world control writing while encouraging completeness
+  thresholds:
+    meets_expectations: 4      # 4+ elements required - allows for one contextually unnecessary element
+    requires_attention: 3      # 3+ elements required - minimum viable control must have WHO/WHAT/WHEN
+    # Anything below is "Needs Improvement" - missing core elements
+
+  # Category labels clearly differentiated from weighted scoring
+  # Rationale: Using "Element Count:" prefix prevents confusion with weighted scoring categories.
+  # Unified with primary scoring categories for consistency.
+  category_names:
+    meets_expectations: "Element Count: Meets Expectations"     # 4+ elements present
+    requires_attention: "Element Count: Requires Attention"   # 3 elements present
+    needs_improvement: "Element Count: Needs Improvement"  # <3 elements present
+
+  # Output labels for UI differentiation
+  # Rationale: Multiple labeling touch points ensure users understand this is NOT the official score.
+  # "Diagnostic Only" and help text prevent misinterpretation of purpose.
+  display_labels:
+    primary_label: "Element Completeness Check"
+    secondary_label: "(Diagnostic Only)"
+    help_text: "Shows whether all control elements are present, not quality"
+
 
 # Control Type Classification for Conditional WHERE Scoring
 classification:
@@ -128,28 +195,6 @@ classification:
   # Scoring weights for hybrid control prominence analysis
   system_context_weight: 2      # Weight for system context indicators
   location_context_weight: 1    # Weight for location context indicators
-
-# Simple scoring configuration - Supplementary diagnostic tool
-simple_scoring:
-  enabled: true
-  status: "supplementary"  # Position as diagnostic tool, not primary
-  purpose: "Element completeness check"
-  thresholds:
-    excellent: 4      # 4+ elements required
-    good: 3          # 3+ elements required
-    # Anything below is "Needs Improvement"
-  
-  # Category labels clearly differentiated from weighted scoring
-  category_names:
-    excellent: "Element Count: Complete"     # All elements present
-    good: "Element Count: Mostly Complete"   # Most elements present  
-    needs_improvement: "Element Count: Incomplete"  # Missing elements
-  
-  # Output labels for UI differentiation
-  display_labels:
-    primary_label: "Element Completeness Check"
-    secondary_label: "(Diagnostic Only)"
-    help_text: "Shows whether all control elements are present, not quality"
 
 # WHO Element Configuration
 who_element:
@@ -1035,70 +1080,52 @@ penalties:
     no_escalation_path: 0.2
 
 # Column Mapping Configuration
+
+#  Minimum Requirements
+
+#  To run basic analysis, you only need:
+#  1. Control Description column
+#  2. Control ID column
+
+#  All other columns enhance the analysis but are not required for core functionality.
+
+#  When you update ANY column mapping in the YAML:
+#  1. analyzer.py automatically uses the new column names (default is first one in list)
+#  2. Extracts data from the new columns
+#  3. Passes the same processed values to analyzers
+#  4. Zero changes needed in individual analyzer files
+
 column_mapping:
   primary_columns:
     - Control Description
+    - Control_Description
     - Control Statement
-    - Control Activity
     - Control Text
     - Description
     - Control
-    - Statement
-    - Narrative
-    - Activity
-    - Procedure
-    - Process Description
-    - Control Procedure
-    - Control Narrative
     - Control Details
     - Control Description Text
     - Description of Control
     - Control Activity Description
-  
+
   control_id_columns:
     - Control ID
+    - Control_ID
     - Control #
     - Control Number
     - Control Ref
-    - Reference
     - ID
-    - Number
-    - Ref #
     - Control Reference
     - Ctrl ID
-    - Control Identifier
-    - Control Code
-  
-  process_columns:
-    - Process
-    - Business Process
-    - Process Name
-    - Process Area
-    - Process Description
-    - Business Area
-    - Functional Area
-    - Department
-    - Function
-    - Area
-    - Domain
-    - Process Category
-    - Process Group
   
   frequency_columns:
     - Frequency
+    - Control_Frequency
     - Control Frequency
-    - How Often
-    - Timing
-    - When Performed
-    - Periodicity
-    - Schedule
-    - Occurrence
     - Frequency of Control
-    - Performance Frequency
-    - Control Timing
-    - Execution Frequency
   
   owner_columns:
+    - Audit Leader
     - Control Owner
     - Owner
     - Responsible Party
@@ -1111,6 +1138,49 @@ column_mapping:
     - Responsible Individual
     - Process Owner
     - Control Responsible
+  
+  entity_columns:
+    - Audit Entity
+    - Business Process
+    - Process Name
+    - Process Area
+    - Department
+    - Function
+    - Area
+    - Domain
+    - Process Category
+    - Process Group
+    - Business Area
+    - Functional Area
+  
+  control_type_columns:
+    - Control Type
+    - Control_Type
+    - Type
+    - Control Nature
+    - Control_Nature
+    - Control Category
+    - Control_Category
+    - Nature
+    - Category
+  
+  control_automation_columns:
+    - Control Automation
+    - Control_Automation
+    - Automation Type
+    - Automation_Type
+    - Automation
+    - Manual/Automated
+  
+  risk_columns:
+    - Key Risk Description
+    - Risk Description
+    - Risk
+    - Key Risk
+    - Risk Statement
+    - Control Risk
+    - Associated Risk
+    - Risk Addressed
 
 # Shared WHERE Configuration
 # Used by both WHAT and WHERE analyzers for consistent location detection

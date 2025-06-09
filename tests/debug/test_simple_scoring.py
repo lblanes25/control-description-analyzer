@@ -9,7 +9,7 @@ import os
 # Initialize analyzer with config
 script_dir = os.path.dirname(os.path.abspath('src/gui/main_window.py'))
 project_root = os.path.dirname(os.path.dirname(script_dir))
-config_path = os.path.join(project_root, 'config', 'control_analyzer_updated.yaml')
+config_path = os.path.join(project_root, 'config', 'control_analyzer.yaml')
 
 analyzer = EnhancedControlAnalyzer(config_path)
 
@@ -19,13 +19,13 @@ test_controls = [
         "id": "TEST001",
         "description": "The Finance Manager reviews and reconciles monthly bank statements within 5 business days of month-end to ensure accuracy and identify any unauthorized transactions. Discrepancies exceeding $10,000 are investigated and escalated to the CFO within 2 business days.",
         "expected_elements": 5,
-        "expected_category": "Excellent"
+        "expected_category": "Meets Expectations"
     },
     {
         "id": "TEST002", 
         "description": "The Accounting Supervisor reviews monthly journal entries prior to posting to ensure accuracy. Errors are returned to the preparer for correction.",
         "expected_elements": 4,
-        "expected_category": "Excellent"  # With threshold of 4
+        "expected_category": "Meets Expectations"  # With threshold of 4
     },
     {
         "id": "TEST003",
@@ -38,8 +38,8 @@ test_controls = [
 print("🧪 Testing Simple Scoring Feature\n")
 print(f"Configuration loaded from: {config_path}")
 print(f"Simple scoring enabled: {analyzer.config.get('simple_scoring', {}).get('enabled', True)}")
-print(f"Thresholds: Excellent={analyzer.config.get('simple_scoring', {}).get('thresholds', {}).get('excellent', 4)}, "
-      f"Good={analyzer.config.get('simple_scoring', {}).get('thresholds', {}).get('good', 3)}")
+print(f"Thresholds: Meets Expectations={analyzer.config.get('simple_scoring', {}).get('thresholds', {}).get('excellent', 4)}, "
+      f"Requires Attention={analyzer.config.get('simple_scoring', {}).get('thresholds', {}).get('good', 3)}")
 print("\n" + "="*80 + "\n")
 
 for test in test_controls:
