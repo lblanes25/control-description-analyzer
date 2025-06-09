@@ -82,12 +82,15 @@ class ControlTypeClassifier:
             r'\boffice\s+(location|facility|building)\b'
         ]
         
-        # System names from config
-        self.system_names = set(classification_config.get('system_names', [
+        # System names from centralized registry
+        system_registry = self.config.get('system_registry', [])
+        # Fallback to old config structure if registry doesn't exist
+        fallback_systems = classification_config.get('system_names', [
             'sap', 'oracle', 'peoplesoft', 'jde', 'dynamics', 'netsuite',
             'sharepoint', 'teams', 'slack', 'confluence', 'servicenow',
             'tableau', 'power bi', 'excel', 'access', 'application', 'system'
-        ]))
+        ])
+        self.system_names = set(system_registry if system_registry else fallback_systems)
         
         # Weighting factors
         self.system_context_weight = classification_config.get('system_context_weight', 2)

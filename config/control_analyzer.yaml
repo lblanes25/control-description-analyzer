@@ -139,10 +139,11 @@ simple_scoring:
     help_text: "Shows whether all control elements are present, not quality"
 
 
-# Control Type Classification for Conditional WHERE Scoring
-classification:
-  # System names for detection (customize for your organization)
-  system_names: 
+# Comprehensive System Registry - Single source of truth for all system names
+# Add your organization's systems to the appropriate categories below
+system_registry:
+  # Enterprise Resource Planning (ERP) Systems
+  erp_systems:
     - sap
     - oracle
     - peoplesoft
@@ -150,20 +151,248 @@ classification:
     - dynamics
     - netsuite
     - quickbooks
+    - sage
+    - workday
+    - unit4
+    - epicor
+    # Add your ERP systems here:
+    # - your_erp_system
+    
+  # Financial and Reporting Systems
+  financial_systems:
+    - hyperion
+    - essbase
+    - cognos
+    - tableau
+    - power bi
+    - qlik
+    - alteryx
+    - anaplan
+    - adaptive
+    - blackline
+    - trintech
+    - cch tagetik
+    - onestream
+    - consolidation manager
+    # Add your financial systems here:
+    # - your_financial_system
+    
+  # Collaboration and Productivity Systems
+  collaboration_systems:
     - sharepoint
     - teams
     - slack
     - confluence
+    - jira
     - servicenow
-    - tableau
-    - power bi
+    - salesforce
+    - zoom
+    - webex
+    - gotomeeting
+    - box
+    - dropbox
+    - google workspace
+    - office 365
+    # Add your collaboration tools here:
+    # - your_collaboration_tool
+    
+  # Database and Data Management Systems
+  database_systems:
+    - sql server
+    - mysql
+    - postgresql
+    - mongodb
+    - cassandra
+    - redis
+    - snowflake
+    - databricks
+    - azure sql
+    - aws rds
+    # Add your database systems here:
+    # - your_database_system
+    
+  # Security and Access Management Systems
+  security_systems:
+    - active directory
+    - azure ad
+    - okta
+    - ping identity
+    - cyberark
+    - beyond trust
+    - varonis
+    - splunk
+    - qualys
+    - rapid7
+    # Add your security systems here:
+    # - your_security_system
+    
+  # HR and Payroll Systems
+  hr_systems:
+    - workday
+    - successfactors
+    - bamboohr
+    - adp
+    - paychex
+    - ultimate software
+    - kronos
+    - ceridian
+    # Add your HR systems here:
+    # - your_hr_system
+    
+  # CRM and Customer Management Systems
+  crm_systems:
+    - salesforce
+    - dynamics crm
+    - hubspot
+    - marketo
+    - pardot
+    - eloqua
+    - zendesk
+    - freshdesk
+    # Add your CRM systems here:
+    # - your_crm_system
+    
+  # Infrastructure and Cloud Systems
+  infrastructure_systems:
+    - aws
+    - azure
+    - google cloud
+    - vmware
+    - docker
+    - kubernetes
+    - jenkins
+    - gitlab
+    - github
+    - ansible
+    # Add your infrastructure systems here:
+    # - your_infrastructure_system
+    
+  # Legacy and Desktop Applications
+  desktop_applications:
     - excel
     - access
+    - word
+    - powerpoint
+    - outlook
+    - lotus notes
+    - crystal reports
+    - acrobat
+    # Add your desktop applications here:
+    # - your_desktop_app
+    
+  # Industry-Specific Systems (customize for your industry)
+  industry_specific:
+    # Examples for different industries:
+    # Banking: core banking, loan origination, trade finance
+    # Healthcare: epic, cerner, meditech
+    # Manufacturing: mes, scada, plm
+    # Retail: pos, inventory management, e-commerce
+    # Add your industry-specific systems here:
+    # - your_industry_system
+
+# Centralized System Registry - Single source of truth for all system names
+# Add your organization's complete system list here
+system_registry:
+  # Current systems (add your complete list here)
+  - sap
+  - oracle
+  - peoplesoft
+  - jde
+  - dynamics
+  - netsuite
+  - quickbooks
+  - sharepoint
+  - teams
+  - slack
+  - confluence
+  - servicenow
+  - tableau
+  - power bi
+  - excel
+  - access
+  - hyperion
+  - essbase
+  - cognos
+  - qlik
+  - alteryx
+  # Add all your organization's systems here:
+  # - your_system_name
+
+# Control Type Classification for Conditional WHERE Scoring
+classification:
+  # System names for detection - references the comprehensive registry above
+  system_names: 
+    # ERP Systems
+    - sap
+    - oracle
+    - peoplesoft
+    - jde
+    - dynamics
+    - netsuite
+    - quickbooks
+    - sage
+    - workday
+    - unit4
+    - epicor
+    
+    # Financial Systems
     - hyperion
     - essbase
     - cognos
+    - tableau
+    - power bi
     - qlik
     - alteryx
+    - anaplan
+    - adaptive
+    - blackline
+    - trintech
+    - cch tagetik
+    - onestream
+    
+    # Collaboration Systems
+    - sharepoint
+    - teams
+    - slack
+    - confluence
+    - jira
+    - servicenow
+    - salesforce
+    - zoom
+    - webex
+    - box
+    - dropbox
+    
+    # Database Systems
+    - sql server
+    - mysql
+    - postgresql
+    - mongodb
+    - snowflake
+    - databricks
+    
+    # Security Systems
+    - active directory
+    - azure ad
+    - okta
+    - ping identity
+    - cyberark
+    - splunk
+    
+    # Desktop Applications
+    - excel
+    - access
+    - word
+    - powerpoint
+    
+    # Infrastructure
+    - aws
+    - azure
+    - google cloud
+    - vmware
+    - docker
+    
+    # NOTE: Add your custom systems to both the registry above AND this list
   
   # Verbs that indicate system participation in control execution
   control_participating_verbs:

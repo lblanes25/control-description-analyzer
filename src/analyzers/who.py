@@ -91,11 +91,12 @@ class DetectionParameters:
     automation_field: Optional[str] = None
     frequency: Optional[str] = None
     existing_keywords: Optional[List[str]] = None
+    system_registry: Optional[List[str]] = None
 
 
 def enhanced_who_detection_v2(text: str, nlp_model, automation_field: Optional[str] = None,
                               frequency: Optional[str] = None, existing_keywords: Optional[List[str]] = None,
-                              config_adapter=None):
+                              config_adapter=None, system_registry: Optional[List[str]] = None):
     """
     Main orchestrator function that coordinates WHO detection through multiple strategies.
 
@@ -114,7 +115,7 @@ def enhanced_who_detection_v2(text: str, nlp_model, automation_field: Optional[s
 
     try:
         doc = nlp_model(text)
-        params = DetectionParameters(automation_field, frequency, existing_keywords)
+        params = DetectionParameters(automation_field, frequency, existing_keywords, system_registry)
 
         # Skip new detector classes for now - they don't have detect_in_text method
         # TODO: Implement detect_in_text method in PersonRoleDetector and SystemDetector
@@ -380,7 +381,7 @@ def _process_main_subjects(main_subjects: List[Dict], params: DetectionParameter
             continue
 
         # Classify the entity
-        entity_type = classify_entity_type(subject_text, None, params.existing_keywords)
+        entity_type = classify_entity_type(subject_text, None, params.existing_keywords, params.system_registry)
 
         # Skip if classified as a non-performer
         if entity_type == "non-performer":
@@ -446,7 +447,7 @@ def _detect_prepositional_phrases(doc, params: DetectionParameters) -> List[Dict
     for phrase in by_phrases:
         # Classify the entity
         entity_text = phrase["text"]
-        entity_type = classify_entity_type(entity_text, None, params.existing_keywords)
+        entity_type = classify_entity_type(entity_text, None, params.existing_keywords, params.system_registry)
 
         # Skip if classified as a non-performer
         if entity_type == "non-performer":
@@ -488,7 +489,7 @@ def _detect_explicit_responsibility(doc, params: DetectionParameters) -> List[Di
                         for chunk in doc.noun_chunks:
                             if child.i >= chunk.start and child.i < chunk.end:
                                 entity_text = chunk.text
-                                entity_type = classify_entity_type(entity_text, None, params.existing_keywords)
+                                entity_type = classify_entity_type(entity_text, None, params.existing_keywords, params.system_registry)
 
                                 # Skip if classified as a non-performer
                                 if entity_type == "non-performer":
@@ -547,7 +548,7 @@ def _detect_temporal_patterns(text: str, params: DetectionParameters) -> List[Di
             team_text = "the " + team_match.group(1)
 
             # Classify and score
-            entity_type = classify_entity_type(team_text, None, params.existing_keywords)
+            entity_type = classify_entity_type(team_text, None, params.existing_keywords, params.system_registry)
 
             confidence = calculate_who_confidence({
                 "text": team_text,
@@ -593,7 +594,7 @@ def _fallback_noun_chunk_analysis(doc, params: DetectionParameters) -> List[Dict
 
         if matches_indicator:
             # Classify entity type with stricter criteria
-            entity_type = classify_entity_type(chunk_text, None, params.existing_keywords)
+            entity_type = classify_entity_type(chunk_text, None, params.existing_keywords, params.system_registry)
 
             # Only accept human or system entities
             if entity_type in ["human", "system"]:
@@ -640,7 +641,7 @@ def _fallback_regex_patterns(text: str, params: DetectionParameters) -> List[Dic
     for pattern in org_patterns:
         for match in re.finditer(pattern, text, re.IGNORECASE):
             match_text = match.group(0)  # Use full match including "the" if present
-            entity_type = classify_entity_type(match_text, None, params.existing_keywords)
+            entity_type = classify_entity_type(match_text, None, params.existing_keywords, params.system_registry)
 
             # Calculate confidence with a penalty since this is a fallback
             confidence = calculate_who_confidence({
@@ -815,7 +816,7 @@ def is_likely_performer(text, nlp_model):
     return has_performer_indicator or (has_determiner and (has_proper_noun or has_capitalized_words))
 
 
-def classify_entity_type(text, nlp_model, custom_keywords=None):
+def classify_entity_type(text, nlp_model, custom_keywords=None, system_registry=None):
     """
     Classifies entities using keyword matching and NLP entity recognition.
 
@@ -853,7 +854,7 @@ def classify_entity_type(text, nlp_model, custom_keywords=None):
         return "human"
 
     # Check for system indicators
-    if _contains_system_indicators(normalized_text):
+    if _contains_system_indicators(normalized_text, system_registry):
         return "system"
 
     # Use NLP to check for person or organization entities
@@ -935,9 +936,14 @@ def _contains_human_indicators(normalized_text: str, custom_keywords: Optional[L
     return False
 
 
-def _contains_system_indicators(normalized_text: str) -> bool:
+def _contains_system_indicators(normalized_text: str, system_registry: Optional[List[str]] = None) -> bool:
     """Check if the entity contains system indicators using word boundaries"""
-    for indicator in SYSTEM_INDICATORS:
+    # Use centralized registry if provided, otherwise fallback to hardcoded indicators
+    indicators = set(SYSTEM_INDICATORS)
+    if system_registry:
+        indicators.update(system_registry)
+    
+    for indicator in indicators:
         pattern = r'\b' + re.escape(indicator) + r'\b'
         if re.search(pattern, normalized_text):
             return True

@@ -96,7 +96,18 @@ class WhereDetectionService:
             }
         }
         
-        # Merge with config patterns
+        # Add systems from centralized registry if available
+        system_registry = self.config.get('system_registry', [])
+        if system_registry:
+            # Use centralized registry with default boost factor
+            for system in system_registry:
+                self.system_keywords.add(system.lower())
+                self.system_categories[system.lower()] = {
+                    'category': 'registry_systems',
+                    'boost_factor': 1.1  # Default boost factor for registry systems
+                }
+        
+        # Merge with config patterns (this allows for custom boost factors)
         for category, details in {**default_systems, **self.system_patterns}.items():
             keywords = details.get('keywords', [])
             self.system_keywords.update(keywords)

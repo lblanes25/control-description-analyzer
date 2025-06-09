@@ -121,8 +121,9 @@ class ControlElement:
                 automation_field = context.get("automation_field")  # WHO analyzer expects automation type
                 frequency = context.get("frequency")
                 config_adapter = context.get("config_adapter")
+                system_registry = context.get("system_registry")
                 self.enhanced_results = enhanced_who_detection_v2(
-                    text, nlp, automation_field, frequency, self.keywords, config_adapter)
+                    text, nlp, automation_field, frequency, self.keywords, config_adapter, system_registry)
                 self.score = self.enhanced_results.get("confidence", 0) if self.enhanced_results else 0
                 self.normalized_score = self.score * 100
                 self.matched_keywords = [
@@ -1030,7 +1031,8 @@ class EnhancedControlAnalyzer:
             "frequency": frequency,
             "risk_description": risk_description,
             "analyzer_config": self.config,  # Pass config to elements
-            "config_adapter": self.config_adapter  # Pass config adapter for new detector classes
+            "config_adapter": self.config_adapter,  # Pass config adapter for new detector classes
+            "system_registry": self.config.get("system_registry", [])  # Centralized system list
         }
 
         # Analyze for each element with specialized detection
