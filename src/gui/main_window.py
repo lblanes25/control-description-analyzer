@@ -315,20 +315,20 @@ class ControlAnalyzerGUI(QMainWindow):
         samples_group = QGroupBox("Sample Controls")
         samples_layout = QHBoxLayout()
 
-        excellent_btn = QPushButton("Excellent Example")
-        apply_button_style(excellent_btn)  # Apply the style
-        excellent_btn.clicked.connect(lambda: self.load_sample_control("excellent"))
+        meets_expectations_btn = QPushButton("Meets Expectations Example")
+        apply_button_style(meets_expectations_btn)  # Apply the style
+        meets_expectations_btn.clicked.connect(lambda: self.load_sample_control("meets_expectations"))
 
-        good_btn = QPushButton("Good Example")
-        apply_button_style(good_btn)  # Apply the style
-        good_btn.clicked.connect(lambda: self.load_sample_control("good"))
+        requires_attention_btn = QPushButton("Requires Attention Example")
+        apply_button_style(requires_attention_btn)  # Apply the style
+        requires_attention_btn.clicked.connect(lambda: self.load_sample_control("requires_attention"))
 
         poor_btn = QPushButton("Poor Example")
         apply_button_style(poor_btn)  # Apply the style
         poor_btn.clicked.connect(lambda: self.load_sample_control("poor"))
 
-        samples_layout.addWidget(excellent_btn)
-        samples_layout.addWidget(good_btn)
+        samples_layout.addWidget(meets_expectations_btn)
+        samples_layout.addWidget(requires_attention_btn)
         samples_layout.addWidget(poor_btn)
 
         samples_group.setLayout(samples_layout)
@@ -447,7 +447,7 @@ class ControlAnalyzerGUI(QMainWindow):
 
         # Category filter
         self.category_filter = QComboBox()
-        self.category_filter.addItems(["All Categories", "Excellent", "Good", "Needs Improvement"])
+        self.category_filter.addItems(["All Categories", "Meets Expectations", "Requires Attention", "Needs Improvement"])
         self.category_filter.currentIndexChanged.connect(self.apply_result_filters)
         filter_layout.addWidget(QLabel("Category:"))
         filter_layout.addWidget(self.category_filter)
@@ -641,9 +641,9 @@ class ControlAnalyzerGUI(QMainWindow):
             category_item = QTableWidgetItem(category)
 
             # Set category cell color
-            if category == "Excellent":
+            if category == "Meets Expectations":
                 category_item.setBackground(Qt.green)
-            elif category == "Good":
+            elif category == "Requires Attention":
                 category_item.setBackground(Qt.yellow)
             else:
                 category_item.setBackground(Qt.red)
@@ -661,9 +661,9 @@ class ControlAnalyzerGUI(QMainWindow):
                 simple_category_item = QTableWidgetItem(simple_category)
                 
                 # Apply color coding to simple category
-                if simple_category == "Excellent" or simple_category == "Meets expectations":
+                if simple_category == "Meets Expectations" or simple_category == "Element Count: Meets Expectations":
                     simple_category_item.setBackground(Qt.green)
-                elif simple_category == "Good" or simple_category == "Requires Attention":
+                elif simple_category == "Requires Attention" or simple_category == "Element Count: Requires Attention":
                     simple_category_item.setBackground(Qt.yellow)
                 else:
                     simple_category_item.setBackground(Qt.red)
@@ -1147,9 +1147,9 @@ class ControlAnalyzerGUI(QMainWindow):
             category_item = QTableWidgetItem(category)
 
             # Set category cell color
-            if category == "Excellent":
+            if category == "Meets Expectations":
                 category_item.setBackground(Qt.green)
-            elif category == "Good":
+            elif category == "Requires Attention":
                 category_item.setBackground(Qt.yellow)
             else:
                 category_item.setBackground(Qt.red)
@@ -1369,8 +1369,8 @@ class ControlAnalyzerGUI(QMainWindow):
 
     def load_sample_control(self, quality):
         """Load a sample control description"""
-        if quality == "excellent":
-            self.control_id_input.setText("SAMPLE-EXCELLENT")
+        if quality == "meets_expectations":
+            self.control_id_input.setText("SAMPLE-MEETS-EXPECTATIONS")
             self.control_desc_input.setText(
                 "The Accounting Manager reviews the monthly reconciliation between the subledger and general ledger by the 5th business day of the following month. "
                 "The reviewer examines supporting documentation, verifies that all reconciling items have been properly identified and resolved, and ensures "
@@ -1383,8 +1383,8 @@ class ControlAnalyzerGUI(QMainWindow):
             self.control_risk_input.setText(
                 "Risk of financial misstatement due to errors or discrepancies between subledger and general ledger.")
 
-        elif quality == "good":
-            self.control_id_input.setText("SAMPLE-GOOD")
+        elif quality == "requires_attention":
+            self.control_id_input.setText("SAMPLE-REQUIRES-ATTENTION")
             self.control_desc_input.setText(
                 "The Accounting Supervisor reviews the monthly journal entries prior to posting to ensure accuracy and completeness. "
                 "The reviewer checks supporting documentation and approves entries by signing the journal entry form. "

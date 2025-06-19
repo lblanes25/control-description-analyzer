@@ -4,7 +4,26 @@
     <option name="autoReloadType" value="SELECTIVE" />
   </component>
   <component name="ChangeListManager">
-    <list default="true" id="e7deeee2-00f6-4740-8efd-2cc08fd51cb6" name="Changes" comment="" />
+    <list default="true" id="e7deeee2-00f6-4740-8efd-2cc08fd51cb6" name="Changes" comment="">
+      <change afterPath="$PROJECT_DIR$/config/systems_catalog.yaml" afterDir="false" />
+      <change afterPath="$PROJECT_DIR$/src/utils/excel_to_yaml.py" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/.idea/final_consolidated_analyzer.iml" beforeDir="false" afterPath="$PROJECT_DIR$/.idea/final_consolidated_analyzer.iml" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/.idea/workspace.xml" beforeDir="false" afterPath="$PROJECT_DIR$/.idea/workspace.xml" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/config/control_analyzer.yaml" beforeDir="false" afterPath="$PROJECT_DIR$/config/control_analyzer.yaml" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/src/analyzers/control_classifier.py" beforeDir="false" afterPath="$PROJECT_DIR$/src/analyzers/control_classifier.py" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/src/analyzers/where_service.py" beforeDir="false" afterPath="$PROJECT_DIR$/src/analyzers/where_service.py" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/src/analyzers/who.py" beforeDir="false" afterPath="$PROJECT_DIR$/src/analyzers/who.py" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/src/core/analyzer.py" beforeDir="false" afterPath="$PROJECT_DIR$/src/core/analyzer.py" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/src/gui/main_window.py" beforeDir="false" afterPath="$PROJECT_DIR$/src/gui/main_window.py" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/src/gui/visualizations/dashboard.html" beforeDir="false" afterPath="$PROJECT_DIR$/src/gui/visualizations/dashboard.html" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/src/gui/visualizations/element_radar.html" beforeDir="false" afterPath="$PROJECT_DIR$/src/gui/visualizations/element_radar.html" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/src/gui/visualizations/leader_avg_score.html" beforeDir="false" afterPath="$PROJECT_DIR$/src/gui/visualizations/leader_avg_score.html" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/src/gui/visualizations/leader_missing_elements.html" beforeDir="false" afterPath="$PROJECT_DIR$/src/gui/visualizations/leader_missing_elements.html" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/src/gui/visualizations/missing_elements.html" beforeDir="false" afterPath="$PROJECT_DIR$/src/gui/visualizations/missing_elements.html" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/src/gui/visualizations/score_distribution.html" beforeDir="false" afterPath="$PROJECT_DIR$/src/gui/visualizations/score_distribution.html" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/src/gui/visualizations/worst_controls.html" beforeDir="false" afterPath="$PROJECT_DIR$/src/gui/visualizations/worst_controls.html" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/src/utils/config_manager_updated.py" beforeDir="false" afterPath="$PROJECT_DIR$/src/utils/config_manager_updated.py" afterDir="false" />
+    </list>
     <option name="SHOW_DIALOG" value="false" />
     <option name="HIGHLIGHT_CONFLICTS" value="true" />
     <option name="HIGHLIGHT_NON_ACTIVE_CHANGELIST" value="false" />
@@ -14,6 +33,7 @@
     <option name="RECENT_TEMPLATES">
       <list>
         <option value="Python Script" />
+        <option value="Configuration" />
       </list>
     </option>
   </component>
@@ -28,23 +48,23 @@
     <option name="hideEmptyMiddlePackages" value="true" />
     <option name="showLibraryContents" value="true" />
   </component>
-  <component name="PropertiesComponent"><![CDATA[{
-  "keyToString": {
-    "ASKED_SHARE_PROJECT_CONFIGURATION_FILES": "true",
-    "Python.AnalyzerGUI.executor": "Run",
-    "Python.Run Analyzer.executor": "Run",
-    "Python.What Testing.executor": "Run",
-    "Python.When Testing.executor": "Run",
-    "Python.Who Testing.executor": "Run",
-    "Python.Why Testing.executor": "Run",
-    "RunOnceActivity.ShowReadmeOnStart": "true",
-    "RunOnceActivity.git.unshallow": "true",
-    "git-widget-placeholder": "when__split__test",
-    "ignore.virus.scanning.warn.message": "true",
-    "last_opened_file_path": "C:/Users/luria/OneDrive/Desktop/final_consolidated_analyzer",
-    "settings.editor.selected.configurable": "com.jetbrains.python.configuration.PyActiveSdkModuleConfigurable"
+  <component name="PropertiesComponent">{
+  &quot;keyToString&quot;: {
+    &quot;ASKED_SHARE_PROJECT_CONFIGURATION_FILES&quot;: &quot;true&quot;,
+    &quot;Python.AnalyzerGUI.executor&quot;: &quot;Run&quot;,
+    &quot;Python.Run Analyzer.executor&quot;: &quot;Run&quot;,
+    &quot;Python.What Testing.executor&quot;: &quot;Run&quot;,
+    &quot;Python.When Testing.executor&quot;: &quot;Run&quot;,
+    &quot;Python.Who Testing.executor&quot;: &quot;Run&quot;,
+    &quot;Python.Why Testing.executor&quot;: &quot;Run&quot;,
+    &quot;RunOnceActivity.ShowReadmeOnStart&quot;: &quot;true&quot;,
+    &quot;RunOnceActivity.git.unshallow&quot;: &quot;true&quot;,
+    &quot;git-widget-placeholder&quot;: &quot;when__split__test&quot;,
+    &quot;ignore.virus.scanning.warn.message&quot;: &quot;true&quot;,
+    &quot;last_opened_file_path&quot;: &quot;C:/Users/luria/PycharmProjects/QAStudiov3&quot;,
+    &quot;settings.editor.selected.configurable&quot;: &quot;com.jetbrains.python.configuration.PyActiveSdkModuleConfigurable&quot;
   }
-}]]></component>
+}</component>
   <component name="RecentsManager">
     <key name="CopyFile.RECENT_KEYS">
       <recent name="C:\Users\luria\OneDrive\Desktop\final_consolidated_analyzer" />
@@ -195,11 +215,11 @@
     </configuration>
     <list>
       <item itemvalue="Python.AnalyzerGUI" />
+      <item itemvalue="Python.Run Analyzer" />
       <item itemvalue="Python.What Testing" />
       <item itemvalue="Python.When Testing" />
       <item itemvalue="Python.Who Testing" />
       <item itemvalue="Python.Why Testing" />
-      <item itemvalue="Python.Run Analyzer" />
     </list>
     <recent_temporary>
       <list>
@@ -210,7 +230,7 @@
   <component name="SharedIndexes">
     <attachedChunks>
       <set>
-        <option value="bundled-python-sdk-4f4e415b4190-aa17d162503b-com.jetbrains.pycharm.community.sharedIndexes.bundled-PC-243.26053.29" />
+        <option value="bundled-python-sdk-f78a9d071105-aa17d162503b-com.jetbrains.pycharm.community.sharedIndexes.bundled-PC-243.26574.90" />
       </set>
     </attachedChunks>
   </component>

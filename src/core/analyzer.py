@@ -18,6 +18,7 @@ import pickle
 import gc
 import logging
 import time
+import yaml
 from datetime import datetime
 from typing import Dict, List, Any, Optional, Tuple, Union
 
@@ -503,6 +504,9 @@ class EnhancedControlAnalyzer:
         # Load config adapter (supports both old and new formats)
         self.config_adapter = ConfigAdapter(config_file)
         self.config = self.config_adapter.get_config()
+        
+        # Load external systems and merge with registry
+        self._load_and_merge_external_systems()
 
         # Get column mappings from config YAML file
         self.column_mappings = self._initialize_column_mappings()
@@ -540,8 +544,8 @@ class EnhancedControlAnalyzer:
         self.domain_clusters = self.config.get('domain_clusters', {})
 
         # Get thresholds from config
-        self.excellent_threshold = self.config.get('category_thresholds', {}).get('excellent', 75)
-        self.good_threshold = self.config.get('category_thresholds', {}).get('good', 50)
+        self.meets_expectations_threshold = self.config.get('category_thresholds', {}).get('meets_expectations', 75)
+        self.requires_attention_threshold = self.config.get('category_thresholds', {}).get('requires_attention', 50)
 
         # Get audit leader column from config
         self.audit_leader_column = self.config_adapter.get_audit_leader_column()
@@ -550,6 +554,45 @@ class EnhancedControlAnalyzer:
         self.audit_entity_column = self.config_adapter.get_audit_entity_column()
 
         logger.info("Analyzer initialized successfully")
+    
+    def _load_and_merge_external_systems(self):
+        """Load external systems file and merge with system_registry"""
+        # Get external systems file path
+        systems_file = self.config.get('shared_where_config', {}).get('external_systems_file')
+        
+        if systems_file and os.path.exists(systems_file):
+            try:
+                with open(systems_file, 'r') as f:
+                    data = yaml.safe_load(f)
+                    external_systems = data.get('systems', [])
+                    
+                # Get existing registry or create empty list
+                system_registry = self.config.get('system_registry', [])
+                
+                # If registry is a dict (structured format), convert to list
+                if isinstance(system_registry, dict):
+                    all_systems = []
+                    for category, systems in system_registry.items():
+                        if isinstance(systems, list):
+                            all_systems.extend(systems)
+                    system_registry = all_systems
+                
+                # Merge external systems with registry (external takes precedence)
+                merged_systems = list(external_systems)  # Start with external
+                
+                # Add registry systems that aren't already in external
+                for system in system_registry:
+                    if system and isinstance(system, str) and system not in merged_systems:
+                        merged_systems.append(system)
+                
+                # Update config with merged list
+                self.config['system_registry'] = merged_systems
+                
+                logger.info(f"Loaded {len(external_systems)} systems from {systems_file}")
+                
+            except Exception as e:
+                logger.warning(f"Could not load external systems file {systems_file}: {e}")
+                # Keep existing system_registry if external load fails
 
     def _setup_logging(self):
         """Configure the logging system for the analyzer."""
@@ -2099,6 +2142,8 @@ class EnhancedControlAnalyzer:
             analysis_dict = {
                 "Control ID": control_id,
                 "Description": description,
+                "Audit Entity": self._safe_get(r, "Audit Entity", ""),
+                "Audit Leader": self._safe_get(r, "Audit Leader", ""),
                 "Elements Found": self._safe_get(r, "elements_found_count", ""),
                 "Simple Category": self._safe_get(r, "simple_category", ""),
                 "Missing Elements": self._safe_text(", ".join(self._safe_get(r, "missing_elements", []))
@@ -2122,6 +2167,8 @@ class EnhancedControlAnalyzer:
             metadata_dict = {
                 "Control ID": control_id,
                 "Control Description": description,
+                "Audit Entity": self._safe_get(r, "Audit Entity", ""),
+                "Audit Leader": self._safe_get(r, "Audit Leader", ""),
                 "Total Score": self._safe_get(r, "total_score", 0),
                 "Category": self._safe_get(r, "category", "Unknown"),
                 "WHO Score": self._safe_get(r, ["normalized_scores", "WHO"], 0),
@@ -2162,7 +2209,11 @@ class EnhancedControlAnalyzer:
         # Enhancement Feedback DataFrame (keep existing structure for other tabs)
         feedback_results = []
         for r in results:
-            fb_dict = {"Control ID": self._safe_get(r, "control_id", "")}
+            fb_dict = {
+                "Control ID": self._safe_get(r, "control_id", ""),
+                "Audit Entity": self._safe_get(r, "Audit Entity", ""),
+                "Audit Leader": self._safe_get(r, "Audit Leader", "")
+            }
 
             # Process each element's feedback carefully
             for element in ["WHO", "WHEN", "WHAT", "WHY", "ESCALATION"]:
@@ -2260,8 +2311,8 @@ class EnhancedControlAnalyzer:
         """
         # Basic counts
         total_controls = len(results)
-        excellent_count = sum(1 for r in results if self._safe_get(r, "category") == "Excellent")
-        good_count = sum(1 for r in results if self._safe_get(r, "category") == "Good")
+        excellent_count = sum(1 for r in results if self._safe_get(r, "category") == "Meets Expectations")
+        good_count = sum(1 for r in results if self._safe_get(r, "category") == "Requires Attention")
         needs_improvement_count = sum(1 for r in results if self._safe_get(r, "category") == "Needs Improvement")
 
         # Average score
@@ -2496,9 +2547,9 @@ class EnhancedControlAnalyzer:
             ["Average Score", f"{avg_score:.1f}"],
             ["", ""],
             ["Category Breakdown", ""],
-            [f"Excellent ({self.excellent_threshold}-100)", excellent_count],
-            [f"Good ({self.good_threshold}-{self.excellent_threshold - 1})", good_count],
-            [f"Needs Improvement (0-{self.good_threshold - 1})", needs_improvement_count],
+            [f"Meets Expectations ({self.meets_expectations_threshold}-100)", excellent_count],
+            [f"Requires Attention ({self.requires_attention_threshold}-{self.meets_expectations_threshold - 1})", good_count],
+            [f"Needs Improvement (0-{self.requires_attention_threshold - 1})", needs_improvement_count],
             ["", ""],
             ["Multi-Control Descriptions", multi_control_count],
             ["", ""],
@@ -2812,9 +2863,9 @@ class EnhancedControlAnalyzer:
             ["Categories", ""],
             ["Controls are categorized based on their total score:", ""],
             ["", ""],
-            [f"Excellent: {self.excellent_threshold}-100", ""],
-            [f"Good: {self.good_threshold}-{self.excellent_threshold - 1}", ""],
-            [f"Needs Improvement: 0-{self.good_threshold - 1}", ""]
+            [f"Meets Expectations: {self.meets_expectations_threshold}-100", ""],
+            [f"Requires Attention: {self.requires_attention_threshold}-{self.meets_expectations_threshold - 1}", ""],
+            [f"Needs Improvement: 0-{self.requires_attention_threshold - 1}", ""]
         ]
 
         # Add multi-control detection methodology

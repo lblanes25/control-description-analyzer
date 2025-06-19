@@ -22,53 +22,19 @@
                 <select id="leaderFilter" onchange="filterTable()">
                     <option value="all">All Leaders</option>
                     <option value="Unknown">Unknown</option>
-
                 </select>
                 &nbsp;&nbsp;&nbsp;
                 <label for="entityFilter">Filter by Audit Entity: </label>
                 <select id="entityFilter" onchange="filterTable()">
                     <option value="all">All Entities</option>
                     <option value="Unknown">Unknown</option>
-
                 </select>
             </div>
             <table id="controlsTable">
                 <thead>
-                    <tr>
-                    <th>Control ID</th>
-            <th>Total Score</th>
-            <th>Category</th>
-            <th>Missing Elements Count</th>
-            <th>WHO Score</th>
-            <th>WHEN Score</th>
-            <th>WHAT Score</th>
-            <th>WHY Score</th>
-            <th>ESCALATION Score</th>
-            <th>Missing Elements</th>
-            <th>Audit Leader</th>
-            <th>Audit Entity</th>
-            <th>vague_terms_found</th>
-
-                    </tr>
+                    <tr><th>Control ID</th><th>Total Score</th><th>Category</th><th>Missing Elements Count</th><th>WHO Score</th><th>WHEN Score</th><th>WHAT Score</th><th>WHERE Points</th><th>WHY Score</th><th>ESCALATION Score</th><th>Missing Elements</th><th>Audit Leader</th><th>Audit Entity</th><th>vague_terms_found</th></tr>
                 </thead>
-                <tbody>
-                <tr class="row" data-leader="Unknown" data-entity="Unknown">
-            <td>CONTROL-1</td>
-            <td>9.600995999999999</td>
-            <td>Needs Improvement</td>
-            <td>4</td>
-            <td>0.0</td>
-            <td>0.0</td>
-            <td>9.600995999999999</td>
-            <td>0.0</td>
-            <td>0.0</td>
-            <td>WHO, WHEN, WHY, ESCALATION</td>
-            <td>Unknown</td>
-            <td>Unknown</td>
-            <td></td>
-        </tr>
-
-                </tbody>
+                <tbody><tr class="row" data-leader="Unknown" data-entity="Unknown"><td>CONTROL-1</td><td>31.0</td><td>Needs Improvement</td><td>3</td><td>36.0</td><td>0.0</td><td>0.0</td><td>0.0</td><td>0</td><td>0</td><td>WHAT, WHEN, WHERE</td><td>Unknown</td><td>Unknown</td><td></td></tr></tbody>
             </table>
 
             <script>
@@ -81,8 +47,19 @@
                         const leader = row.getAttribute('data-leader');
                         const entity = row.getAttribute('data-entity');
 
-                        const leaderMatch = leaderFilter === 'all' || leaderFilter === leader;
-                        const entityMatch = entityFilter === 'all' || entityFilter === entity;
+                        let leaderMatch, entityMatch;
+
+                        if (leaderFilter === 'all') {
+                            leaderMatch = true;
+                        } else {
+                            leaderMatch = leaderFilter === leader;
+                        }
+
+                        if (entityFilter === 'all') {
+                            entityMatch = true;
+                        } else {
+                            entityMatch = entityFilter === entity;
+                        }
 
                         if (leaderMatch && entityMatch) {
                             row.style.display = '';

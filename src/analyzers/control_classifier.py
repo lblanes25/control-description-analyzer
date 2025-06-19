@@ -13,6 +13,8 @@ The classification drives conditional WHERE scoring.
 
 from typing import Dict, List, Any, Optional, Tuple
 import re
+import os
+import yaml
 import spacy
 from spacy.tokens import Doc
 
@@ -36,6 +38,19 @@ class ControlTypeClassifier:
         """
         self.config = config or {}
         self._initialize_classification_patterns()
+        
+    def load_external_systems(self) -> List[str]:
+        """Load systems from external YAML file"""
+        systems_file = self.config.get('shared_where_config', {}).get('external_systems_file')
+        if systems_file and os.path.exists(systems_file):
+            try:
+                with open(systems_file, 'r') as f:
+                    data = yaml.safe_load(f)
+                    return data.get('systems', [])
+            except Exception as e:
+                print(f"Warning: Could not load external systems file {systems_file}: {e}")
+                return []
+        return []
         
     def _initialize_classification_patterns(self):
         """Initialize patterns for control classification."""
@@ -90,7 +105,30 @@ class ControlTypeClassifier:
             'sharepoint', 'teams', 'slack', 'confluence', 'servicenow',
             'tableau', 'power bi', 'excel', 'access', 'application', 'system'
         ])
-        self.system_names = set(system_registry if system_registry else fallback_systems)
+        
+        # Load external systems first
+        external_systems = self.load_external_systems()
+        processed_systems = set()
+        for system in external_systems:
+            if system and isinstance(system, str):
+                processed_systems.add(system.lower())
+        
+        # Process system registry to handle different formats and filter None values (fallback)
+        if system_registry and not processed_systems:  # Only use registry if no external systems
+            if isinstance(system_registry, list):
+                # Flat list format
+                for system in system_registry:
+                    if system and isinstance(system, str):
+                        processed_systems.add(system.lower())
+            elif isinstance(system_registry, dict):
+                # Structured format with categories
+                for category, systems in system_registry.items():
+                    if isinstance(systems, list):
+                        for system in systems:
+                            if system and isinstance(system, str):
+                                processed_systems.add(system.lower())
+        
+        self.system_names = processed_systems if processed_systems else set(fallback_systems)
         
         # Weighting factors
         self.system_context_weight = classification_config.get('system_context_weight', 2)

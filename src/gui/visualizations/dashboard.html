@@ -1,441 +1,457 @@
 
-    <!DOCTYPE html>
-    <html>
-    <head>
-        <meta charset="UTF-8">
-        <title>Control Analysis Dashboard</title>
-        <script src="https://cdn.plot.ly/plotly-latest.min.js"></script>
-        <style>
-            body { font-family: Arial, sans-serif; margin: 0; padding: 0; }
-            .container { width: 100%; max-width: 1400px; margin: 0 auto; padding: 20px; }
-            .header { background-color: #333; color: white; padding: 20px; margin-bottom: 20px; }
-            .filters { background-color: #f5f5f5; padding: 15px; margin-bottom: 20px; border-radius: 5px; }
-            .filter-group { margin-bottom: 10px; }
-            .chart-row { display: flex; flex-wrap: wrap; margin: -10px; }
-            .chart-container { flex: 1 1 calc(50% - 20px); min-width: 300px; margin: 10px; background-color: white; box-shadow: 0 2px 5px rgba(0,0,0,0.1); }
-            .chart-title { padding: 10px; background-color: #f9f9f9; border-bottom: 1px solid #eee; }
-            .chart { height: 400px; }
-            select, button { padding: 8px; margin-right: 10px; }
-            h1, h2, h3 { margin-top: 0; }
-            .footer { margin-top: 20px; padding: 10px; background-color: #f5f5f5; text-align: center; font-size: 12px; }
-            .score-summary { display: flex; flex-wrap: wrap; margin-bottom: 20px; }
-            .score-card { flex: 1 1 200px; margin: 5px; padding: 15px; border-radius: 5px; box-shadow: 0 2px 5px rgba(0,0,0,0.1); }
-            .excellent { background-color: #d4edda; border-left: 5px solid #28a745; }
-            .good { background-color: #fff3cd; border-left: 5px solid #ffc107; }
-            .needs-improvement { background-color: #f8d7da; border-left: 5px solid #dc3545; }
-            .score-number { font-size: 36px; font-weight: bold; margin: 10px 0; }
-            .score-label { font-size: 14px; color: #666; }
-        </style>
-    </head>
-    <body>
-        <div class="header">
-            <h1>Control Description Analysis Dashboard</h1>
-        </div>
-        <div class="container">
-            <div class="filters">
-                <h3>Filters</h3>
-                <div class="filter-group">
-                    <label for="leaderFilter">Audit Leader:</label>
-                    <select id="leaderFilter" onchange="applyFilters()">
-                        <option value="all">All Leaders</option>
-                        <!-- Leader options will be filled by JavaScript -->
-                    </select>
+        <!DOCTYPE html>
+        <html>
+        <head>
+            <meta charset="UTF-8">
+            <title>Control Analysis Dashboard</title>
+            <script src="https://cdn.plot.ly/plotly-latest.min.js"></script>
+            <style>
+                body { font-family: Arial, sans-serif; margin: 0; padding: 0; }
+                .container { width: 100%; max-width: 1400px; margin: 0 auto; padding: 20px; }
+                .header { background-color: #333; color: white; padding: 20px; margin-bottom: 20px; }
+                .filters { background-color: #f5f5f5; padding: 15px; margin-bottom: 20px; border-radius: 5px; }
+                .filter-group { margin-bottom: 10px; }
+                .chart-row { display: flex; flex-wrap: wrap; margin: -10px; }
+                .chart-container { flex: 1 1 calc(50% - 20px); min-width: 300px; margin: 10px; background-color: white; box-shadow: 0 2px 5px rgba(0,0,0,0.1); }
+                .chart-title { padding: 10px; background-color: #f9f9f9; border-bottom: 1px solid #eee; }
+                .chart { height: 400px; }
+                select, button { padding: 8px; margin-right: 10px; }
+                h1, h2, h3 { margin-top: 0; }
+                .footer { margin-top: 20px; padding: 10px; background-color: #f5f5f5; text-align: center; font-size: 12px; }
+                .score-summary { display: flex; flex-wrap: wrap; margin-bottom: 20px; }
+                .score-card { flex: 1 1 200px; margin: 5px; padding: 15px; border-radius: 5px; box-shadow: 0 2px 5px rgba(0,0,0,0.1); }
+                .excellent { background-color: #d4edda; border-left: 5px solid #28a745; }
+                .good { background-color: #fff3cd; border-left: 5px solid #ffc107; }
+                .needs-improvement { background-color: #f8d7da; border-left: 5px solid #dc3545; }
+                .score-number { font-size: 36px; font-weight: bold; margin: 10px 0; }
+                .score-label { font-size: 14px; color: #666; }
+            </style>
+        </head>
+        <body>
+            <div class="header">
+                <h1>Control Description Analysis Dashboard</h1>
+            </div>
+            <div class="container">
+                <div class="filters">
+                    <h3>Filters</h3>
+                    <div class="filter-group">
+                        <label for="leaderFilter">Audit Leader:</label>
+                        <select id="leaderFilter" onchange="applyFilters()">
+                            <option value="all">All Leaders</option>
+                        </select>
 
-                    <label for="entityFilter">Audit Entity:</label>
-                    <select id="entityFilter" onchange="applyFilters()">
-                        <option value="all">All Entities</option>
-                        <!-- Entity options will be filled by JavaScript -->
-                    </select>
+                        <label for="entityFilter">Audit Entity:</label>
+                        <select id="entityFilter" onchange="applyFilters()">
+                            <option value="all">All Entities</option>
+                        </select>
 
-                    <label for="categoryFilter">Category:</label>
-                    <select id="categoryFilter" onchange="applyFilters()">
-                        <option value="all">All Categories</option>
-                        <option value="Excellent">Excellent</option>
-                        <option value="Good">Good</option>
-                        <option value="Needs Improvement">Needs Improvement</option>
-                    </select>
+                        <label for="categoryFilter">Category:</label>
+                        <select id="categoryFilter" onchange="applyFilters()">
+                            <option value="all">All Categories</option>
+                            <option value="Meets Expectations">Meets Expectations</option>
+                            <option value="Requires Attention">Requires Attention</option>
+                            <option value="Needs Improvement">Needs Improvement</option>
+                        </select>
 
-                    <button onclick="resetFilters()">Reset Filters</button>
+                        <button onclick="resetFilters()">Reset Filters</button>
+                    </div>
+                </div>
+
+                <div class="score-summary" id="scoreSummary">
+                    <!-- Score summary cards will be filled by JavaScript -->
+                </div>
+
+                <div class="chart-row">
+                    <div class="chart-container">
+                        <div class="chart-title">
+                            <h3>Score Distribution</h3>
+                        </div>
+                        <div class="chart" id="scoreDistChart"></div>
+                    </div>
+                    <div class="chart-container">
+                        <div class="chart-title">
+                            <h3>Element Scores by Category</h3>
+                        </div>
+                        <div class="chart" id="radarChart"></div>
+                    </div>
+                </div>
+
+                <div class="chart-row">
+                    <div class="chart-container">
+                        <div class="chart-title">
+                            <h3>Missing Elements</h3>
+                        </div>
+                        <div class="chart" id="missingElementsChart"></div>
+                    </div>
+                    <div class="chart-container">
+                        <div class="chart-title">
+                            <h3>Vague Terms</h3>
+                        </div>
+                        <div class="chart" id="vagueTermsChart"></div>
+                    </div>
                 </div>
             </div>
 
-            <div class="score-summary" id="scoreSummary">
-                <!-- Score summary cards will be filled by JavaScript -->
+            <div class="footer">
+                <p>Enhanced Control Description Analyzer - Generated: <span id="generationDate"></span></p>
             </div>
 
-            <div class="chart-row">
-                <div class="chart-container">
-                    <div class="chart-title">
-                        <h3>Score Distribution</h3>
-                    </div>
-                    <div class="chart" id="scoreDistChart"></div>
-                </div>
-                <div class="chart-container">
-                    <div class="chart-title">
-                        <h3>Element Scores by Category</h3>
-                    </div>
-                    <div class="chart" id="radarChart"></div>
-                </div>
-            </div>
+            <script>
+                
+                // Dashboard data (will be filled by Python)
+                const dashboardData = {"auditLeaders": ["Unknown"], "auditEntities": ["Unknown"], "records": [{"Control ID": "CONTROL-1", "Total Score": 31.0, "Category": "Needs Improvement", "Missing Elements Count": 3, "WHO Score": 36.0, "WHEN Score": 0.0, "WHAT Score": 0.0, "WHERE Points": 0.0, "WHY Score": 0, "ESCALATION Score": 0, "Missing Elements": "WHAT, WHEN, WHERE", "Audit Leader": "Unknown", "Audit Entity": "Unknown", "vague_terms_found": []}]};
 
-            <div class="chart-row">
-                <div class="chart-container">
-                    <div class="chart-title">
-                        <h3>Missing Elements</h3>
-                    </div>
-                    <div class="chart" id="missingElementsChart"></div>
-                </div>
-                <div class="chart-container">
-                    <div class="chart-title">
-                        <h3>Vague Terms</h3>
-                    </div>
-                    <div class="chart" id="vagueTermsChart"></div>
-                </div>
-            </div>
-        </div>
+                // JavaScript functions handle real-time filtering without server round-trips
+                // Initialize filters
+                function initializeFilters() {
+                    const leaderFilter = document.getElementById('leaderFilter');
+                    const entityFilter = document.getElementById('entityFilter');
 
-        <div class="footer">
-            <p>Enhanced Control Description Analyzer - Generated: <span id="generationDate"></span></p>
-        </div>
+                    // Add audit leaders
+                    dashboardData.auditLeaders.forEach(leader => {
+                        const option = document.createElement('option');
+                        option.value = leader;
+                        option.textContent = leader;
+                        leaderFilter.appendChild(option);
+                    });
 
-        <script>
-            // Dashboard data (will be filled by Python)
-            const dashboardData = {"auditLeaders": ["Unknown"], "auditEntities": ["Unknown"], "records": [{"Control ID": "CONTROL-1", "Total Score": 104.85, "Category": "Excellent", "Missing Elements Count": 0, "WHO Score": 38.4, "WHEN Score": 19.8, "WHAT Score": 32.0, "WHY Score": 9.9, "ESCALATION Score": 4.749999999999999, "Missing Elements": "None", "Audit Leader": "Unknown", "Audit Entity": "Unknown", "vague_terms_found": []}]};
+                    // Add audit entities
+                    dashboardData.auditEntities.forEach(entity => {
+                        const option = document.createElement('option');
+                        option.value = entity;
+                        option.textContent = entity;
+                        entityFilter.appendChild(option);
+                    });
 
-            // Initialize filters
-            function initializeFilters() {
-                const leaderFilter = document.getElementById('leaderFilter');
-                const entityFilter = document.getElementById('entityFilter');
+                    // Update date
+                    document.getElementById('generationDate').textContent = new Date().toLocaleDateString();
+                }
 
-                // Add audit leaders
-                dashboardData.auditLeaders.forEach(leader => {
-                    const option = document.createElement('option');
-                    option.value = leader;
-                    option.textContent = leader;
-                    leaderFilter.appendChild(option);
-                });
+                // Create score summary cards
+                function createScoreSummary(data) {
+                    const scoreSummary = document.getElementById('scoreSummary');
+                    scoreSummary.innerHTML = '';
 
-                // Add audit entities
-                dashboardData.auditEntities.forEach(entity => {
-                    const option = document.createElement('option');
-                    option.value = entity;
-                    option.textContent = entity;
-                    entityFilter.appendChild(option);
-                });
+                    const categories = {
+                        'Meets Expectations': { count: 0, class: 'excellent' },
+                        'Requires Attention': { count: 0, class: 'good' },
+                        'Needs Improvement': { count: 0, class: 'needs-improvement' }
+                    };
 
-                // Update date
-                document.getElementById('generationDate').textContent = new Date().toLocaleDateString();
-            }
+                    // Count records in each category
+                    data.forEach(record => {
+                        if (categories[record.Category]) {
+                            categories[record.Category].count++;
+                        }
+                    });
 
-            // Create score summary cards
-            function createScoreSummary(data) {
-                const scoreSummary = document.getElementById('scoreSummary');
-                scoreSummary.innerHTML = '';
+                    // Create cards
+                    Object.entries(categories).forEach(([category, info]) => {
+                        const card = document.createElement('div');
+                        card.className = `score-card ${info.class}`;
 
-                const categories = {
-                    'Excellent': { count: 0, class: 'excellent' },
-                    'Good': { count: 0, class: 'good' },
-                    'Needs Improvement': { count: 0, class: 'needs-improvement' }
-                };
+                        const scoreNumber = document.createElement('div');
+                        scoreNumber.className = 'score-number';
+                        scoreNumber.textContent = info.count;
 
-                // Count records in each category
-                data.forEach(record => {
-                    if (categories[record.Category]) {
-                        categories[record.Category].count++;
-                    }
-                });
+                        const scoreLabel = document.createElement('div');
+                        scoreLabel.className = 'score-label';
+                        scoreLabel.textContent = category;
 
-                // Create cards
-                Object.entries(categories).forEach(([category, info]) => {
-                    const card = document.createElement('div');
-                    card.className = `score-card ${info.class}`;
+                        card.appendChild(scoreNumber);
+                        card.appendChild(scoreLabel);
+                        scoreSummary.appendChild(card);
+                    });
 
-                    const scoreNumber = document.createElement('div');
-                    scoreNumber.className = 'score-number';
-                    scoreNumber.textContent = info.count;
+                    // Add average score card
+                    const avgScore = data.reduce((sum, record) => sum + record['Total Score'], 0) / data.length;
+                    const avgCard = document.createElement('div');
+                    avgCard.className = 'score-card';
+                    avgCard.style.backgroundColor = '#e6f7ff';
+                    avgCard.style.borderLeft = '5px solid #1890ff';
 
-                    const scoreLabel = document.createElement('div');
-                    scoreLabel.className = 'score-label';
-                    scoreLabel.textContent = category;
+                    const avgScoreNumber = document.createElement('div');
+                    avgScoreNumber.className = 'score-number';
+                    avgScoreNumber.textContent = avgScore.toFixed(1);
 
-                    card.appendChild(scoreNumber);
-                    card.appendChild(scoreLabel);
-                    scoreSummary.appendChild(card);
-                });
+                    const avgScoreLabel = document.createElement('div');
+                    avgScoreLabel.className = 'score-label';
+                    avgScoreLabel.textContent = 'Average Score';
 
-                // Add average score card
-                const avgScore = data.reduce((sum, record) => sum + record['Total Score'], 0) / data.length;
-                const avgCard = document.createElement('div');
-                avgCard.className = 'score-card';
-                avgCard.style.backgroundColor = '#e6f7ff';
-                avgCard.style.borderLeft = '5px solid #1890ff';
+                    avgCard.appendChild(avgScoreNumber);
+                    avgCard.appendChild(avgScoreLabel);
+                    scoreSummary.appendChild(avgCard);
+                }
 
-                const avgScoreNumber = document.createElement('div');
-                avgScoreNumber.className = 'score-number';
-                avgScoreNumber.textContent = avgScore.toFixed(1);
+                // Apply filters to data
+                function filterData() {
+                    const leaderFilter = document.getElementById('leaderFilter').value;
+                    const entityFilter = document.getElementById('entityFilter').value;
+                    const categoryFilter = document.getElementById('categoryFilter').value;
 
-                const avgScoreLabel = document.createElement('div');
-                avgScoreLabel.className = 'score-label';
-                avgScoreLabel.textContent = 'Average Score';
+                    return dashboardData.records.filter(record => {
+                        let leaderMatch, entityMatch, categoryMatch;
 
-                avgCard.appendChild(avgScoreNumber);
-                avgCard.appendChild(avgScoreLabel);
-                scoreSummary.appendChild(avgCard);
-            }
+                        if (leaderFilter === 'all') {
+                            leaderMatch = true;
+                        } else {
+                            leaderMatch = record['Audit Leader'] === leaderFilter;
+                        }
 
-            // Apply filters to data
-            function filterData() {
-                const leaderFilter = document.getElementById('leaderFilter').value;
-                const entityFilter = document.getElementById('entityFilter').value;
-                const categoryFilter = document.getElementById('categoryFilter').value;
+                        if (entityFilter === 'all') {
+                            entityMatch = true;
+                        } else {
+                            entityMatch = record['Audit Entity'] === entityFilter;
+                        }
 
-                return dashboardData.records.filter(record => {
-                    const leaderMatch = leaderFilter === 'all' || record['Audit Leader'] === leaderFilter;
-                    const entityMatch = entityFilter === 'all' || record['Audit Entity'] === entityFilter;
-                    const categoryMatch = categoryFilter === 'all' || record.Category === categoryFilter;
-                    return leaderMatch && entityMatch && categoryMatch;
-                });
-            }
+                        if (categoryFilter === 'all') {
+                            categoryMatch = true;
+                        } else {
+                            categoryMatch = record.Category === categoryFilter;
+                        }
 
-            // Create score distribution chart
-            function createScoreDistChart(data) {
-                const categories = ['Excellent', 'Good', 'Needs Improvement'];
-                const colors = ['#28a745', '#ffc107', '#dc3545'];
+                        return leaderMatch && entityMatch && categoryMatch;
+                    });
+                }
 
-                // Group data by category
-                const traces = categories.map((category, i) => {
-                    const categoryData = data.filter(record => record.Category === category);
-                    return {
-                        x: categoryData.map(record => record['Total Score']),
-                        type: 'histogram',
-                        name: category,
-                        marker: {
-                            color: colors[i]
+                // Create score distribution chart
+                function createScoreDistChart(data) {
+                    const categories = ['Meets Expectations', 'Requires Attention', 'Needs Improvement'];
+
+                    // Group data by category
+                    const traces = categories.map((category, i) => {
+                        const categoryData = data.filter(record => record.Category === category);
+                        return {
+                            x: categoryData.map(record => record['Total Score']),
+                            type: 'histogram',
+                            name: category,
+                            marker: {
+                                color: ['#28a745', '#ffc107', '#dc3545'][i]
+                            },
+                            autobinx: false,
+                            xbins: {
+                                start: 0,
+                                end: 100,
+                                size: 5
+                            }
+                        };
+                    });
+
+                    const layout = {
+                        barmode: 'stack',
+                        xaxis: {
+                            title: 'Score (0-100)'
                         },
-                        autobinx: false,
-                        xbins: {
-                            start: 0,
-                            end: 100,
-                            size: 5
+                        yaxis: {
+                            title: 'Number of Controls'
+                        },
+                        margin: {
+                            t: 10,
+                            l: 60,
+                            r: 10,
+                            b: 60
+                        },
+                        legend: {
+                            orientation: 'h',
+                            y: -0.2
                         }
                     };
-                });
 
-                const layout = {
-                    barmode: 'stack',
-                    xaxis: {
-                        title: 'Score (0-100)'
-                    },
-                    yaxis: {
-                        title: 'Number of Controls'
-                    },
-                    margin: {
-                        t: 10,
-                        l: 60,
-                        r: 10,
-                        b: 60
-                    },
-                    legend: {
-                        orientation: 'h',
-                        y: -0.2
-                    }
-                };
+                    Plotly.newPlot('scoreDistChart', traces, layout);
+                }
 
-                Plotly.newPlot('scoreDistChart', traces, layout);
-            }
+                // Create radar chart
+                function createRadarChart(data) {
+                    const elements = ['WHO', 'WHAT', 'WHEN']; // Core scoring elements only
+                    const categories = ['Meets Expectations', 'Requires Attention', 'Needs Improvement'];
 
-            // Create radar chart
-            function createRadarChart(data) {
-                const elements = ['WHO', 'WHEN', 'WHAT', 'WHY', 'ESCALATION'];
-                const categories = ['Excellent', 'Good', 'Needs Improvement'];
-                const colors = ['#28a745', '#ffc107', '#dc3545'];
+                    // Group data by category and calculate average scores
+                    const traces = categories.map((category, i) => {
+                        const categoryData = data.filter(record => record.Category === category);
 
-                // Group data by category and calculate average scores
-                const traces = categories.map((category, i) => {
-                    const categoryData = data.filter(record => record.Category === category);
+                        // Skip if no data for this category
+                        if (categoryData.length === 0) {
+                            return {
+                                r: [0, 0, 0, 0],
+                                theta: [...elements, elements[0]],
+                                fill: 'toself',
+                                name: category,
+                                type: 'scatterpolar',
+                                line: {color: ['#28a745', '#ffc107', '#dc3545'][i]}
+                            };
+                        }
 
-                    // Skip if no data for this category
-                    if (categoryData.length === 0) {
+                        // Calculate average for each element
+                        const values = elements.map(element => {
+                            const scores = categoryData.map(record => record[`${element} Score`]);
+                            return scores.reduce((sum, score) => sum + score, 0) / scores.length;
+                        });
+
+                        // Close the loop
+                        values.push(values[0]);
+
                         return {
-                            r: [0, 0, 0, 0, 0, 0],
+                            r: values,
                             theta: [...elements, elements[0]],
                             fill: 'toself',
                             name: category,
                             type: 'scatterpolar',
-                            line: {color: colors[i]}
+                            line: {color: ['#28a745', '#ffc107', '#dc3545'][i]}
                         };
-                    }
-
-                    // Calculate average for each element
-                    const values = elements.map(element => {
-                        const scores = categoryData.map(record => record[`${element} Score`]);
-                        return scores.reduce((sum, score) => sum + score, 0) / scores.length;
                     });
 
-                    // Close the loop
-                    values.push(values[0]);
-
-                    return {
-                        r: values,
-                        theta: [...elements, elements[0]],
-                        fill: 'toself',
-                        name: category,
-                        type: 'scatterpolar',
-                        line: {color: colors[i]}
-                    };
-                });
-
-                const layout = {
-                    polar: {
-                        radialaxis: {
-                            visible: true,
-                            range: [0, 30]
-                        }
-                    },
-                    showlegend: true,
-                    margin: {
-                        t: 10,
-                        l: 10,
-                        r: 10,
-                        b: 10
-                    },
-                    legend: {
-                        orientation: 'h',
-                        y: -0.2
-                    }
-                };
-
-                Plotly.newPlot('radarChart', traces, layout);
-            }
-
-            // Create missing elements chart
-            function createMissingElementsChart(data) {
-                const elements = ['WHO', 'WHEN', 'WHAT', 'WHY', 'ESCALATION'];
-                const missingCounts = {};
-
-                // Initialize counts
-                elements.forEach(element => {
-                    missingCounts[element] = 0;
-                });
-
-                // Count missing elements
-                data.forEach(record => {
-                    if (record['Missing Elements'] !== 'None') {
-                        record['Missing Elements'].split(', ').forEach(element => {
-                            if (missingCounts[element] !== undefined) {
-                                missingCounts[element]++;
+                    const layout = {
+                        polar: {
+                            radialaxis: {
+                                visible: true,
+                                range: [0, 30]
                             }
-                        });
-                    }
-                });
+                        },
+                        showlegend: true,
+                        margin: {
+                            t: 10,
+                            l: 10,
+                            r: 10,
+                            b: 10
+                        },
+                        legend: {
+                            orientation: 'h',
+                            y: -0.2
+                        }
+                    };
 
-                // Create trace
-                const trace = {
-                    x: elements,
-                    y: elements.map(element => missingCounts[element]),
-                    type: 'bar',
-                    marker: {
-                        color: elements.map(element => missingCounts[element]),
-                        colorscale: 'Reds'
-                    }
-                };
-
-                const layout = {
-                    xaxis: {
-                        title: 'Control Element'
-                    },
-                    yaxis: {
-                        title: 'Number of Controls Missing Element'
-                    },
-                    margin: {
-                        t: 10,
-                        l: 60,
-                        r: 10,
-                        b: 60
-                    }
-                };
-
-                Plotly.newPlot('missingElementsChart', [trace], layout);
-            }
-
-            // Create vague terms chart
-            function createVagueTermsChart(data) {
-                // Collect all vague terms
-                const termCounts = {};
-
-                data.forEach(record => {
-                    if (record.vague_terms_found && record.vague_terms_found.length > 0) {
-                        record.vague_terms_found.forEach(term => {
-                            termCounts[term] = (termCounts[term] || 0) + 1;
-                        });
-                    }
-                });
-
-                // Sort terms by count
-                const sortedTerms = Object.entries(termCounts)
-                    .sort((a, b) => b[1] - a[1])
-                    .slice(0, 10); // Top 10 terms
-
-                if (sortedTerms.length === 0) {
-                    document.getElementById('vagueTermsChart').innerHTML = '<div style="display:flex;justify-content:center;align-items:center;height:100%;color:#666;">No vague terms detected</div>';
-                    return;
+                    Plotly.newPlot('radarChart', traces, layout);
                 }
 
-                const trace = {
-                    x: sortedTerms.map(item => item[0]),
-                    y: sortedTerms.map(item => item[1]),
-                    type: 'bar',
-                    marker: {
-                        color: sortedTerms.map(item => item[1]),
-                        colorscale: 'Oranges'
+                // Create missing elements chart
+                function createMissingElementsChart(data) {
+                    const elements = ['WHO', 'WHAT', 'WHEN']; // Core scoring elements only
+                    const missingCounts = {};
+
+                    // Initialize counts
+                    elements.forEach(element => {
+                        missingCounts[element] = 0;
+                    });
+
+                    // Count missing elements
+                    data.forEach(record => {
+                        if (record['Missing Elements'] !== 'None') {
+                            record['Missing Elements'].split(', ').forEach(element => {
+                                if (missingCounts[element] !== undefined) {
+                                    missingCounts[element]++;
+                                }
+                            });
+                        }
+                    });
+
+                    // Create trace
+                    const trace = {
+                        x: elements,
+                        y: elements.map(element => missingCounts[element]),
+                        type: 'bar',
+                        marker: {
+                            color: elements.map(element => missingCounts[element]),
+                            colorscale: 'Reds'
+                        }
+                    };
+
+                    const layout = {
+                        xaxis: {
+                            title: 'Control Element'
+                        },
+                        yaxis: {
+                            title: 'Number of Controls Missing Element'
+                        },
+                        margin: {
+                            t: 10,
+                            l: 60,
+                            r: 10,
+                            b: 60
+                        }
+                    };
+
+                    Plotly.newPlot('missingElementsChart', [trace], layout);
+                }
+
+                // Create vague terms chart
+                function createVagueTermsChart(data) {
+                    // Collect all vague terms
+                    const termCounts = {};
+
+                    data.forEach(record => {
+                        if (record.vague_terms_found && record.vague_terms_found.length > 0) {
+                            record.vague_terms_found.forEach(term => {
+                                termCounts[term] = (termCounts[term] || 0) + 1;
+                            });
+                        }
+                    });
+
+                    // Sort terms by count
+                    const sortedTerms = Object.entries(termCounts)
+                        .sort((a, b) => b[1] - a[1])
+                        .slice(0, 10); // Top 10 terms
+
+                    if (sortedTerms.length === 0) {
+                        document.getElementById('vagueTermsChart').innerHTML = '<div style="display:flex;justify-content:center;align-items:center;height:100%;color:#666;">No vague terms detected</div>';
+                        return;
                     }
-                };
 
-                const layout = {
-                    xaxis: {
-                        title: 'Vague Term'
-                    },
-                    yaxis: {
-                        title: 'Occurrences'
-                    },
-                    margin: {
-                        t: 10,
-                        l: 60,
-                        r: 10,
-                        b: 60
-                    }
-                };
+                    const trace = {
+                        x: sortedTerms.map(item => item[0]),
+                        y: sortedTerms.map(item => item[1]),
+                        type: 'bar',
+                        marker: {
+                            color: sortedTerms.map(item => item[1]),
+                            colorscale: 'Oranges'
+                        }
+                    };
 
-                Plotly.newPlot('vagueTermsChart', [trace], layout);
-            }
+                    const layout = {
+                        xaxis: {
+                            title: 'Vague Term'
+                        },
+                        yaxis: {
+                            title: 'Occurrences'
+                        },
+                        margin: {
+                            t: 10,
+                            l: 60,
+                            r: 10,
+                            b: 60
+                        }
+                    };
 
-            // Apply filters and update all charts
-            function applyFilters() {
-                const filteredData = filterData();
-                createScoreSummary(filteredData);
-                createScoreDistChart(filteredData);
-                createRadarChart(filteredData);
-                createMissingElementsChart(filteredData);
-                createVagueTermsChart(filteredData);
-            }
+                    Plotly.newPlot('vagueTermsChart', [trace], layout);
+                }
 
-            // Reset all filters
-            function resetFilters() {
-                document.getElementById('leaderFilter').value = 'all';
-                document.getElementById('entityFilter').value = 'all';
-                document.getElementById('categoryFilter').value = 'all';
-                applyFilters();
-            }
+                // Apply filters and update all charts
+                function applyFilters() {
+                    const filteredData = filterData();
+                    createScoreSummary(filteredData);
+                    createScoreDistChart(filteredData);
+                    createRadarChart(filteredData);
+                    createMissingElementsChart(filteredData);
+                    createVagueTermsChart(filteredData);
+                }
 
-            // Initialize dashboard
-            function initializeDashboard() {
-                initializeFilters();
-                applyFilters();
-            }
+                // Reset all filters
+                function resetFilters() {
+                    document.getElementById('leaderFilter').value = 'all';
+                    document.getElementById('entityFilter').value = 'all';
+                    document.getElementById('categoryFilter').value = 'all';
+                    applyFilters();
+                }
 
-            // Start dashboard when page loads
-            window.onload = initializeDashboard;
-        </script>
-    </body>
-    </html>
-    
+                // Initialize dashboard
+                function initializeDashboard() {
+                    initializeFilters();
+                    applyFilters();
+                }
+
+                // Start dashboard when page loads
+                window.onload = initializeDashboard;
+        
+            </script>
+        </body>
+        </html>
+        

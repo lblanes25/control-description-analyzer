@@ -14,6 +14,8 @@ The service identifies:
 """
 
 import re
+import os
+import yaml
 from typing import Dict, List, Any, Optional, Tuple
 from collections import defaultdict
 import spacy
@@ -39,6 +41,19 @@ class WhereDetectionService:
         self.config = config or {}
         self._cache = {}
         self._initialize_patterns()
+        
+    def load_external_systems(self) -> List[str]:
+        """Load systems from external YAML file"""
+        systems_file = self.config.get('shared_where_config', {}).get('external_systems_file')
+        if systems_file and os.path.exists(systems_file):
+            try:
+                with open(systems_file, 'r') as f:
+                    data = yaml.safe_load(f)
+                    return data.get('systems', [])
+            except Exception as e:
+                print(f"Warning: Could not load external systems file {systems_file}: {e}")
+                return []
+        return []
         
     def _initialize_patterns(self):
         """Initialize detection patterns from configuration."""
@@ -96,16 +111,40 @@ class WhereDetectionService:
             }
         }
         
-        # Add systems from centralized registry if available
-        system_registry = self.config.get('system_registry', [])
-        if system_registry:
-            # Use centralized registry with default boost factor
-            for system in system_registry:
+        # Add systems from external file first
+        external_systems = self.load_external_systems()
+        for system in external_systems:
+            if system and isinstance(system, str):
                 self.system_keywords.add(system.lower())
                 self.system_categories[system.lower()] = {
-                    'category': 'registry_systems',
-                    'boost_factor': 1.1  # Default boost factor for registry systems
+                    'category': 'external_systems',
+                    'boost_factor': 1.1  # Default boost factor for external systems
                 }
+        
+        # Add systems from centralized registry if available (fallback)
+        system_registry = self.config.get('system_registry', [])
+        if system_registry:
+            # Handle both list and dict formats
+            if isinstance(system_registry, list):
+                # Flat list format
+                for system in system_registry:
+                    if system and isinstance(system, str):
+                        self.system_keywords.add(system.lower())
+                        self.system_categories[system.lower()] = {
+                            'category': 'registry_systems',
+                            'boost_factor': 1.1  # Default boost factor for registry systems
+                        }
+            elif isinstance(system_registry, dict):
+                # Structured format with categories
+                for category, systems in system_registry.items():
+                    if isinstance(systems, list):
+                        for system in systems:
+                            if system and isinstance(system, str):
+                                self.system_keywords.add(system.lower())
+                                self.system_categories[system.lower()] = {
+                                    'category': f'registry_{category}',
+                                    'boost_factor': 1.1  # Default boost factor
+                                }
         
         # Merge with config patterns (this allows for custom boost factors)
         for category, details in {**default_systems, **self.system_patterns}.items():

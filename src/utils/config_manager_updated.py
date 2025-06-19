@@ -27,8 +27,8 @@ class ConfigConstants:
     WEIGHT_ESCALATION = 10
     
     # Category thresholds
-    CATEGORY_EXCELLENT = 75
-    CATEGORY_GOOD = 50
+    CATEGORY_MEETS_EXPECTATIONS = 75
+    CATEGORY_REQUIRES_ATTENTION = 50
     
     # Common document types
     DOCUMENT_TYPES = ["procedure", "policy", "document", "standard", 

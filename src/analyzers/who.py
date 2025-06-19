@@ -1,4 +1,6 @@
 import re
+import os
+import yaml
 from typing import List, Dict, Any, Optional
 from dataclasses import dataclass
 
@@ -83,6 +85,23 @@ CONTINUOUS_SYSTEM_BOOST = 0.1
 MINIMUM_CONFIDENCE = 0.1
 MAXIMUM_CONFIDENCE = 1.0
 MINIMUM_FALLBACK_CONFIDENCE = 0.3
+
+
+def load_external_systems(config: Optional[Dict] = None) -> List[str]:
+    """Load systems from external YAML file"""
+    if not config:
+        return []
+    
+    systems_file = config.get('shared_where_config', {}).get('external_systems_file')
+    if systems_file and os.path.exists(systems_file):
+        try:
+            with open(systems_file, 'r') as f:
+                data = yaml.safe_load(f)
+                return data.get('systems', [])
+        except Exception as e:
+            print(f"Warning: Could not load external systems file {systems_file}: {e}")
+            return []
+    return []
 
 
 @dataclass
@@ -941,10 +960,30 @@ def _contains_system_indicators(normalized_text: str, system_registry: Optional[
     # Use centralized registry if provided, otherwise fallback to hardcoded indicators
     indicators = set(SYSTEM_INDICATORS)
     if system_registry:
-        indicators.update(system_registry)
+        # Handle both list and dict formats from registry
+        if isinstance(system_registry, list):
+            # Flat list format
+            for item in system_registry:
+                if isinstance(item, str):
+                    indicators.add(item.lower())
+                elif isinstance(item, (int, float)):
+                    # Convert numbers to strings
+                    indicators.add(str(item).lower())
+        elif isinstance(system_registry, dict):
+            # Structured format with categories
+            for category, items in system_registry.items():
+                if isinstance(items, list):
+                    for item in items:
+                        if isinstance(item, str):
+                            indicators.add(item.lower())
+                        elif isinstance(item, (int, float)):
+                            # Convert numbers to strings
+                            indicators.add(str(item).lower())
     
     for indicator in indicators:
-        pattern = r'\b' + re.escape(indicator) + r'\b'
+        # Ensure indicator is a string before using re.escape
+        indicator_str = str(indicator) if not isinstance(indicator, str) else indicator
+        pattern = r'\b' + re.escape(indicator_str) + r'\b'
         if re.search(pattern, normalized_text):
             return True
     return False

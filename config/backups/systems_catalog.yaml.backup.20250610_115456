@@ -1,0 +1,7 @@
+# systems_catalog.yaml
+# Auto-generated from Excel - DO NOT EDIT MANUALLY Instead, run excel-to-yaml on the generated report.
+# Last updated: 2025-5-12
+
+systems:
+  - test-app-1
+  - internal-system-2
